@@ -1,10 +1,11 @@
 node_modules/
 config.json
-bin/
-data/
-cache/
-ios/
-android/
+/bin/
+/data/
+/cache/
+# Projets natifs générés par Capacitor (à la racine seulement : le plugin mobile/plugins/boombox-native/ios doit être publié)
+/ios/
+/android/
 public/js/local-api.bundle.js
 public/app-update/
 abonnements-spotify.txt
