@@ -127,3 +127,19 @@ jobs:
           tag_name: ${{ env.TAG }}
           name: Boombox ${{ env.VERSION }}
           files: ${{ runner.temp }}/Boombox.apk
+
+  # Ménage : on ne garde que les 3 versions les plus récentes (et leurs étiquettes), une fois les deux appli publiées
+  cleanup:
+    needs: [ios, android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Suppression des anciennes versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release list --limit 200 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' |
+          while read -r tag; do
+            echo "Suppression de $tag"
+            gh release delete "$tag" --cleanup-tag --yes || true
+          done
