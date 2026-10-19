@@ -1390,7 +1390,9 @@ img.ai-badge { object-fit: cover; padding: 0; }
 }
 
 /* ---------- Amis : activité et messages ---------- */
-.friends-btn { position: relative; }
+/* Même gabarit que le bouton Party voisin : icône 18 px, bonne marge autour */
+.friends-btn { position: relative; width: 36px; height: 36px; background: rgba(0, 0, 0, 0.6); }
+.friends-btn .ic { width: 18px; height: 18px; }
 .friends-btn .badge { position: absolute; top: -4px; right: -4px; }
 .fa-row, .fr-item { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 8px; cursor: pointer; color: inherit; text-decoration: none; }
 .fa-row:hover, .fr-item:hover, .fr-item.active { background: rgba(255, 255, 255, 0.07); }
