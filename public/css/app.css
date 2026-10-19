@@ -1408,10 +1408,11 @@ img.ai-badge { object-fit: cover; padding: 0; }
 .fa-off { font-size: 12px; }
 .fa-msg { opacity: 0.7; }
 .fa-note { font-size: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
-.eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 10px; }
-.eq b { width: 2px; background: currentColor; animation: eqBar 0.9s ease-in-out infinite; }
-.eq b:nth-child(2) { animation-delay: 0.2s; }
-.eq b:nth-child(3) { animation-delay: 0.4s; }
+/* Mini égaliseur « En écoute » des amis (limité aux écrans Amis : .eq est aussi l'icône « en lecture » des listes) */
+.fa-when .eq { display: inline-flex; position: static; transform: none; gap: 2px; align-items: flex-end; height: 10px; }
+.fa-when .eq b { width: 2px; background: currentColor; animation: eqBar 0.9s ease-in-out infinite; }
+.fa-when .eq b:nth-child(2) { animation-delay: 0.2s; }
+.fa-when .eq b:nth-child(3) { animation-delay: 0.4s; }
 @keyframes eqBar { 0%, 100% { height: 3px; } 50% { height: 10px; } }
 .friend-code-box { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .code.big { font-size: 22px; font-weight: 800; letter-spacing: 0.12em; padding: 6px 12px; }
