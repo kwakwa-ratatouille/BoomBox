@@ -1542,3 +1542,35 @@ html, body { overflow-x: hidden; overscroll-behavior-x: none; max-width: 100%; }
   #view { overflow-x: hidden; }
   .page { max-width: 100vw; box-sizing: border-box; }
 }
+
+/* Téléphone : barre d'actions d'une playlist sans débordement (tri en icône seule, espaces resserrés) */
+@media (max-width: 768px) {
+  .actions { gap: 14px; flex-wrap: wrap; row-gap: 8px; }
+  .actions .list-tools { margin-left: auto; }
+  .list-tools .lt-sort span { display: none; }
+  .list-tools.searching .lt-search input { width: 130px; }
+  .hero-meta { flex-wrap: wrap; row-gap: 4px; }
+}
+
+/* Découverte (téléphone) : styles sur une ligne qui défile au doigt, sans suivre le défilement de la page */
+@media (max-width: 768px) {
+  .search-tabs.dc-styles { position: static; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: -16px; margin-right: -16px; padding: 4px 16px; }
+  .search-tabs.dc-styles::-webkit-scrollbar { display: none; }
+  .search-tabs.dc-styles .chip { flex: none; }
+}
+
+/* iPhone : la couleur de la page continue sous la barre d'état (plus de bande noire en haut quand on défile) */
+@media (max-width: 768px) {
+  #app::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--topbar-bg, var(--panel)); z-index: 60; pointer-events: none; transition: background 0.2s; }
+  #fullplayer { overflow-x: hidden; }
+}
+
+/* Ordinateur : flèches pour faire défiler les rangées de cartes */
+.hs-wrap { position: relative; }
+.hs-arrow { position: absolute; top: 38%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(20, 16, 26, 0.92); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.15s; z-index: 3; }
+.hs-arrow.left { left: -6px; }
+.hs-arrow.right { right: -6px; }
+.hs-wrap:hover .hs-arrow.show { opacity: 1; pointer-events: auto; }
+.hs-arrow:hover { transform: translateY(-50%) scale(1.08); background: rgba(40, 32, 52, 0.96); }
+.cards.row.hs-dragging { cursor: grabbing; user-select: none; scroll-behavior: auto; }
+.cards.row.hs-dragging * { pointer-events: none; }

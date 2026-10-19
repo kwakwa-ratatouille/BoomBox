@@ -32,7 +32,7 @@ export const offline = {
   },
 
   limitBytes() {
-    return Number(ls.get('boombox.storageLimitGB', 1)) * 1024 ** 3;
+    return Number(ls.get('boombox.storageLimitGB', 5)) * 1024 ** 3;
   },
 
   // Titres à garder sur le téléphone selon les réglages

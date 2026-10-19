@@ -172,7 +172,8 @@ class AudioEngine {
   }
   _idx(el) { return this.els.indexOf(el); }
   _apply(i) {
-    const v = this.base * this.level[i] * (this.graph ? this.norm[i] : 1);
+    // Appli mobile sans Web Audio : l'égalisation baisse seulement les sons trop forts (volume du lecteur, max 1)
+    const v = this.base * this.level[i] * (this.graph ? this.norm[i] : isNative ? Math.min(1, this.norm[i]) : 1);
     if (this.graph) this.graph.nodes[i].gain.gain.value = Math.min(2, v);
     else this.els[i].volume = Math.min(1, v);
   }
@@ -291,7 +292,7 @@ class AudioEngine {
     this.norm[this._idx(inn)] = gainIn; // volume égalisé du titre entrant (sinon celui d'un ancien titre)
     this._setLevel(inn, 0);
     inn.playbackRate = rate;
-    inn.preservesPitch = true;
+    inn.preservesPitch = inn.webkitPreservesPitch = true;
     this.cur = 1 - this.cur;
     this.pending = null;
     try {
@@ -314,6 +315,9 @@ class AudioEngine {
   // puis la transition choisie (voir TRANSITIONS) joue sur les volumes, les filtres et l'écho.
   // inAt : secondes après le début du mix où l'entrant démarre (0 = tout de suite).
   async mixTo({ id, inStart, rate = 1, mixLen, delayMs = 0, gainIn = 1, beatOut = 0.5, style = 'blend', inAt = 0 }) {
+    // Téléphone : pas de calage du tempo (le lecteur de l'iPhone ne préserve pas bien la hauteur : le son semblait
+    // accélérer puis ralentir pendant les transitions). La transition elle-même reste.
+    if (isNative) rate = 1;
     this._endFade();
     const gen = ++this.gen;
     this.pending = { start: inStart };
@@ -336,7 +340,7 @@ class AudioEngine {
     this.preloaded = null;
     inn.currentTime = inStart;
     inn.playbackRate = rate * (this.userRate || 1); // calage du tempo, par-dessus la vitesse choisie
-    inn.preservesPitch = true;
+    inn.preservesPitch = inn.webkitPreservesPitch = true;
     this._setLevel(inn, 0);
     this._resetFx(inn);
     const iIn = this._idx(inn);
@@ -420,7 +424,7 @@ class AudioEngine {
   stop() { this._endFade(); this.gen++; this.a.pause(); this.a.removeAttribute('src'); this.a.load(); }
   seek(s) { this._endFade(); this.a.currentTime = s; }
   setVolume(v) { this.base = v; this.els.forEach((_, i) => this._apply(i)); }
-  setRate(r) { this.userRate = r; this.a.playbackRate = r; this.a.preservesPitch = true; }
+  setRate(r) { this.userRate = r; this.a.playbackRate = r; this.a.preservesPitch = this.a.webkitPreservesPitch = true; }
   // Pendant la préparation d'un fondu / mix, on montre déjà le titre entrant (temps de départ, durée du titre)
   time() { return this.pending ? this.pending.start : this.a.currentTime || 0; }
   duration() { return this.pending ? 0 : isFinite(this.a.duration) ? this.a.duration : 0; }
@@ -834,7 +838,7 @@ export const player = {
   // Chaque son est ramené au même niveau sonore (d'après son analyse, gardée en cache). Désactivée par défaut sur
   // l'appli mobile : le traitement audio y couperait le son écran verrouillé.
   _normOn() {
-    return setting('normalize', !isNative) && this.engine.name === 'audio' && !this.remoteSender;
+    return setting('normalize', true) && this.engine.name === 'audio' && !this.remoteSender;
   },
   _gainFor(id) {
     return this._normOn() || this._automixOn() ? automix.gain(id) : 1;
@@ -842,7 +846,8 @@ export const player = {
   _prepareNormalize() {
     if (!this._normOn() || !this.track) return;
     const e = this.engines.audio;
-    if (!e.graph) e.enableGraph();
+    // Téléphone : pas de Web Audio (couperait le son écran verrouillé), on joue sur le volume du lecteur
+    if (!e.graph && !isNative) e.enableGraph();
     const cur = this.track.id;
     automix.ensure([cur, this._nextTrack()?.id].filter(Boolean));
     if (automix.get(cur)) e.setNorm(automix.gain(cur), true);

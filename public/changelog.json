@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.1019.2342",
+    "title": "Confort",
+    "items": [
+      "Assistant IA bien plus rapide (2-3 s) et sans clé à mettre.",
+      "Par défaut : 5 Go pour les sons hors ligne, volume égalisé, activité d'écoute partagée.",
+      "Téléphone : plus d'accélérations pendant les transitions, lecteur plein écran plus fluide, couleur continue sous l'encoche, styles de Découverte sur une ligne.",
+      "PC : flèches et glisser à la souris pour faire défiler les rangées de cartes."
+    ],
+    "date": "2026-10-19"
+  },
+  {
     "version": "2026.1019.2300",
     "title": "Nouveautés plus rapides",
     "items": [

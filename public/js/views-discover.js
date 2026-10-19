@@ -26,7 +26,7 @@ export async function discoverPage(el, _p, ctx) {
   const render = () => {
     el.innerHTML = String(html`<div class="page">
       <div class="ai-head"><span class="ai-badge" style="background:linear-gradient(135deg,#ff4d8d,#ff9f2e)">${icon('radio', 28)}</span><div><h1>Découverte</h1><p class="muted">De nouveaux artistes et sons, pris hors de ce que tu écoutes déjà.</p></div></div>
-      <div class="search-tabs">${STYLES.map((s) => html`<button class="chip ${s === style ? 'active' : ''}" data-style="${s}">${s}</button>`)}</div>
+      <div class="search-tabs dc-styles">${STYLES.map((s) => html`<button class="chip ${s === style ? 'active' : ''}" data-style="${s}">${s}</button>`)}</div>
       ${style === 'Pour toi' ? html`<div class="np-card seeds">
         <div class="row-flex" style="justify-content:space-between;gap:12px;flex-wrap:wrap"><h4 style="margin:0">Basé sur ${extraSeeds().length ? plural(extraSeeds().length, 'artiste choisi') : 'tes abonnements et tes écoutes'}</h4>
           ${extraSeeds().length ? html`<button class="more muted" id="seed-clear">Tout retirer</button>` : ''}</div>

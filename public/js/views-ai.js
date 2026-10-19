@@ -42,7 +42,6 @@ export async function aiPage(el, params) {
     const pl = targetPl();
     el.innerHTML = String(html`<div class="page ai-page">
       <div class="ai-head"><img class="ai-badge" src="/assets/cover-ai-mix.png" alt=""><div><h1>Assistant IA</h1><p class="muted">Décris ce que tu veux écouter, l'IA s'occupe du reste.</p></div></div>
-      ${!state.status.ai ? html`<div class="np-card"><h4>Active l'assistant (gratuit)</h4><p class="muted">Il faut une clé Gemini de Google : 1 minute, sans carte bancaire.</p><a class="btn primary" href="#/settings">Ajouter ma clé dans les Paramètres</a></div>` : ''}
       <div class="row-flex ai-target"><span class="muted">Pour :</span>
         <select class="input" id="ai-target" style="width:auto">
           <option value="new">Une nouvelle playlist</option>
@@ -165,7 +164,6 @@ export async function aiPage(el, params) {
 
   async function send(text) {
     if (!text) return;
-    if (!state.status.ai) return toast('Ajoute d’abord ta clé Gemini dans les Paramètres');
     convo.messages.push({ role: 'user', text });
     convo.results.push(null);
     render();
@@ -177,7 +175,9 @@ export async function aiPage(el, params) {
       const pl = targetPl();
       const context = { topArtists: await topArtists() };
       if (pl) context.playlist = { name: pl.name, tracks: pl.tracks.map((t) => `${t.artists?.[0]?.name || ''} - ${t.title}`) };
-      const r = await api('/api/ai', { method: 'POST', body: { messages: convo.messages.map(({ role, text }) => ({ role, text })), context } });
+      // Jeton de connexion : l'IA passe par le mini-serveur Boombox (aucune clé à mettre)
+      const idToken = await window.__bbIdToken?.().catch(() => null);
+      const r = await api('/api/ai', { method: 'POST', body: { messages: convo.messages.map(({ role, text }) => ({ role, text })), context, idToken } });
       if (pl) {
         const have = new Set(pl.tracks.map((t) => t.id));
         r.tracks = r.tracks.filter((t) => !have.has(t.id));

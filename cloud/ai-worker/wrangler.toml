@@ -6,7 +6,8 @@ compatibility_date = "2025-06-01"
 
 [vars]
 FIREBASE_PROJECT = "musikal-b72d1"
-GEMINI_MODEL = "gemini-3.8-flash"
+# Modèle « lite » : réponse en 2 à 3 s (les modèles « flash » récents réfléchissent longtemps : plus d'une minute)
+GEMINI_MODEL = "gemini-3.5-flash-lite"
 PER_USER_DAY = "30"
 GLOBAL_DAY = "400"
 

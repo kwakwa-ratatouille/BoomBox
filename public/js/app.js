@@ -874,20 +874,30 @@ function setupFullPlayerSwipe() {
     if (y0 == null) return;
     dy = e.touches[0].clientY - y0;
     if (Math.abs(e.touches[0].clientX - x0) > Math.abs(dy) && dy < 30) return; // geste horizontal
-    if (dy > 0) fp.style.transform = `translateY(${dy}px)`;
+    if (dy <= 0) return;
+    // Suit le doigt (légère résistance au début), coins du haut qui s'arrondissent comme une carte qu'on rabat
+    const y = dy < 40 ? dy * 0.6 : dy - 16;
+    fp.style.transform = `translateY(${y}px)`;
+    fp.style.borderRadius = `${Math.min(28, dy / 5)}px ${Math.min(28, dy / 5)}px 0 0`;
   }, { passive: true });
   fp.addEventListener('touchend', () => {
     if (y0 == null) return;
     const fast = dy > 60 && dy / (performance.now() - t0) > 0.6; // petit geste rapide vers le bas
-    fp.style.transition = 'transform 0.22s ease';
+    const ease = 'cubic-bezier(0.22, 0.8, 0.24, 1)';
     if (dy > 140 || fast) {
-      fp.style.transform = 'translateY(100%)';
+      fp.style.transition = `transform 0.34s ${ease}, border-radius 0.34s ${ease}`;
+      fp.style.transform = 'translateY(105%)';
+      fp.style.borderRadius = '28px 28px 0 0';
       setTimeout(() => {
         closeFullPlayer();
-        fp.style.transition = '';
-        fp.style.transform = '';
-      }, 220);
-    } else fp.style.transform = '';
+        fp.style.transition = fp.style.transform = fp.style.borderRadius = '';
+      }, 340);
+    } else {
+      fp.style.transition = `transform 0.28s ${ease}, border-radius 0.28s ${ease}`;
+      fp.style.transform = '';
+      fp.style.borderRadius = '';
+      setTimeout(() => (fp.style.transition = ''), 300);
+    }
     y0 = null;
   });
 }
@@ -1574,6 +1584,62 @@ async function boot() {
 
 // ======================= APPLI MOBILE =======================
 // Ouverture par un lien boombox://join?s=…&k=… (QR code scanné depuis le PC)
+// Ordinateur : les rangées de cartes (suggestions, artistes…) défilent avec des flèches ‹ › et en glissant à la souris
+function enhanceRows(root = document) {
+  if (!matchMedia('(pointer: fine)').matches) return;
+  root.querySelectorAll('.cards.row:not([data-hs])').forEach((row) => {
+    row.dataset.hs = '1';
+    const wrap = document.createElement('div');
+    wrap.className = 'hs-wrap';
+    row.parentNode.insertBefore(wrap, row);
+    wrap.appendChild(row);
+    const mk = (dir) => {
+      const b = document.createElement('button');
+      b.className = `hs-arrow ${dir < 0 ? 'left' : 'right'}`;
+      b.type = 'button';
+      b.setAttribute('aria-label', dir < 0 ? 'Précédent' : 'Suivant');
+      b.innerHTML = String(icon(dir < 0 ? 'back' : 'forward', 22));
+      b.onclick = () => row.scrollBy({ left: dir * row.clientWidth * 0.85, behavior: 'smooth' });
+      wrap.appendChild(b);
+      return b;
+    };
+    const left = mk(-1);
+    const right = mk(1);
+    const update = () => {
+      left.classList.toggle('show', row.scrollLeft > 4);
+      right.classList.toggle('show', row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
+    };
+    row.addEventListener('scroll', update, { passive: true });
+    new ResizeObserver(update).observe(row);
+    update();
+    // Glisser à la souris (un vrai glisser ne déclenche pas le clic sur la carte)
+    let x0 = null;
+    let s0 = 0;
+    let moved = false;
+    row.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      x0 = e.clientX;
+      s0 = row.scrollLeft;
+      moved = false;
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (x0 == null) return;
+      const dx = e.clientX - x0;
+      if (Math.abs(dx) > 6) {
+        moved = true;
+        row.classList.add('hs-dragging');
+      }
+      if (moved) row.scrollLeft = s0 - dx;
+    });
+    window.addEventListener('pointerup', () => {
+      x0 = null;
+      row.classList.remove('hs-dragging');
+    });
+    row.addEventListener('click', (e) => moved && (e.stopPropagation(), e.preventDefault(), (moved = false)), true);
+  });
+}
+new MutationObserver(() => enhanceRows($('#view'))).observe(document.getElementById('view'), { childList: true, subtree: true });
+
 // Premier lancement après une mise à jour : récapitulatif des nouveautés (rien à la toute première installation)
 async function showWhatsNew() {
   try {

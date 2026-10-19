@@ -382,7 +382,7 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Fondu enchaîné</b><p>${st.ytdlp ? 'Les titres se chevauchent en fondu : la fin du titre s’éteint pendant que le suivant démarre.' : 'Nécessite la lecture audio directe (yt-dlp).'}</p></div>
       <div class="xf-control"><div class="slider xf-slider" id="s-xf" role="slider" aria-label="Durée du fondu" aria-valuemin="0" aria-valuemax="12" tabindex="0"><div class="fill"></div><div class="knob"></div></div><span class="xf-value" id="s-xf-val"></span></div></div>
     <div class="settings-row"><div><b>Automix (enchaînements façon DJ)</b><p>Analyse le tempo et la tonalité de chaque titre : les transitions démarrent sur un temps fort, le tempo est calé, les basses sont échangées et les volumes égalisés. En lecture aléatoire, le titre suivant est choisi pour bien s'enchaîner. ${st.ytdlp ? '' : 'Nécessite la lecture audio directe (yt-dlp).'}</p></div><label class="switch"><input type="checkbox" id="s-automix" ${setting('automix', false) ? 'checked' : ''} ${st.ytdlp ? '' : 'disabled'}><span></span></label></div>
-    <div class="settings-row"><div><b>Normaliser le volume</b><p>Tous les sons sont joués au même niveau sonore : fini les titres beaucoup plus forts ou plus faibles que les autres. ${isNative ? 'Sur téléphone, peut couper le son écran verrouillé : à activer seulement si tu écoutes appli ouverte.' : ''}</p></div><label class="switch"><input type="checkbox" id="s-normalize" ${setting('normalize', !isNative) ? 'checked' : ''} ${st.ytdlp || isNative ? '' : 'disabled'}><span></span></label></div>
+    <div class="settings-row"><div><b>Normaliser le volume</b><p>Tous les sons sont joués au même niveau sonore : fini les titres beaucoup plus forts ou plus faibles que les autres. ${isNative ? 'Sur téléphone, les sons trop forts sont baissés (sans effet sur iPhone, qui ne laisse pas une appli régler le volume).' : ''}</p></div><label class="switch"><input type="checkbox" id="s-normalize" ${setting('normalize', true) ? 'checked' : ''} ${st.ytdlp || isNative ? '' : 'disabled'}><span></span></label></div>
     ${isNative ? '' : html`<div class="settings-row"><div><b>Lancer Boombox au démarrage de Windows</b><p>Le serveur démarre tout seul avec le PC : ton téléphone peut lire et télécommander dès que le PC est allumé, et l'appli s'ouvre instantanément.</p><label class="row-flex" style="font-size:13px;gap:8px;margin-top:6px"><input type="checkbox" id="s-autostart-win"> Ouvrir aussi la fenêtre Boombox</label></div><label class="switch"><input type="checkbox" id="s-autostart"><span></span></label></div>`}
     ${isNative ? '' : html`<div class="settings-row"><div><b>Pré-télécharger mes titres likés</b><p>En arrière-plan, quand rien ne joue : tes likes démarrent instantanément et Boombox sollicite beaucoup moins YouTube. Utilise jusqu'à 4 Go sur ce PC.</p><p class="muted" id="s-pre-status" style="font-size:12px"></p></div><label class="switch"><input type="checkbox" id="s-predownload" ${setting('predownload', true) ? 'checked' : ''}><span></span></label></div>`}
     ${isNative ? '' : html`<div class="settings-row"><div><b>Alertes nouvelles sorties</b><p>Une notification discrète quand un artiste que tu suis sort un son (regroupées, au plus une toutes les 6 heures).</p></div><label class="switch"><input type="checkbox" id="s-alerts" ${setting('releaseAlerts', true) && typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'checked' : ''}><span></span></label></div>`}
@@ -396,27 +396,12 @@ export async function settings(el) {
       ${st.lan.map((u) => html`<div style="margin-top:6px"><span class="code">${u}</span></div>`)}</div><div id="s-qr"></div></div>
 
     ${isNative && offline.ready ? html`<h2 style="font-size:20px;margin-top:32px">Hors ligne</h2>
-    <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Espace utilisé sur le téléphone</b><p>${(offline.media.storageUsed() / 1024 ** 3).toFixed(2).replace('.', ',')} Go sur ${ls.get('boombox.storageLimitGB', 1)} Go · ${plural(offline.downloaded.size, 'titre')}</p>
+    <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Espace utilisé sur le téléphone</b><p>${(offline.media.storageUsed() / 1024 ** 3).toFixed(2).replace('.', ',')} Go sur ${ls.get('boombox.storageLimitGB', 5)} Go · ${plural(offline.downloaded.size, 'titre')}</p>
       <div class="storage-bar"><div style="width:${Math.min(100, (offline.media.storageUsed() / offline.limitBytes()) * 100)}%"></div></div></div></div>
-    <div class="settings-row"><div style="flex:1"><b>Limite d'espace : <span id="s-lim-v">${ls.get('boombox.storageLimitGB', 1)}</span> Go</b><p>Au-delà, les titres écoutés il y a le plus longtemps (et non téléchargés volontairement) sont supprimés.</p><input type="range" class="range" id="s-lim" min="1" max="64" step="1" value="${ls.get('boombox.storageLimitGB', 1)}"></div></div>
+    <div class="settings-row"><div style="flex:1"><b>Limite d'espace : <span id="s-lim-v">${ls.get('boombox.storageLimitGB', 5)}</span> Go</b><p>Au-delà, les titres écoutés il y a le plus longtemps (et non téléchargés volontairement) sont supprimés.</p><input type="range" class="range" id="s-lim" min="1" max="64" step="1" value="${ls.get('boombox.storageLimitGB', 5)}"></div></div>
     <div class="settings-row"><div><b>Télécharger seulement en Wi-Fi</b><p>Pour ne pas consommer ton forfait.</p></div><label class="switch"><input type="checkbox" id="s-wifi" ${setting('offlineWifiOnly', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Télécharger mes titres likés</b><p>Tous tes likes disponibles hors ligne, y compris les prochains.</p></div><label class="switch"><input type="checkbox" id="s-offliked" ${setting('offlineLiked', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Supprimer tous les téléchargements</b><p>Libère l'espace (les playlists restent marquées et se re-téléchargeront en Wi-Fi).</p></div><button class="btn ghost" id="s-dlclear">Tout supprimer</button></div>` : ''}
-
-    <h2 style="font-size:20px;margin-top:32px">Assistant IA</h2>
-    <div class="settings-row" style="align-items:flex-start"><div><b>Clé Gemini (Google) ${st.ai ? '✅' : ''}</b>
-      <p>${st.ai ? `Active (modèle ${st.aiModel}). L'assistant crée et complète tes playlists.` : 'Gratuite, nécessaire pour l’assistant IA.'}</p>
-      <details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:13px">Comment obtenir une clé (1 min)</summary>
-        <ol class="muted" style="font-size:13px;padding-left:18px">
-          <li>Va sur <b>aistudio.google.com/apikey</b> et connecte-toi avec ton compte Google.</li>
-          <li>Clique sur <b>Créer une clé API</b> (choisis le projet « musikal » s'il est proposé).</li>
-          <li>Copie la clé (elle commence par <span class="code">AIza</span>) et colle-la ici.</li>
-        </ol>
-        <p class="muted" style="font-size:12px">Offre gratuite : aucune carte bancaire, quelques requêtes par minute. Google peut utiliser les demandes de l'offre gratuite pour améliorer ses produits.</p></details></div>
-      <div style="display:flex;flex-direction:column;gap:8px;min-width:240px">
-        <input class="input" id="s-gemini" placeholder="Clé API Gemini" type="password" autocomplete="off">
-        <div class="row-flex"><button class="btn primary" id="s-gsave">Enregistrer</button>${st.ai ? html`<button class="btn ghost" id="s-gdel">Retirer</button>` : ''}</div>
-      </div></div>
 
     <h2 style="font-size:20px;margin-top:32px">Import Spotify</h2>
     <div class="settings-row" style="align-items:flex-start"><div><b>Clé API Spotify ${st.spotifyApi ? '✅' : ''}</b>
@@ -672,22 +657,6 @@ export async function settings(el) {
     saveSpotify(id, secret);
   };
   el.querySelector('#s-spdel')?.addEventListener('click', () => saveSpotify('', ''));
-  const saveGemini = async (key) => {
-    try {
-      const r = await api('/api/config/gemini', { method: 'POST', body: { key } });
-      Object.assign(state.status, { ai: r.ai, aiModel: r.model });
-      toast(r.ai ? 'Assistant IA activé' : 'Clé Gemini retirée');
-      settings(el);
-    } catch (e) {
-      toast(e.message);
-    }
-  };
-  el.querySelector('#s-gsave').onclick = () => {
-    const k = el.querySelector('#s-gemini').value.trim();
-    if (!k) return toast('Colle ta clé Gemini');
-    saveGemini(k);
-  };
-  el.querySelector('#s-gdel')?.addEventListener('click', () => saveGemini(''));
   if (st.lan[0]) renderQr(el.querySelector('#s-qr'), st.lan[0]);
   cloud
     .inviteLink(st.lan[0] || location.origin)

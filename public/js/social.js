@@ -30,7 +30,7 @@ export const social = {
     return state.profile?.socialCode || null;
   },
   get sharing() {
-    return !!state.profile?.shareActivity;
+    return state.profile?.shareActivity !== false; // partagée par défaut (désactivable)
   },
 
   // Fiche publique du profil (créée à la première ouverture), puis abonnements : amis et messages
@@ -57,7 +57,7 @@ export const social = {
   async _ensureCard() {
     const p = state.profile;
     try {
-      await setDoc(peopleRef(p.socialCode), { space: cloud.spaceId, pid: p.id, name: p.name, photo: smallPhoto(p), color: p.color || '#b07cf7', share: !!p.shareActivity, updatedAt: Date.now() }, { merge: true });
+      await setDoc(peopleRef(p.socialCode), { space: cloud.spaceId, pid: p.id, name: p.name, photo: smallPhoto(p), color: p.color || '#b07cf7', share: p.shareActivity !== false, updatedAt: Date.now() }, { merge: true });
       this._cardOk = true;
       if (this._inboxBroken) this._watchInbox();
     } catch (e) {

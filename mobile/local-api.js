@@ -255,7 +255,7 @@ export function storageUsed() {
 }
 
 // Respecte la limite d'espace : on supprime d'abord les titres non gardés les moins récemment écoutés
-export function pruneCache(limitBytes = Number(localStorage.getItem('boombox.storageLimit') || 1024 ** 3)) {
+export function pruneCache(limitBytes = Number(localStorage.getItem('boombox.storageLimit') || 5 * 1024 ** 3)) {
   let used = storageUsed();
   if (used <= limitBytes) return;
   const order = Object.entries(audioIndex).sort((a, b) => (a[1].keep - b[1].keep) || (a[1].used - b[1].used));

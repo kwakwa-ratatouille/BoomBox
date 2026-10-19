@@ -15,6 +15,11 @@ export async function pickModel(key) {
   }
   const { models = [] } = await r.json();
   const usable = models.filter((m) => (m.supportedGenerationMethods || []).includes('generateContent')).map((m) => m.name.replace(/^models\//, ''));
+  // Les modèles « lite » répondent en quelques secondes (les « flash » récents réfléchissent parfois plus d'une minute)
+  const lite = usable
+    .filter((n) => /^gemini-\d+(\.\d+)?-flash-lite$/.test(n))
+    .sort((a, b) => parseFloat(b.match(/\d+(\.\d+)?/)[0]) - parseFloat(a.match(/\d+(\.\d+)?/)[0]));
+  if (lite[0]) return lite[0];
   const versioned = usable
     .filter((n) => /^gemini-\d+(\.\d+)?-flash$/.test(n))
     .sort((a, b) => parseFloat(b.match(/\d+(\.\d+)?/)[0]) - parseFloat(a.match(/\d+(\.\d+)?/)[0]));

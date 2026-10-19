@@ -12,7 +12,7 @@ import { startImport, getJob, spotifyApiToken, startMatch, syncPlaylist } from '
 import { concertsFor, spotifyLatest, norm } from './spotify-stats.js';
 import { autostartStatus, setAutostart } from './autostart.js';
 import { streamHandler, prefetchHandler, audioFileHandler, ytDlpPath, predownload, predownloadStatus } from './stream.js';
-import { askAi, pickModel } from './ai.js';
+import { askAi, pickModel, resolveAiResult } from './ai.js';
 import { findLyrics, searchByLyrics } from './lyrics.js';
 import { discover } from './discover.js';
 import { resolveInput } from './resolve.js';
@@ -48,7 +48,7 @@ function lanUrls() {
   return out;
 }
 
-app.get('/api/status', (req, res) => res.json({ ytdlp: !!ytDlpPath, lan: lanUrls(), spotifyApi: !!cfg.spotifyClientId, ai: !!cfg.geminiApiKey, aiModel: cfg.geminiModel || null, ...(relay.isLocal(req) ? { publicUrl: relay.publicUrl } : {}) }));
+app.get('/api/status', (req, res) => res.json({ ytdlp: !!ytDlpPath, lan: lanUrls(), spotifyApi: !!cfg.spotifyClientId, ai: true, aiModel: cfg.geminiModel || null, ...(relay.isLocal(req) ? { publicUrl: relay.publicUrl } : {}) }));
 // Relais Internet : l'appli du PC transmet la bibliothèque à laquelle le serveur doit s'annoncer (depuis ce PC seulement)
 app.post('/api/relay/config', (req, res) => {
   if (!relay.isLocal(req)) return res.status(403).json({ error: 'Depuis ce PC uniquement' });
@@ -225,7 +225,17 @@ app.post('/api/resolve', wrap(async (req, res) => {
   res.json(track);
 }));
 app.post('/api/discover', wrap(async (req, res) => res.json(await discover(req.body || {}))));
-app.post('/api/ai', wrap(async (req, res) => res.json(await askAi(cfg, req.body || {}))));
+// Assistant IA : clé de ce PC si elle existe, sinon le mini-serveur Cloudflare (clé secrète, jeton de l'appli vérifié)
+const AI_WORKER = 'https://boombox-ai.boombox-matis.workers.dev';
+app.post('/api/ai', wrap(async (req, res) => {
+  const { idToken, ...body } = req.body || {};
+  if (cfg.geminiApiKey) return res.json(await askAi(cfg, body));
+  if (!idToken) throw new Error("L'assistant IA a besoin d'une connexion à Boombox : recharge la page.");
+  const r = await fetch(AI_WORKER, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${idToken}` }, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) return res.status(r.status).json({ error: data.error || `Assistant IA : erreur ${r.status}` });
+  res.json(await resolveAiResult(data));
+}));
 
 // Import de playlists (Spotify, Deezer, YouTube, texte) : tâche en arrière-plan, le client suit la progression.
 app.post('/api/import', (req, res) => {
