@@ -118,6 +118,9 @@ jobs:
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#</activity>#  <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="boombox" /></intent-filter>\n        </activity>#' "$M"
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"$VERSION\"/" android/app/build.gradle
+          # yt-dlp embarqué : bibliothèques natives extraites, et seulement les processeurs des téléphones récents (taille réduite)
+          sed -i 's#<application#<application android:extractNativeLibs="true"#' "$M"
+          printf '\nandroid {\n    packagingOptions { jniLibs { useLegacyPackaging = true } }\n    defaultConfig { ndk { abiFilters "arm64-v8a", "armeabi-v7a" } }\n}\n' >> android/app/build.gradle
           npx cap sync android
       - name: Compilation
         run: cd android && ./gradlew assembleDebug --no-daemon -q && cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Boombox.apk"

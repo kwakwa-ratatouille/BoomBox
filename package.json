@@ -18,6 +18,7 @@
     "@capacitor/core": "^6.2.0",
     "@capacitor/filesystem": "^6.0.2",
     "@capacitor/network": "^6.0.2",
+    "bgutils-js": "^4.0.3",
     "boombox-native": "file:mobile/plugins/boombox-native",
     "express": "^5.3.0",
     "youtubei.js": "^18.1.0"

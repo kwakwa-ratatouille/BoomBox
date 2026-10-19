@@ -9,6 +9,7 @@ import { askAi, pickModel } from '../server/ai.js';
 import { startImport, getJob, spotifyApiToken, startMatch, syncPlaylist } from '../server/importers.js';
 import { concertsFor } from '../server/spotify-stats.js';
 import { Innertube, Platform } from 'youtubei.js';
+import { poTokens } from './potoken.js';
 
 // Déchiffrement des liens YouTube (repli si le client « iOS » ne suffit pas)
 Platform.shim.eval = async (data, env) => {
@@ -67,6 +68,22 @@ const CLIENTS = [
   ['WEB_EMBEDDED', null],
   ['WEB', null],
 ];
+// Clients web : YouTube exige un jeton « PO token » (généré dans le téléphone, voir potoken.js)
+const WEB_CLIENTS = new Set(['MWEB', 'WEB', 'WEB_EMBEDDED']);
+async function resolveClient(y, id, client, ua) {
+  let tokens = null;
+  if (WEB_CLIENTS.has(client)) tokens = await poTokens(y, id).catch(() => null);
+  const info = await y.getBasicInfo(id, tokens ? { client, po_token: tokens.player } : { client });
+  // Uniquement de l'AAC (M4A) : l'iPhone ne lit pas le WebM/Opus. Pas d'AAC chez ce client → client suivant.
+  const aac = (info.streaming_data?.adaptive_formats || []).filter((f) => f.has_audio && !f.has_video && /audio\/mp4/.test(f.mime_type || ''));
+  const fmt = aac.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+  if (!fmt) throw new Error(`pas de format M4A (${info.playability_status?.status || '?'})`);
+  if (tokens && y.session.player) y.session.player.po_token = tokens.gvs;
+  let url = fmt.url || (await fmt.decipher(y.session.player));
+  if (url && tokens && !/[?&]pot=/.test(url)) url += `&pot=${encodeURIComponent(tokens.gvs)}`;
+  if (!url) throw new Error('aucun lien');
+  return { url, client, ua: ua || navigator.userAgent, withToken: !!tokens, exp: Date.now() + 4 * 3600e3 };
+}
 async function remoteAudio(id, exclude = []) {
   const hit = urlCache.get(id);
   if (hit && hit.exp > Date.now() && !exclude.includes(hit.client)) return hit;
@@ -75,19 +92,11 @@ async function remoteAudio(id, exclude = []) {
   for (const [client, ua] of CLIENTS) {
     if (exclude.includes(client)) continue;
     try {
-      const info = await y.getBasicInfo(id, { client });
-      // Uniquement de l'AAC (M4A) : l'iPhone ne lit pas le WebM/Opus. Pas d'AAC chez ce client → client suivant.
-      const aac = (info.streaming_data?.adaptive_formats || []).filter((f) => f.has_audio && !f.has_video && /audio\/mp4/.test(f.mime_type || ''));
-      const fmt = aac.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-      if (!fmt) throw new Error(`${client} : pas de format M4A`);
-      const url = fmt.url || (await fmt.decipher(y.session.player));
-      if (url) {
-        const r = { url, client, ua: ua || navigator.userAgent, exp: Date.now() + 4 * 3600e3 };
-        urlCache.set(id, r);
-        return r;
-      }
+      const r = await resolveClient(y, id, client, ua);
+      urlCache.set(id, r);
+      return r;
     } catch (e) {
-      lastErr = e;
+      lastErr = new Error(`${client} : ${e.message}`);
     }
   }
   throw lastErr || new Error('Audio introuvable');
@@ -109,28 +118,51 @@ export async function diagnose(id, log) {
   } catch (e) {
     return log(`YouTube (Innertube) : ÉCHEC ${String(e?.message || e).slice(0, 120)}`);
   }
+  // Android : yt-dlp embarqué dans l'appli
+  if (androidYtdlp()) {
+    const t = Date.now();
+    try {
+      const st = await ytdlpDownload(id, 'diag-ytdlp.m4a');
+      log(`yt-dlp (Android) : OK ${Math.round(st.size / 1024)} Ko en ${Date.now() - t} ms`);
+      await Filesystem.deleteFile({ path: 'diag-ytdlp.m4a', directory: Directory.Data }).catch(() => {});
+    } catch (e) {
+      log(`yt-dlp (Android) : ÉCHEC ${String(e?.message || e).slice(0, 120)}`);
+    }
+  }
+  // Jeton BotGuard (clients web)
+  try {
+    const t = Date.now();
+    await poTokens(y, id);
+    log(`Jeton BotGuard (PO token) : OK en ${Date.now() - t} ms`);
+  } catch (e) {
+    log(`Jeton BotGuard (PO token) : ÉCHEC ${String(e?.message || e).slice(0, 120)}`);
+  }
   for (const [client, ua] of CLIENTS) {
     try {
-      const info = await y.getBasicInfo(id, { client });
-      const af = info.streaming_data?.adaptive_formats || [];
-      const aac = af.filter((f) => f.has_audio && !f.has_video && /audio\/mp4/.test(f.mime_type || ''));
-      log(`${client} : ${info.playability_status?.status || '?'} · ${af.length} formats dont ${aac.length} M4A`);
-      if (!aac.length) continue;
-      const f = aac.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-      const url = f.url || (await f.decipher(y.session.player));
+      const r = await resolveClient(y, id, client, ua);
       const path = `diag-${client}.m4a`;
       const t = Date.now();
       try {
-        const st = await fetchTo(path, url, { 'User-Agent': ua || navigator.userAgent });
-        log(`   ↳ téléchargement OK : ${Math.round(st.size / 1024)} Ko en ${Date.now() - t} ms`);
+        const st = await fetchTo(path, r.url, { 'User-Agent': r.ua });
+        log(`${client}${r.withToken ? ' (jeton)' : ''} : téléchargement OK ${Math.round(st.size / 1024)} Ko en ${Date.now() - t} ms`);
         await Filesystem.deleteFile({ path, directory: Directory.Data }).catch(() => {});
       } catch (e) {
-        log(`   ↳ téléchargement ÉCHEC : ${String(e?.message || e).slice(0, 120)}`);
+        log(`${client}${r.withToken ? ' (jeton)' : ''} : lien OK, téléchargement ÉCHEC ${String(e?.message || e).slice(0, 90)}`);
       }
     } catch (e) {
       log(`${client} : ÉCHEC ${String(e?.message || e).slice(0, 120)}`);
     }
   }
+}
+
+// ---------- Android : yt-dlp embarqué (module natif BoomboxNative) ----------
+const nativePlugin = () => globalThis.Capacitor?.Plugins?.BoomboxNative;
+const androidYtdlp = () => Capacitor.getPlatform() === 'android' && !!nativePlugin()?.ytdlpDownload;
+async function ytdlpDownload(id, path) {
+  await nativePlugin().ytdlpDownload({ id, path });
+  const stat = await Filesystem.stat({ path, directory: Directory.Data });
+  if (stat.size < 30 * 1024) throw new Error(`fichier invalide (${stat.size} o)`);
+  return stat;
 }
 
 // Téléchargement vérifié : un fichier minuscule = page d'erreur de YouTube, pas un son
@@ -170,6 +202,8 @@ export function downloadAudio(id, { keep = false } = {}) {
     let lastErr = null;
     // 1. Par le PC (même Wi-Fi)
     if (relay) stat = await fetchTo(path, relayUrl(`/api/audio-file/${id}`)).catch((e) => ((lastErr = e), null));
+    // 2. Android : yt-dlp embarqué (fiable, mis à jour toutes les semaines)
+    if (!stat && androidYtdlp()) stat = await ytdlpDownload(id, path).catch((e) => ((lastErr = new Error(`yt-dlp : ${e.message}`)), null));
     // 2. Directement chez YouTube, en changeant de client si l'un est refusé
     const tried = [];
     while (!stat && tried.length < 5) {
@@ -250,7 +284,8 @@ export async function handle(path, { method = 'GET', body } = {}) {
   const q = Object.fromEntries(u.searchParams);
   const p = u.pathname;
   let m;
-  if (p === '/api/status') return { ytdlp: true, native: true, lan: [], spotifyApi: !!cfg.spotifyClientId, ai: !!cfg.geminiApiKey, aiModel: cfg.geminiModel || null };
+  // IA disponible : clé du téléphone, ou celle du PC par le relais (vérifié au moment de la question)
+  if (p === '/api/status') return { ytdlp: true, native: true, lan: [], spotifyApi: !!cfg.spotifyClientId, ai: true, aiViaPc: !cfg.geminiApiKey, aiModel: cfg.geminiModel || null };
   if (p === '/api/search') return yt.search(String(q.q || '').slice(0, 200), q.type || 'all');
   if (p === '/api/suggest') return yt.suggest(String(q.q || '').slice(0, 200));
   if ((m = p.match(/^\/api\/artist\/([\w-]+)$/))) return yt.artist(m[1]);
@@ -264,7 +299,15 @@ export async function handle(path, { method = 'GET', body } = {}) {
     if (!t) throw new Error('Titre introuvable');
     return t;
   }
-  if (p === '/api/ai') return askAi(cfg, body || {});
+  if (p === '/api/ai') {
+    // Clé propre au téléphone, sinon l'IA de ton PC (sa clé reste sur le PC, jamais dans l'appli)
+    if (cfg.geminiApiKey) return askAi(cfg, body || {});
+    if (!relay) throw new Error("L'assistant IA passe par ton PC : allume-le (serveur Boombox lancé), puis réessaie.");
+    const r = await fetch(relayUrl('/api/ai'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `IA du PC : erreur ${r.status}`);
+    return data;
+  }
   if (p === '/api/home') {
     const queries = (Array.isArray(body?.playlists) ? body.playlists : []).map(String).slice(0, 6);
     const [ex, ...lists] = await Promise.all([yt.explore().catch(() => ({})), ...queries.map((q) => yt.search(q, 'playlist').then((r) => r.items || []).catch(() => []))]);

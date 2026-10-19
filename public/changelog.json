@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.1019.2225",
+    "title": "Lecture sans PC",
+    "items": [
+      "Android : yt-dlp est intégré à l'appli, le téléphone récupère la musique tout seul, même PC éteint (nouvelle version de l'appli à installer).",
+      "iPhone : nouvelle méthode de récupération directe avec un jeton anti-robot généré dans le téléphone, en secours quand le PC est éteint.",
+      "Assistant IA sur téléphone : il passe par ton PC, ta clé reste privée."
+    ],
+    "date": "2026-10-19"
+  },
+  {
     "version": "2026.1019.2119",
     "title": "Affichage sur téléphone",
     "items": [
