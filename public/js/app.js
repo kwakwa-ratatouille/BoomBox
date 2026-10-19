@@ -1343,7 +1343,12 @@ async function boot() {
     if (webUpdateReady() && (await applyWebUpdate())) return;
     // Recherche de mise à jour dès le lancement (en fond) : même si le démarrage échoue, le correctif
     // téléchargé s'appliquera à l'ouverture suivante
-    checkWebUpdate().catch(() => {});
+    checkWebUpdate({
+      onReady: (v, why) => {
+        if (why === 'native') return toast('Une nouvelle version de l’appli est disponible : réinstalle-la (SideStore / iloader)', { timeout: 8000 });
+        if (v) toast('Mise à jour de Boombox prête', { action: 'Installer', timeout: 15000, onAction: () => applyWebUpdate() });
+      },
+    }).catch(() => {});
   }
   // Démarrage trop long (réseau, Firebase…) : on le dit à l'écran au lieu de rester sur le logo
   const slow = setTimeout(() => {
