@@ -597,6 +597,13 @@ export async function settings(el) {
     }));
   };
   drawMembers();
+  // Version de l'interface (mise à jour en ligne) et, dans l'appli, version installée
+  (async () => {
+    const v = await fetch('version.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({}));
+    const app = isNative ? await window.Capacitor?.Plugins?.App?.getInfo?.().catch(() => null) : null;
+    const box = el.querySelector('#s-version');
+    if (box) box.textContent = `Interface ${v.version || 'inconnue'}${app ? ` · appli ${app.version} (${app.build})` : ''}`;
+  })();
   el.querySelector('#s-switch').onclick = () => document.dispatchEvent(new Event('pick-profile'));
   el.querySelector('#s-pin').onclick = async () => (await setProfilePin(state.profile)) && settings(el);
   el.querySelector('#s-pin-off')?.addEventListener('click', async () => (await removeProfilePin(state.profile)) && settings(el));
