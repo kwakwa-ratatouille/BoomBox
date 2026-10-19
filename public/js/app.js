@@ -31,6 +31,7 @@ import { userPage, sharedPlaylistPage } from './views-share.js';
 const $ = (s, r = document) => r.querySelector(s);
 
 // ======================= PROFILS =======================
+let firstProfileName = null; // prénom saisi à l'accueil (premier appareil)
 async function pickProfile(force = false) {
   await listProfiles();
   const saved = ls.get('boombox.profile');
@@ -39,8 +40,8 @@ async function pickProfile(force = false) {
   if (!force && found) return found;
   if (!force && state.profiles.length === 1 && (!state.profiles[0].pin || (hideSplash(), await pinPad(state.profiles[0])))) return state.profiles[0];
   if (!state.profiles.length) {
-    // Premier lancement : on crée le premier profil
-    let name = null;
+    // Premier lancement : le prénom a été demandé à l'accueil (sinon on le demande ici)
+    let name = firstProfileName;
     while (!name) name = await promptText("Comment tu t'appelles ?", { placeholder: 'Prénom', label: 'Continuer' });
     const p = await createProfile(name);
     state.profiles.push(p);
@@ -1555,10 +1556,16 @@ function onboarding() {
       <h1 style="margin-bottom:12px">Bienvenue sur Boombox</h1>
       <p class="muted" style="margin-bottom:32px">Ta bibliothèque est synchronisée entre tous tes appareils, même quand ce PC est éteint.</p>
       ${jamCode ? html`<div class="np-card" style="text-align:left;margin-bottom:20px"><b>Tu as scanné le QR code d'une Jam</b><p class="muted" style="margin:6px 0 12px">Rejoins-la directement pour ajouter des sons à la file, sans créer de bibliothèque.</p><a class="btn primary" style="width:100%" href="/party.html?code=${jamCode}">Rejoindre la party ${jamCode}</a></div>` : ''}
-      <div class="row-flex" style="justify-content:center;flex-direction:column;gap:12px">
+      <div class="row-flex" id="ob-choice" style="justify-content:center;flex-direction:column;gap:12px">
         <button class="btn ${jamCode ? 'ghost' : 'primary'}" id="ob-new" style="width:100%">C'est mon premier appareil</button>
         <button class="btn ghost" id="ob-join" style="width:100%">J'ai déjà Boombox sur un autre appareil</button>
       </div>
+      <form id="ob-name-box" class="hidden" style="text-align:left">
+        <p class="muted" style="margin:0 0 10px">Comment tu t'appelles ? Ce sera le nom de ton profil.</p>
+        <input class="input" id="ob-name" placeholder="Prénom" maxlength="40" autocomplete="given-name" style="width:100%">
+        <div class="row-flex" style="gap:10px;margin-top:14px"><button type="button" class="btn ghost" id="ob-back" style="flex:1">${icon('back', 16)} Retour</button><button class="btn primary" id="ob-create" style="flex:2">Créer mon profil</button></div>
+        <p class="muted" style="font-size:12px;margin-top:12px">Tu as déjà Boombox ailleurs ? Fais Retour et choisis « J'ai déjà Boombox sur un autre appareil » pour retrouver ta bibliothèque.</p>
+      </form>
       <div id="ob-join-box" class="hidden" style="margin-top:24px;text-align:left">
         <p class="muted">Sur ton autre appareil : <b>Paramètres → Lier mes appareils</b>. Scanne le QR code avec l'appareil photo, ou colle le lien ici :</p>
         <div class="row-flex"><input class="input" id="ob-link" placeholder="http://…/#/join?s=…&k=…" style="flex:1"><button class="btn white" id="ob-go">Lier</button></div>
@@ -1570,15 +1577,29 @@ function onboarding() {
       ($('#ob-err').textContent = /permission/i.test(e.code || e.message || '')
         ? `Firebase a refusé la connexion (${e.code || 'refus'}). Ferme cet onglet et rouvre le lien ; si ça continue, vérifie la date et l'heure du téléphone.`
         : e.message || String(e));
-    $('#ob-new').onclick = async () => {
+    // Premier appareil : on demande d'abord le prénom (avec Retour) ; la bibliothèque n'est créée qu'à la validation
+    const showChoice = (choice) => {
+      $('#ob-choice').classList.toggle('hidden', !choice);
+      $('#ob-name-box').classList.toggle('hidden', choice);
+      $('#ob-join-box').classList.add('hidden');
+      $('#ob-err').textContent = '';
+      if (!choice) $('#ob-name').focus();
+    };
+    $('#ob-new').onclick = () => showChoice(false);
+    $('#ob-back').onclick = () => showChoice(true);
+    $('#ob-name-box').onsubmit = async (e) => {
+      e.preventDefault();
+      const name = $('#ob-name').value.trim();
+      if (!name) return $('#ob-name').focus();
       try {
-        $('#ob-new').disabled = true;
+        $('#ob-create').disabled = true;
         await cloud.createSpace(state.device.name);
+        firstProfileName = name;
         box.classList.add('hidden');
         resolve();
-      } catch (e) {
-        $('#ob-new').disabled = false;
-        err(e);
+      } catch (er) {
+        $('#ob-create').disabled = false;
+        err(er);
       }
     };
     $('#ob-join').onclick = () => $('#ob-join-box').classList.remove('hidden');
