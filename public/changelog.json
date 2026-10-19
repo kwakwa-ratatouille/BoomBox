@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1019.2300",
+    "title": "Nouveautés plus rapides",
+    "items": [
+      "Les nouvelles sorties de tes artistes arrivent dès leur sortie, avec leur date exacte (données Spotify), et sont retrouvées sur YouTube Music pour être jouables.",
+      "Pages album et single : l'artiste s'affiche correctement (plus d'« Artiste inconnu »)."
+    ],
+    "date": "2026-10-19"
+  },
+  {
     "version": "2026.1019.2249",
     "title": "Assistant IA pour tous",
     "items": [

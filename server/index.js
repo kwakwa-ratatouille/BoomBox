@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as yt from './yt.js';
 import { startImport, getJob, spotifyApiToken, startMatch, syncPlaylist } from './importers.js';
-import { concertsFor } from './spotify-stats.js';
+import { concertsFor, spotifyLatest, norm } from './spotify-stats.js';
 import { autostartStatus, setAutostart } from './autostart.js';
 import { streamHandler, prefetchHandler, audioFileHandler, ytDlpPath, predownload, predownloadStatus } from './stream.js';
 import { askAi, pickModel } from './ai.js';
@@ -125,7 +125,39 @@ app.post('/api/releases', wrap(async (req, res) => {
       }
     }),
   );
-  out.sort((x, y) => (y.isNew - x.isNew) || (Number(y.year) || 0) - (Number(x.year) || 0));
+  // Spotify : sorties du jour avec leur date exacte (YouTube Music les affiche parfois en retard). Une sortie
+  // récente absente de la liste YouTube est retrouvée sur YouTube Music (jouable) ; les autres reçoivent leur date.
+  const recent = Date.now() - 45 * 86400e3;
+  const queue = follows.slice();
+  await Promise.all(Array.from({ length: 6 }, async () => {
+    for (let f; (f = queue.shift()); ) {
+      let sp = [];
+      try {
+        sp = await spotifyLatest(String(f.name || ''));
+      } catch {
+        continue;
+      }
+      const mine = out.filter((r) => r.artist.id === f.id);
+      for (const s of sp) {
+        const same = mine.find((r) => norm(r.title) === norm(s.name));
+        if (same) {
+          same.date ||= s.date;
+          continue;
+        }
+        if (!s.date || Date.parse(s.date) < recent) continue;
+        try {
+          const { items } = await yt.search(`${f.name} ${s.name}`, 'album');
+          const hit = (items || []).find((it) => it.type === 'album' && norm(it.title) === norm(s.name));
+          if (!hit || out.some((r) => r.id === hit.id)) continue;
+          const known = Array.isArray(f.known) ? f.known : current[f.id] || [];
+          (current[f.id] ||= []).push(hit.id);
+          out.push({ ...hit, year: s.date.slice(0, 4), date: s.date, kind: s.type === 'single' ? 'Single' : s.type === 'ep' ? 'EP' : hit.kind || 'Album', thumb: hit.thumb || s.cover, artist: { id: f.id, name: f.name }, isNew: !known.includes(hit.id) });
+        } catch {}
+      }
+    }
+  }));
+  const when = (r) => (r.date ? Date.parse(r.date) : (Number(r.year) || 0) ? Date.UTC(Number(r.year), 0, 1) : 0);
+  out.sort((x, y) => (y.isNew - x.isNew) || when(y) - when(x));
   res.json({ releases: out, newCount: out.filter((r) => r.isNew).length, current, thumbs });
 }));
 

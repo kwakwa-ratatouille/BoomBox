@@ -332,13 +332,20 @@ export async function album(id) {
     const al = await yt.music.getAlbum(id);
     const h = al.header || {};
     const subtitle = txt(h.subtitle);
-    const artists = (h.author ? [{ name: h.author.name, id: h.author.channel_id }] : []).filter((a) => a.name);
+    // Artiste : selon le format de la page (les nouvelles sorties utilisent souvent un autre en-tête), il est dans
+    // « author », dans la ligne sous le titre (strapline) ou dans les liens du sous-titre
+    const runArtists = (t) => (t?.runs || []).filter((r) => /^UC/.test(r.endpoint?.payload?.browseId || '')).map((r) => ({ name: r.text, id: r.endpoint.payload.browseId }));
+    let artists = (h.author ? [{ name: h.author.name, id: h.author.channel_id }] : []).filter((a) => a.name);
+    if (!artists.length) artists = [...runArtists(h.strapline_text_one), ...runArtists(h.subtitle), ...runArtists(h.second_subtitle)];
+    if (!artists.length && h.strapline_text_one) artists = [{ name: txt(h.strapline_text_one), id: null }].filter((a) => a.name);
     const thumb = thumbOf(h) || thumbOf(al.background);
     const albumRef = { id, name: txt(h.title) };
     const tracks = collectItems(al.contents)
       .map((i) => normTrack(i, { artists, album: albumRef, thumb }))
       .filter(Boolean)
-      .map((t) => ({ ...t, album: albumRef, thumb }));
+      .map((t) => ({ ...t, album: albumRef, thumb, artists: t.artists?.length && t.artists[0]?.name ? t.artists : artists }));
+    // Toujours rien : artiste des titres eux-mêmes
+    if (!artists.length) artists = tracks.find((t) => t.artists?.[0]?.name)?.artists || [];
     return {
       id,
       title: txt(h.title),

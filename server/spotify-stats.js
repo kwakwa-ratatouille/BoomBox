@@ -80,6 +80,39 @@ async function fetchArtist(name) {
   return { v: 3, t: Date.now(), id: hit.uri.split(':').pop(), listeners: a?.stats?.monthlyListeners || 0, followers: a?.stats?.followers || 0, top, avatar: biggest(a?.visuals?.avatarImage), header: biggest(a?.visuals?.headerImage), bio, concerts };
 }
 
+// ---------- Dernières sorties d'un artiste (pour les Nouveautés, plus rapide et fiable que YouTube Music) ----------
+// Spotify publie les sorties à minuit avec leur date exacte : on lit la fiche de l'artiste (dernière sortie, singles,
+// albums). Gardé 3 h. Renvoie [{ name, type, date: 'AAAA-MM-JJ', cover }].
+const coverOf = (img) => (img?.sources || []).slice().sort((x, y) => (y.width || 0) - (x.width || 0))[0]?.url || null;
+const dateOf = (d) => (d?.isoString ? d.isoString.slice(0, 10) : d?.year ? `${d.year}-${String(d.month || 1).padStart(2, '0')}-${String(d.day || 1).padStart(2, '0')}` : null);
+export async function spotifyLatest(name) {
+  const ka = artistKey(name);
+  db.releases ??= {};
+  const c = db.releases[ka];
+  if (c && Date.now() - c.t < 3 * 3600e3) return c.items;
+  let ar = db.artists[ka];
+  if (!freshArtist(ar)) {
+    ar = await fetchArtist(name);
+    db.artists[ka] = ar;
+  }
+  if (!ar || ar.none || !ar.id) return [];
+  const a = (await gql('queryArtistOverview', { uri: `spotify:artist:${ar.id}`, locale: '', includePrerelease: true }, HASH.artist))?.artistUnion;
+  const d = a?.discography || {};
+  const seen = new Set();
+  const items = [];
+  const push = (r) => {
+    if (!r?.name || seen.has(r.uri || r.name)) return;
+    seen.add(r.uri || r.name);
+    items.push({ name: r.name, type: String(r.type || '').toLowerCase(), date: dateOf(r.date), cover: coverOf(r.coverArt) });
+  };
+  push(d.latest);
+  for (const g of [d.singles, d.albums, d.popularReleasesAlbums]) for (const it of g?.items || []) for (const r of it.releases?.items || [it]) push(r);
+  items.sort((x, y) => String(y.date || '').localeCompare(String(x.date || '')));
+  db.releases[ka] = { t: Date.now(), items: items.slice(0, 12) };
+  save();
+  return db.releases[ka].items;
+}
+
 // Nombre d'écoutes exact d'un titre (recherche « titre artiste », puis fiche du titre)
 async function fetchTrack(title, artist) {
   const s = await gql('searchDesktop', { searchTerm: `${title} ${artist}`, offset: 0, limit: 5, numberOfTopResults: 5, includeAudiobooks: false, includeArtistHasConcertsField: false, includePreReleases: false, includeLocalConcertsField: false }, HASH.search);

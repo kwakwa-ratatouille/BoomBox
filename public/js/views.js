@@ -1024,12 +1024,21 @@ export async function releases(el, _p, ctx) {
   if (!ctx.alive()) return;
   state.newReleases = data.newCount;
   emit('releases', data.newCount);
+  // Date exacte (données Spotify) : « aujourd'hui », « il y a 3 j », sinon le jour ; à défaut l'année
+  const releaseWhen = (r) => {
+    if (!r.date) return r.year ? ` • ${r.year}` : '';
+    const days = Math.floor((Date.now() - Date.parse(r.date)) / 86400e3);
+    if (days <= 0) return " • aujourd'hui";
+    if (days === 1) return ' • hier';
+    if (days < 7) return ` • il y a ${days} j`;
+    return ` • ${new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: days > 300 ? 'numeric' : undefined })}`;
+  };
   const fresh = data.releases.filter((r) => r.isNew);
   const year = new Date().getFullYear();
   const recent = data.releases.filter((r) => !r.isNew && Number(r.year) >= year - 1);
   const older = data.releases.filter((r) => !r.isNew && !(Number(r.year) >= year - 1));
   const block = (title, list, isNew) =>
-    list.length ? html`<h3 style="margin:8px 0 12px;font-size:18px">${title}</h3><div class="cards" style="margin-bottom:24px">${list.map((r) => card(r, { sub: `${r.artist.name} • ${r.kind}${r.year ? ' • ' + r.year : ''}`, isNew }))}</div>` : '';
+    list.length ? html`<h3 style="margin:8px 0 12px;font-size:18px">${title}</h3><div class="cards" style="margin-bottom:24px">${list.map((r) => card(r, { sub: `${r.artist.name} • ${r.kind}${releaseWhen(r)}`, isNew }))}</div>` : '';
   el.querySelector('#rel').innerHTML = String(html`
     ${fresh.length ? block(`🔔 ${plural(fresh.length, 'nouvelle sortie')} depuis ta dernière visite`, fresh, true) : html`<p class="muted" style="margin-bottom:20px">Rien de nouveau depuis ta dernière visite.</p>`}
     ${block(`Sorties ${year - 1}–${year}`, recent)}
