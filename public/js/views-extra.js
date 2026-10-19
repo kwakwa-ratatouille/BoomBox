@@ -17,6 +17,7 @@ import { isNative, localApi } from './native.js';
 import { offline } from './offline.js';
 import { setProfilePin, removeProfilePin } from './pin.js';
 import { social } from './social.js';
+import { editProfile } from './views-profile.js';
 
 // ======================= IMPORT =======================
 export async function importPage(el, _p, ctx) {
@@ -311,7 +312,8 @@ function partyScreen(url) {
     lyricsOff = null;
     const ly = ov.querySelector('.ps-lyrics');
     ly.innerHTML = '';
-    if (t) lyricsOff = mountLyrics(ly, t);
+    // Pas de paroles sur petit écran (téléphone) : QR code, pochette, titre et qui l'a ajouté suffisent
+    if (t && !matchMedia('(max-width: 760px)').matches) lyricsOff = mountLyrics(ly, t);
   };
   const draw = () => {
     const room = sync.jam;
@@ -321,7 +323,7 @@ function partyScreen(url) {
     const t = sync.isJamHost() ? player.track : st?.track;
     setTrack(t, sync.isJamHost() ? player.time() : sync.position(st));
     ov.querySelector('.ps-now').innerHTML = t
-      ? String(html`${cover(t, '', 544)}<div><small>EN COURS</small><h2>${t.title}</h2><p>${(t.artists || []).map((a) => a.name).join(', ')}</p></div>`)
+      ? String(html`${cover(t, '', 544)}<div><small>EN COURS</small><h2>${t.title}</h2><p>${(t.artists || []).map((a) => a.name).join(', ')}</p>${t.addedBy || st?.track?.addedBy ? html`<p class="ps-by">Ajouté par ${t.addedBy || st.track.addedBy}</p>` : ''}</div>`)
       : String(html`<h2>La musique va commencer…</h2>`);
     ov.querySelector('.ps-queue').innerHTML = String(html`<h3>À suivre</h3>${(room.queue || []).slice(0, 4).map((x) => html`<div class="ps-q">${cover(x, '', 96)}<div><b>${x.title}</b><span>${(x.artists || []).map((a) => a.name).join(', ')} · ${x.addedBy}</span></div></div>`)}${(room.queue || []).length ? '' : html`<p class="muted">Personne n'a encore ajouté de son : scanne le QR code !</p>`}`);
   };
@@ -344,9 +346,14 @@ function partyScreen(url) {
   ov.innerHTML = String(html`<div class="ps-bg" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i><i class="b4"></i></div>
     <div class="ps-video" aria-hidden="true"></div><div class="ps-shade" aria-hidden="true"></div>
     <button class="icon-btn ps-close" aria-label="Fermer">${icon('close')}</button>
-    <div class="ps-left"><img src="/assets/logo-symbol.png" alt="" style="width:80px"><h1>Ajoute tes sons !</h1><p>Scanne avec l'appareil photo de ton téléphone</p><div id="ps-qr"></div><p class="ps-code">Code ${sync.jam.code}</p></div>
+    <div class="ps-left"><img src="/assets/logo-symbol.png" alt="" style="width:80px"><h1>Ajoute tes sons !</h1><p>Scanne avec l'appareil photo de ton téléphone</p><div id="ps-qr"></div><p class="ps-code">Code ${sync.jam.code}</p>
+      <div class="ps-btns"><button class="btn ghost" id="ps-exit">Quitter l'écran géant</button>${sync.isJamHost() ? html`<button class="btn ghost ps-end" id="ps-end">Terminer la party</button>` : ''}</div></div>
     <div class="ps-right"><div class="ps-now"></div><div class="ps-lyrics"></div><div class="ps-queue"></div></div>`);
   ov.querySelector('.ps-close').onclick = close;
+  ov.querySelector('#ps-exit').onclick = close;
+  ov.querySelector('#ps-end')?.addEventListener('click', async () => {
+    if (await confirmBox('Terminer la party ?', 'La file commune sera fermée pour tout le monde.')) close(), sync.jamLeave();
+  });
   renderQr(ov.querySelector('#ps-qr'), url, 260);
   const off = onJam(draw);
   const onTrackChange = () => draw();
@@ -368,13 +375,16 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Changer de profil</b><p>Chaque profil a ses propres playlists, likes et artistes suivis.</p></div><button class="btn ghost" id="s-switch">Changer</button></div>
     <div class="settings-row"><div><b>Code du profil</b><p>${state.profile.pin ? 'Un code à 4 chiffres protège ce profil : il est demandé quand on le choisit sur un appareil ou qu’on change de profil.' : 'Protège ce profil par un code à 4 chiffres, demandé quand quelqu’un le choisit ou change de profil.'}</p></div><div class="row-flex">${state.profile.pin ? html`<button class="btn ghost" id="s-pin">Changer</button><button class="btn ghost" id="s-pin-off">Retirer</button>` : html`<button class="btn ghost" id="s-pin">Choisir un code</button>`}</div></div>
 
-    <h2 style="font-size:20px;margin-top:24px">Amis</h2>
-    <div class="settings-row"><div><b>Partager mon activité d'écoute</b><p>Tes amis Boombox voient le son que tu écoutes en ce moment, ou le dernier écouté (« il y a 8 h »). Désactivé : ils ne voient rien.</p></div><label class="switch"><input type="checkbox" id="s-share" ${social.sharing ? 'checked' : ''}><span></span></label></div>
-    <div class="settings-row"><div><b>Mon code ami</b><p>Donne-le à tes amis pour qu'ils t'ajoutent (activité, messages, envoi de sons et de playlists).</p></div><div class="row-flex" style="flex-wrap:nowrap;gap:10px;flex:none"><span class="code big">${social.code || '…'}</span><button class="btn ghost" id="s-fcode" style="white-space:nowrap">${icon('copy', 16)} Copier</button></div></div>
-    <div class="settings-row"><div><b>Mes amis</b><p>${plural(social.friends.length, 'ami')}${social.unread ? ` · ${plural(social.unread, 'message non lu')}` : ''}</p></div><a class="btn ghost" href="#/friends">Amis et messages</a></div>
-
+    <h2 style="font-size:20px;margin-top:24px">Apparence</h2>
+    <div class="settings-row"><div><b>Photo et bannière du profil</b><p>Ta photo et une bannière en haut de ton profil (visibles par tes amis).</p></div><button class="btn ghost" id="s-pedit">Modifier</button></div>
     <div class="settings-row"><div><b>Couleur de l'appli</b><p>Couleur d'accent des boutons et de la lecture, pour ce profil. « Auto » : la couleur suit la pochette du son en cours.</p></div>
       <div class="swatches">${Object.entries(ACCENTS).map(([n, c]) => html`<button class="swatch ${curAccent() === c ? 'on' : ''}" data-accent="${c}" title="${n}" style="background:${c}"></button>`)}<button class="swatch swatch-auto ${curAccent() === 'auto' ? 'on' : ''}" data-accent="auto" title="Auto (couleur de la pochette)">A</button></div></div>
+
+    <h2 style="font-size:20px;margin-top:24px">Amis</h2>
+    <div class="settings-row"><div><b>Partager mon activité d'écoute</b><p>Tes amis Boombox voient le son que tu écoutes en ce moment, ou le dernier écouté (« il y a 8 h »). Désactivé : ils ne voient rien.</p></div><label class="switch"><input type="checkbox" id="s-share" ${social.sharing ? 'checked' : ''}><span></span></label></div>
+    <div class="settings-row"><div><b>Montrer mes titres likés à mes amis</b><p>Sur ton profil, tes amis peuvent ouvrir et écouter tes titres likés. Désactivé : ils ne les voient pas.</p></div><label class="switch"><input type="checkbox" id="s-sharelikes" ${social.sharingLikes ? 'checked' : ''}><span></span></label></div>
+    <div class="settings-row"><div><b>Mon code ami</b><p>Donne-le à tes amis pour qu'ils t'ajoutent (activité, messages, envoi de sons et de playlists).</p></div><div class="row-flex" style="flex-wrap:nowrap;gap:10px;flex:none"><span class="code big">${social.code || '…'}</span><button class="btn ghost" id="s-fcode" style="white-space:nowrap">${icon('copy', 16)} Copier</button></div></div>
+    <div class="settings-row"><div><b>Mes amis</b><p>${plural(social.friends.length, 'ami')}${social.unread ? ` · ${plural(social.unread, 'message non lu')}` : ''}</p></div><a class="btn ghost" href="#/friends">Amis et messages</a></div>
 
     <h2 style="font-size:20px;margin-top:32px">Lecture</h2>
     <div class="settings-row"><div><b>Lecture automatique</b><p>À la fin d'une playlist, continue avec des titres similaires.</p></div><label class="switch"><input type="checkbox" id="s-autoplay" ${setting('autoplay', true) ? 'checked' : ''}><span></span></label></div>
@@ -394,6 +404,14 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Nom de cet appareil</b><p>Affiché dans la liste des appareils et dans les Jams.</p></div><input class="input" id="s-dname" value="${state.device.name}" maxlength="40"></div>
     <div class="settings-row"><div><b>Ouvrir Boombox sur ton téléphone</b><p>Connecte ton téléphone au même Wi-Fi et ouvre l'une de ces adresses, puis « Ajouter à l'écran d'accueil » pour l'avoir comme une appli.</p>
       ${st.lan.map((u) => html`<div style="margin-top:6px"><span class="code">${u}</span></div>`)}</div><div id="s-qr"></div></div>
+
+        <div class="settings-row"><div style="flex:1"><b>Ajouter un appareil</b><p>Les deux QR codes font la même chose — relier un appareil à ta bibliothèque — : le premier ouvre l'appli Boombox installée, le second ouvre Boombox dans un navigateur (pour un appareil sans l'appli). Tes playlists, likes et artistes seront synchronisés en direct, même si ce PC est éteint.</p>
+      <div class="qr-pair">
+        <figure><div id="s-appqr" class="qr-slot"></div><figcaption><b>Téléphone avec l'appli Boombox</b>Scanne-le avec l'appareil photo : l'appli s'ouvre et se lie à ta bibliothèque</figcaption></figure>
+        <figure><div id="s-linkqr" class="qr-slot"></div><figcaption><b>Sans l'appli (navigateur, autre PC)</b>Ouvre Boombox en ligne dans le navigateur, déjà lié à ta bibliothèque</figcaption></figure>
+      </div>
+      <div class="row-flex"><button class="btn ghost" id="s-copylink">Copier le lien</button><span class="muted" style="font-size:12px">⚠️ Ce lien donne accès à ta bibliothèque : ne le partage qu'avec tes appareils.</span></div></div></div>
+    <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Appareils liés</b><p>Tous les appareils qui partagent ta bibliothèque. Retire un appareil perdu ou vendu : il n'aura plus accès à rien.</p><div id="s-members" class="members"><p class="muted">Chargement…</p></div></div></div>
 
     ${isNative && offline.ready ? html`<h2 style="font-size:20px;margin-top:32px">Hors ligne</h2>
     <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Espace utilisé sur le téléphone</b><p>${(offline.media.storageUsed() / 1024 ** 3).toFixed(2).replace('.', ',')} Go sur ${ls.get('boombox.storageLimitGB', 5)} Go · ${plural(offline.downloaded.size, 'titre')}</p>
@@ -418,22 +436,18 @@ export async function settings(el) {
         <div class="row-flex"><button class="btn primary" id="s-spsave">Enregistrer</button>${st.spotifyApi ? html`<button class="btn ghost" id="s-spdel">Retirer</button>` : ''}</div>
       </div></div>
 
-    <h2 style="font-size:20px;margin-top:32px">Lier mes appareils</h2>
-    <div class="settings-row"><div style="flex:1"><b>Ajouter un appareil</b><p>Sur ton téléphone ou un autre PC, scanne un de ces QR codes (ou colle le lien). Tes playlists, likes et artistes seront synchronisés en direct, même si ce PC est éteint.</p>
-      <div class="qr-pair">
-        <figure><div id="s-appqr" class="qr-slot"></div><figcaption><b>Appli mobile Boombox</b>Avec l'appareil photo : ouvre directement l'appli</figcaption></figure>
-        <figure><div id="s-linkqr" class="qr-slot"></div><figcaption><b>Navigateur / autre PC</b>Ouvre Boombox dans le navigateur</figcaption></figure>
-      </div>
-      <div class="row-flex"><button class="btn ghost" id="s-copylink">Copier le lien</button><span class="muted" style="font-size:12px">⚠️ Ce lien donne accès à ta bibliothèque : ne le partage qu'avec tes appareils.</span></div></div></div>
-    <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Appareils liés</b><p>Tous les appareils qui partagent ta bibliothèque. Retire un appareil perdu ou vendu : il n'aura plus accès à rien.</p><div id="s-members" class="members"><p class="muted">Chargement…</p></div></div></div>
-    <div class="settings-row"><div><b>Version</b><p id="s-version">…</p></div></div>
-    ${isNative ? html`<div class="settings-row"><div><b>Diagnostic lecture</b><p>Si les sons ne se lancent pas : teste chaque étape (PC, YouTube, téléchargement) et envoie une capture du résultat.</p></div><button class="btn ghost" id="s-diag">Lancer</button></div>` : ''}
 
     <h2 style="font-size:20px;margin-top:32px">Données</h2>
     <div class="settings-row"><div><b>Sauvegarder ma bibliothèque</b><p>Télécharge un fichier JSON avec playlists, likes, artistes suivis.</p></div><button class="btn ghost" id="s-export">Exporter</button></div>
     <div class="settings-row"><div><b>Restaurer une sauvegarde</b><p>Remplace la bibliothèque de ce profil.</p></div><label class="btn ghost" style="cursor:pointer">Importer<input type="file" accept=".json" id="s-restore" hidden></label></div>
-    <div class="settings-row"><div><b>Raccourcis clavier</b><p>Espace : lecture/pause · Ctrl+→ / Ctrl+← : suivant/précédent · Maj+→ / Maj+← : ±10 s · Ctrl+↑/↓ : volume · L : liker · / : rechercher</p></div></div>
+
+    <h2 style="font-size:20px;margin-top:32px">À propos</h2>
+<div class="settings-row"><div><b>Version</b><p id="s-version">…</p></div></div>
+    ${isNative ? html`<div class="settings-row"><div><b>Diagnostic lecture</b><p>Si les sons ne se lancent pas : teste chaque étape (PC, YouTube, téléchargement) et envoie une capture du résultat.</p></div><button class="btn ghost" id="s-diag">Lancer</button></div>` : ''}
+    ${isNative ? '' : html`<div class="settings-row"><div><b>Raccourcis clavier</b><p>Espace : lecture/pause · Ctrl+→ / Ctrl+← : suivant/précédent · Maj+→ / Maj+← : ±10 s · Ctrl+↑/↓ : volume · L : liker · / : rechercher</p></div></div>`}
   </div>`);
+  el.querySelector('#s-sharelikes')?.addEventListener('change', (e) => social.setShareLikes(e.target.checked).then(() => toast(e.target.checked ? 'Tes amis peuvent voir tes titres likés' : 'Tes titres likés sont privés')));
+  el.querySelector('#s-pedit')?.addEventListener('click', () => editProfile().then(() => settings(el)));
   el.querySelector('#s-engine').value = setting('engine', 'auto');
   el.querySelector('#s-engine').onchange = async (e) => {
     await saveSettings({ engine: e.target.value });

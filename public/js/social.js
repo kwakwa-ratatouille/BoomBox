@@ -15,7 +15,9 @@ const slim = (t) => {
   const c = cleanTrack(t);
   return c && { id: c.id, title: c.title, artists: c.artists.map((a) => ({ name: a.name, id: a.id })), duration: c.duration, thumb: c.thumb };
 };
-const smallPhoto = (p) => (p.photo && p.photo.length < 60000 ? p.photo : null);
+const LIKES = '__likes';
+const smallBanner = (p) => (p.banner && p.banner.length < 250000 ? p.banner : null);
+const smallPhoto =(p) => (p.photo && p.photo.length < 60000 ? p.photo : null);
 
 export const social = {
   friends: [], // [{ code, name, photo, color, share, activity, self? }]
@@ -57,7 +59,7 @@ export const social = {
   async _ensureCard() {
     const p = state.profile;
     try {
-      await setDoc(peopleRef(p.socialCode), { space: cloud.spaceId, pid: p.id, name: p.name, photo: smallPhoto(p), color: p.color || '#b07cf7', share: p.shareActivity !== false, updatedAt: Date.now() }, { merge: true });
+      await setDoc(peopleRef(p.socialCode), { space: cloud.spaceId, pid: p.id, name: p.name, photo: smallPhoto(p), color: p.color || '#b07cf7', banner: smallBanner(p), share: p.shareActivity !== false, likes: !!p.shareLikes, updatedAt: Date.now() }, { merge: true });
       this._cardOk = true;
       if (this._inboxBroken) this._watchInbox();
     } catch (e) {
@@ -71,7 +73,7 @@ export const social = {
   _syncCard() {
     const p = state.profile;
     if (!this.code) return;
-    updateDoc(peopleRef(this.code), { name: p.name, photo: smallPhoto(p), color: p.color || '#b07cf7', updatedAt: Date.now() }).catch(() => {});
+    updateDoc(peopleRef(this.code), { name: p.name, photo: smallPhoto(p), banner: smallBanner(p), color: p.color || '#b07cf7', updatedAt: Date.now() }).catch(() => {});
   },
 
   // ----- Activité d'écoute -----
@@ -226,6 +228,17 @@ export const social = {
         }).then(() => this._pubSig.set(p.id, sig)).catch((e) => console.warn('Playlist publique :', e.message));
       } else deleteDoc(ref).then(() => this._pubSig.delete(p.id)).catch(() => {});
     }
+    // Titres likés visibles par mes amis (si activé dans les paramètres) : copie spéciale « __likes »
+    seen.add(LIKES);
+    const likesRef = doc(db, 'people', this.code, 'playlists', LIKES);
+    const liked = state.library.liked;
+    const lsig = this.sharingLikes ? `${liked.length}:${liked.slice(0, 50).map((t) => t.id).join(',')}` : null;
+    if (lsig !== this._pubSig.get(LIKES) && (lsig || this._pubSig.has(LIKES))) {
+      if (lsig) {
+        setDoc(likesRef, { owner: this.code, ownerName: state.profile.name, visibility: 'likes', name: 'Titres likés', tracks: liked.slice(0, 2000).map(slim).filter(Boolean), collaborators: [], editor: this.code, updatedAt: Date.now() })
+          .then(() => this._pubSig.set(LIKES, lsig)).catch((e) => console.warn('Likes partagés :', e.message));
+      } else deleteDoc(likesRef).then(() => this._pubSig.delete(LIKES)).catch(() => {});
+    }
     for (const id of [...this._pubSig.keys()]) if (!seen.has(id)) deleteDoc(doc(db, 'people', this.code, 'playlists', id)).then(() => this._pubSig.delete(id)).catch(() => {});
   },
   // Un collaborateur a modifié ma playlist : on reporte ses changements (titres ajoutés / retirés, nom, description)
@@ -258,6 +271,21 @@ export const social = {
     await updatePlaylist(p.id, { collaborators: list });
     // Les nouveaux collaborateurs reçoivent un message avec le lien de la playlist
     for (const c of list) if (!before.has(c.code)) this.send(c.code, { text: `Je t'ai ajouté comme collaborateur de « ${p.name} » : tu peux la modifier comme moi.`, collab: { owner: this.code, id: p.id, name: p.name } }).catch(() => {});
+  },
+  get sharingLikes() {
+    return !!state.profile?.shareLikes;
+  },
+  async setShareLikes(on) {
+    const p = state.profile;
+    p.shareLikes = !!on;
+    await updateProfile(p.id, { shareLikes: !!on });
+    await updateDoc(peopleRef(this.code), { likes: !!on }).catch(() => {});
+    this.publishPlaylists();
+  },
+  // Titres likés d'un ami (null s'il ne les partage pas)
+  async friendLikes(code) {
+    const s = await getDoc(doc(db, 'people', code, 'playlists', LIKES)).catch(() => null);
+    return s?.exists() ? s.data().tracks || [] : null;
   },
   // Playlists publiques d'un ami (pour son profil), et une playlist partagée précise
   async publicPlaylists(code) {

@@ -1,5 +1,5 @@
 // Page de profil façon Spotify : grande photo ronde, nom, compteurs, tops du mois, playlists, abonnements.
-import { html, icon, plural, toast, modal, dominantColor, esc } from './ui.js';
+import { html, raw, icon, plural, toast, modal, dominantColor, esc } from './ui.js';
 import { state, getStats, updateProfile, publishProfile, unpublishProfile, publicProfileUrl, toggleFollow, ls } from './state.js';
 import { card, cover, playlistCover, trackList, rememberTracks } from './components.js';
 
@@ -24,9 +24,30 @@ function squareImage(file, size = 320) {
   });
 }
 
+// Recadre l'image au format bannière 3:1 (JPEG ~100 Ko)
+function bannerImage(file, w = 1200, h = 400) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const r = Math.min(img.width / w, img.height / h);
+      const sw = w * r;
+      const sh = h * r;
+      c.getContext('2d').drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = () => reject(new Error('Image illisible'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export async function editProfile() {
   const p = state.profile;
   let photo = p.photo || null;
+  let banner = p.banner || null;
+  const bannerPrev = (b) => (b ? `<div class="pe-banner" style="background-image:url('${b}')"></div>` : '<div class="pe-banner empty">Aucune bannière</div>');
   const v = await modal({
     title: 'Détails du profil',
     body: String(html`<div class="profile-edit">
@@ -34,8 +55,10 @@ export async function editProfile() {
       <div style="flex:1;display:flex;flex-direction:column;gap:12px">
         <input class="input" id="pe-name" value="${p.name}" maxlength="40" placeholder="Nom">
         ${p.photo ? html`<button class="btn ghost" id="pe-rm" type="button">Retirer la photo</button>` : ''}
-      </div></div>`),
-    actions: [{ label: 'Annuler' }, { label: 'Enregistrer', primary: true, value: (w) => ({ name: w.querySelector('#pe-name').value.trim() || p.name, photo }) }],
+      </div></div>
+      <div class="pe-banner-box"><b>Bannière du profil</b><div id="pe-bprev">${raw(bannerPrev(banner))}</div>
+        <div class="row-flex" style="gap:8px"><label class="btn ghost">Choisir une bannière<input type="file" accept="image/*" id="pe-bfile" hidden></label><button class="btn ghost" id="pe-brm" type="button">Retirer</button></div></div>`),
+    actions: [{ label: 'Annuler' }, { label: 'Enregistrer', primary: true, value: (w) => ({ name: w.querySelector('#pe-name').value.trim() || p.name, photo, banner }) }],
     onMount: (w) => {
       w.querySelector('#pe-file').onchange = async (e) => {
         const f = e.target.files[0];
@@ -43,6 +66,13 @@ export async function editProfile() {
         photo = await squareImage(f);
         w.querySelector('.pe-photo .avatar-img').outerHTML = String(avatarHtml({ ...p, photo }, 'xl'));
       };
+      w.querySelector('#pe-bfile').onchange = async (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        banner = await bannerImage(f);
+        w.querySelector('#pe-bprev').innerHTML = bannerPrev(banner);
+      };
+      w.querySelector('#pe-brm').onclick = () => ((banner = null), (w.querySelector('#pe-bprev').innerHTML = bannerPrev(null)));
       w.querySelector('#pe-rm')?.addEventListener('click', () => {
         photo = null;
         w.querySelector('.pe-photo .avatar-img').outerHTML = String(avatarHtml({ ...p, photo: null }, 'xl'));
@@ -50,8 +80,8 @@ export async function editProfile() {
     },
   });
   if (!v || v === 'Annuler') return;
-  await updateProfile(p.id, { name: v.name, photo: v.photo });
-  Object.assign(state.profile, { name: v.name, photo: v.photo });
+  await updateProfile(p.id, { name: v.name, photo: v.photo, banner: v.banner || null });
+  Object.assign(state.profile, { name: v.name, photo: v.photo, banner: v.banner || null });
   document.dispatchEvent(new Event('profile-updated'));
   toast('Profil mis à jour');
 }
@@ -61,11 +91,11 @@ export async function profilePage(el, _p, ctx) {
     const p = state.profile;
     const lib = state.library;
     el.innerHTML = String(html`
-      <div class="hero profile-hero">
+      <div class="hero profile-hero ${p.banner ? 'has-banner' : ''}" style="${p.banner ? `background-image:url('${p.banner}')` : ''}">
         <button class="pe-photo" id="pf-photo" title="Choisir une photo">${avatarHtml(p, 'hero')}<span>${icon('edit')}Choisir une photo</span></button>
         <div class="hero-info"><span class="hero-type">Profil</span>
           <h1 class="editable" id="pf-name">${p.name}</h1>
-          <div class="hero-meta"><span>${plural(lib.playlists.length, 'playlist')}</span><span class="sep"></span><a class="link" href="#/following">${plural(lib.follows.length, 'abonnement')}</a><span class="sep"></span><span>${plural(lib.liked.length, 'titre liké')}</span></div>
+          <div class="hero-meta"><span>${plural(lib.playlists.length, 'playlist')}</span><span class="sep"></span><a class="link" href="#/following">${plural(lib.follows.length, 'abonnement')}</a><span class="sep"></span><a class="link" href="#/liked">${plural(lib.liked.length, 'titre liké')}</a></div>
         </div>
       </div>
       <div class="page-body">
@@ -76,6 +106,8 @@ export async function profilePage(el, _p, ctx) {
       </div>`);
     if (p.photo) dominantColor(p.photo).then((c) => c && el.querySelector('.profile-hero')?.style.setProperty('--hero', c));
     else el.querySelector('.profile-hero').style.setProperty('--hero', p.color);
+    // Mes likes : la page Titres likés ; et la nouvelle bannière suit tout de suite
+    document.addEventListener('profile-updated', () => ctx.alive() && render(), { once: true });
     el.querySelector('#pf-photo').onclick = editProfile;
     el.querySelector('#pf-name').onclick = editProfile;
     el.querySelector('#pf-edit').onclick = editProfile;

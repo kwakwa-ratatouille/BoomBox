@@ -135,6 +135,7 @@ const routes = [
   [/^playlist\/([\w-]+)$/, V.playlist, 'playlist', ['id']],
   [/^album\/([\w-]+)$/, V.album, 'album', ['id']],
   [/^artist\/([\w-]+)$/, V.artist, 'artist', ['id']],
+  [/^discography\/([\w-]+)$/, V.discography, 'discography', ['id']],
   [/^ytplaylist\/([\w-]+)$/, V.ytplaylist, 'ytplaylist', ['id']],
   [/^releases$/, V.releases, 'releases'],
   [/^library$/, V.library, 'library'],

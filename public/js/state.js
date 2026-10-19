@@ -96,7 +96,10 @@ async function batched(ops) {
 
 // ---------- Profils ----------
 export async function listProfiles() {
-  const snap = await getDocs(cloud.col('profiles'));
+  // Cache local d'abord (démarrage instantané) ; le serveur seulement s'il est vide (première ouverture)
+  let snap = await getDocsFromCache(cloud.col('profiles')).catch(() => null);
+  if (!snap || snap.empty) snap = await getDocs(cloud.col('profiles'));
+  else getDocs(cloud.col('profiles')).then((s) => (state.profiles = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)))).catch(() => {});
   state.profiles = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   return state.profiles;
 }
@@ -264,7 +267,7 @@ export function subscribeLibrary() {
     onSnapshot(cloud.ref('profiles', state.profile.id), (d) => {
       if (!d.exists()) return;
       const data = d.data();
-      Object.assign(state.profile, { name: data.name, color: data.color, photo: data.photo || null, pin: data.pin || null });
+      Object.assign(state.profile, { name: data.name, color: data.color, photo: data.photo || null, pin: data.pin || null, banner: data.banner || null, shareLikes: !!data.shareLikes });
       state.library.settings = data.settings || {};
       emit('settings', state.library.settings);
       emit('profile', state.profile);

@@ -1,5 +1,19 @@
 [
   {
+    "version": "next",
+    "title": "Discographie et profils",
+    "items": [
+      "Page artiste : bouton « Voir la discographie » avec tous ses albums, singles, EP et apparitions, du plus récent au plus ancien, et deux boutons pour tout écouter dans un sens ou dans l'autre.",
+      "Profil : tes titres likés s'ouvrent d'un clic. Tes amis peuvent aussi les voir et les écouter si tu l'actives dans Paramètres → Amis.",
+      "Bannière personnalisée en haut de ton profil (Paramètres → Apparence).",
+      "Paramètres mieux rangés, et les deux QR codes pour lier un appareil sont expliqués.",
+      "Mode party sur téléphone : écran géant épuré (QR code, pochette, titre, qui l'a ajouté) et boutons pour quitter ou terminer la party.",
+      "Notification de lecture : boutons précédent / suivant au lieu de ±10 s.",
+      "Démarrage plus rapide, et messages en bas de l'écran plus larges."
+    ],
+    "date": "2026-10-19"
+  },
+  {
     "version": "2026.1019.2342",
     "title": "Confort",
     "items": [

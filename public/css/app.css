@@ -1574,3 +1574,34 @@ html, body { overflow-x: hidden; overscroll-behavior-x: none; max-width: 100%; }
 .hs-arrow:hover { transform: translateY(-50%) scale(1.08); background: rgba(40, 32, 52, 0.96); }
 .cards.row.hs-dragging { cursor: grabbing; user-select: none; scroll-behavior: auto; }
 .cards.row.hs-dragging * { pointer-events: none; }
+
+/* Écran géant de la party : bouton fermer toujours visible, version téléphone épurée */
+.party-screen > .ps-close { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px; z-index: 5; background: rgba(0, 0, 0, 0.45); }
+body:has(.party-screen) .modal-backdrop { z-index: 500; }
+.ps-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.ps-end { color: #ff6b6b; border-color: rgba(255, 107, 107, 0.5); }
+.ps-now .ps-by { font-size: 16px; color: var(--accent); margin-top: 6px; }
+@media (max-width: 760px) {
+  .party-screen { display: flex; flex-direction: column; justify-content: flex-start; gap: 20px; padding: max(56px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); overflow-y: auto; }
+  .party-screen .ps-video, .party-screen .ps-lyrics, .party-screen .ps-queue, .ps-left > img, .ps-left > p:first-of-type { display: none; }
+  .ps-left h1 { font-size: 28px; }
+  .ps-left .qr { padding: 12px; margin: 4px 0; }
+  .ps-left .qr img, .ps-left .qr canvas { width: 190px !important; height: 190px !important; }
+  .ps-right { width: 100%; }
+  .ps-now { flex-direction: column; text-align: center; gap: 12px; margin: 0; }
+  .ps-now .cover { width: 160px; height: 160px; }
+  .ps-now h2 { font-size: 24px; }
+  .ps-now p { font-size: 16px; }
+  .ps-btns { order: 10; }
+}
+
+/* Toast plus large et aéré */
+#toasts { width: min(560px, calc(100vw - 32px)); align-items: stretch; }
+.toast { padding: 14px 20px; border-radius: 12px; font-size: 15px; line-height: 1.35; justify-content: space-between; max-width: none; }
+/* Bannière de profil */
+.profile-hero.has-banner { background-size: cover; background-position: center; position: relative; }
+.profile-hero.has-banner::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 20%, rgba(0, 0, 0, 0.75)); pointer-events: none; }
+.profile-hero.has-banner > * { position: relative; }
+.user-banner { height: 180px; border-radius: 14px; background-size: cover; background-position: center; margin-bottom: -40px; }
+.pe-banner-box { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.pe-banner { aspect-ratio: 3 / 1; border-radius: 10px; background: var(--elev-2) center / cover; display: grid; place-items: center; color: var(--muted); font-size: 13px; }

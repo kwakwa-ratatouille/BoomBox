@@ -929,6 +929,7 @@ export async function artist(el, { id }, ctx) {
           <button class="big-play" data-playall>${playAllIcon(actx)}</button>${shuffleBtn()}
           <button class="outline-btn" id="follow">${following ? 'Abonné' : "S'abonner"}</button>
           <button class="act-btn" id="ar-more">${icon('more')}</button>
+          <a class="outline-btn" href="#/discography/${id}">Voir la discographie</a>
         </div>
         ${a.topTracks.length ? html`<section class="section"><div class="section-head"><h2>Populaires</h2></div>
           ${trackList(showAll ? a.topTracks : a.topTracks.slice(0, 5), { context: actx, plays: true })}
@@ -966,6 +967,54 @@ export async function artist(el, { id }, ctx) {
   };
   refresh();
   return { onLibrary: render };
+}
+
+// ======================= DISCOGRAPHIE =======================
+// Tous les albums, singles et EP de l'artiste depuis ses débuts, et ses apparitions, du plus récent au plus ancien.
+export async function discography(el, { id }, ctx) {
+  el.innerHTML = String(loading);
+  let d;
+  try {
+    d = await api(`/api/discography/${id}`);
+  } catch (e) {
+    el.innerHTML = String(errorBox(e));
+    return;
+  }
+  if (!ctx.alive()) return;
+  let group = 'all';
+  const groups = [['all', 'Tout'], ['album', 'Albums'], ['single', 'Singles et EP'], ['feat', 'Apparitions']].filter(([g]) => g === 'all' || d.items.some((x) => x.group === g));
+  const shown = () => d.items.filter((x) => group === 'all' || x.group === group);
+  const render = () => {
+    el.innerHTML = String(html`<div class="page">
+      <div class="section-head"><h1>Discographie${d.name ? html` de ${d.name}` : ''}</h1><a class="outline-btn" href="#/artist/${id}">Retour à l'artiste</a></div>
+      <div class="actions" style="padding:0 0 12px">
+        <button class="btn white" data-all="new">${icon('play')} Tout écouter, du plus récent</button>
+        <button class="btn ghost" data-all="old">${icon('play')} Tout écouter, du plus ancien</button>
+      </div>
+      <div class="row-flex" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">${groups.map(([g, l]) => html`<button class="chip ${g === group ? 'active' : ''}" data-g="${g}">${l}</button>`)}</div>
+      ${shown().length ? html`<div class="cards">${shown().map((i) => card(i, { sub: [i.year, i.group === 'feat' ? 'Apparition' : i.kind].filter(Boolean).join(' · ') }))}</div>` : html`<div class="empty"><h2>Rien à afficher</h2></div>`}
+    </div>`);
+    el.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => ((group = b.dataset.g), render())));
+    el.querySelectorAll('[data-all]').forEach((b) => (b.onclick = () => playAll(b.dataset.all === 'old')));
+  };
+  // Lance le premier album tout de suite, puis ajoute les suivants à la file au fur et à mesure
+  const playAll = async (oldFirst) => {
+    const list = shown().slice();
+    if (oldFirst) list.reverse();
+    if (!list.length) return;
+    toast('Chargement de la discographie…');
+    const pctx = { type: 'discography', id, name: `Discographie de ${d.name || "l'artiste"}` };
+    let started = false;
+    for (const alb of list) {
+      const a = await api(`/api/album/${alb.id}`).catch(() => null);
+      const tracks = a?.tracks || [];
+      if (!tracks.length) continue;
+      rememberTracks(tracks);
+      if (!started) ctl.playList(tracks, 0, pctx), (started = true);
+      else ctl.addToQueue(tracks);
+    }
+  };
+  render();
 }
 
 // ======================= CORBEILLE =======================

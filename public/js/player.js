@@ -1109,6 +1109,9 @@ export const player = {
     set('previoustrack', () => ctl.prev());
     set('nexttrack', () => ctl.next());
     set('seekto', (d) => ctl.seek(d.seekTime));
+    // Sans ça, l'iPhone (et certains Android) affichent « ±10 s » au lieu de précédent / suivant dans la notification
+    set('seekbackward', null);
+    set('seekforward', null);
   },
 };
 

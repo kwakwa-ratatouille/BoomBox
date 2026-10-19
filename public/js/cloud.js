@@ -62,9 +62,17 @@ export const cloud = {
   // Vérifie que cet appareil fait bien partie de l'espace enregistré.
   async checkSpace() {
     if (!this.spaceId) return false;
+    // Déjà vérifié sur cet appareil : on démarre tout de suite et on revérifie en fond (le démarrage n'attend plus le réseau)
+    const okKey = 'boombox.spaceOk';
+    if (localStorage.getItem(okKey) === `${this.spaceId}:${this.uid}`) {
+      getDoc(doc(db, 'spaces', this.spaceId, 'members', this.uid))
+        .then((m) => !m.exists() && !m.metadata.fromCache && (localStorage.removeItem(okKey), location.reload()))
+        .catch(() => {});
+      return true;
+    }
     try {
       const m = await getDoc(doc(db, 'spaces', this.spaceId, 'members', this.uid));
-      if (m.exists()) return true;
+      if (m.exists()) return localStorage.setItem(okKey, `${this.spaceId}:${this.uid}`), true;
     } catch (e) {
       // Hors ligne : on fait confiance au cache local
       if (e.code === 'unavailable') return true;

@@ -24,15 +24,25 @@ export async function userPage(el, params) {
   const card = await getDoc(doc(db, 'people', code)).catch(() => null);
   if (!card?.exists()) return void (el.innerHTML = '<div class="page"><div class="empty"><h2>Profil introuvable</h2></div></div>');
   const d = card.data();
-  const lists = await social.publicPlaylists(code).catch(() => []);
+  const [lists, likes] = await Promise.all([social.publicPlaylists(code).catch(() => []), d.likes ? social.friendLikes(code) : null]);
+  let showLikes = false;
+  const lctx = { type: 'shared', name: `Titres likés de ${d.name}` };
   const draw = () => {
     const f = social.friend(code) || { code, name: d.name, photo: d.photo, color: d.color, share: !!d.share, activity: d.share ? d.activity : null };
     el.innerHTML = String(html`<div class="page">
+      ${d.banner ? html`<div class="user-banner" style="background-image:url('${d.banner}')"></div>` : ''}
       <div class="user-hero">${avatar(f, 'user-av')}<div style="min-width:0"><div class="muted" style="font-size:12px">PROFIL</div><h1 class="ellipsis">${f.name}</h1><div class="user-act">${activityLine(f)}</div>
         <div class="row-flex" style="gap:8px;margin-top:10px"><a class="btn white" href="#/friends?c=${code}">${icon('chat', 16)} Message</a>${!social.isAdded(code) && !f.sameSpace ? html`<button class="btn ghost" id="u-add">${icon('plus', 16)} Ajouter</button>` : ''}</div></div></div>
       <section class="section"><div class="section-head"><h2>Playlists publiques</h2></div>
         ${lists.length ? html`<div class="cards row">${lists.map((pl) => html`<a class="card" href="#/shared/${code}/${pl.id}">${playlistCover(pl)}<b class="ellipsis">${pl.name}</b><span class="muted ellipsis">${plural(pl.tracks.length, 'titre')}</span></a>`)}</div>` : html`<p class="muted">Aucune playlist publique pour l'instant.</p>`}
-      </section></div>`);
+      </section>
+      ${likes ? html`<section class="section"><div class="section-head"><h2>Titres likés</h2><button class="outline-btn" id="u-likes">${showLikes ? 'Masquer' : `Voir les ${likes.length} titres`}</button></div>
+        <div class="row-flex" style="gap:8px;margin-bottom:12px"><button class="btn primary" id="u-lplay">${icon('play', 16)} Écouter</button></div>
+        ${showLikes ? html`<div class="sp-list">${likes.map((t, i) => html`<div class="sp-row" data-li="${i}"><span class="muted sp-n">${i + 1}</span>${cover(t, '', 96)}<div class="t-text"><span class="t-title ellipsis">${t.title}</span><span class="t-artists muted ellipsis">${artists(t)}</span></div></div>`)}</div>` : ''}</section>` : ''}
+      </div>`);
+    el.querySelector('#u-likes')?.addEventListener('click', () => ((showLikes = !showLikes), draw()));
+    el.querySelector('#u-lplay')?.addEventListener('click', () => ctl.playList(likes, 0, lctx));
+    el.querySelectorAll('[data-li]').forEach((r) => (r.onclick = () => ctl.playList(likes, +r.dataset.li, lctx)));
     bindActivity(el);
     el.querySelector('#u-add')?.addEventListener('click', () => social.addFriend(code).then((n) => (toast(`${n} ajouté à tes amis`), draw())).catch((e) => toast(e.message)));
   };

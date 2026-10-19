@@ -326,6 +326,43 @@ async function artistPage(id, { light = false } = {}) {
   });
 }
 
+// Discographie complète d'un artiste : albums, singles et EP, apparitions (rubriques « Tout afficher » de YouTube
+// Music), du plus récent au plus ancien. group : 'album' | 'single' | 'feat'.
+export async function discography(id) {
+  return cached(`disco:${id}`, 6 * 60 * 60e3, async () => {
+    const yt = await getYt();
+    const a = await yt.music.getArtist(id);
+    const out = [];
+    const seen = new Set();
+    for (const sec of a.sections || []) {
+      const title = txt(sec.header?.title) || txt(sec.title);
+      const group = /^albums?$/i.test(title) ? 'album' : /single|\bep\b/i.test(title) ? 'single' : /appara|appears|featured on|avec la participation/i.test(title) ? 'feat' : null;
+      if (!group) continue;
+      let items = collectItems(sec.contents);
+      const ep = sec.header?.more_content?.endpoint || sec.header?.endpoint;
+      if (ep?.call) {
+        try {
+          const r = await ep.call(yt.actions, { client: 'YTMUSIC', parse: true });
+          const all = r.contents_memo?.get('MusicTwoRowItem') || [];
+          if (all.length) items = all;
+        } catch {}
+      }
+      for (const it of items) {
+        const n = normAny(it);
+        if (!n || n.type !== 'album' || seen.has(n.id)) continue;
+        seen.add(n.id);
+        const sub = txt(it.subtitle);
+        out.push({ ...n, group, year: n.year || (sub.match(/\b(19|20)\d{2}\b/) || [])[0] || '', kind: n.kind || (/single/i.test(sub) ? 'Single' : /\bEP\b/.test(sub) ? 'EP' : 'Album') });
+      }
+    }
+    // Du plus récent au plus ancien (même année : ordre de YouTube Music, déjà du plus récent au plus ancien)
+    out.forEach((x, i) => (x._i = i));
+    out.sort((x, y) => (Number(y.year) || 0) - (Number(x.year) || 0) || x._i - y._i);
+    out.forEach((x) => delete x._i);
+    return { id, name: txt(a.header?.title), items: out };
+  });
+}
+
 export async function album(id) {
   return cached(`al:${id}`, 6 * 60 * 60e3, async () => {
     const yt = await getYt();
