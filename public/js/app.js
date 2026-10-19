@@ -7,7 +7,7 @@ import { sync } from './sync.js';
 import { lists, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
 import { mountLyrics, openKaraoke } from './lyrics.js';
 import { openPlaylistPicker } from './components.js';
-import { pinPad } from './pin.js';
+import { pinPad, offerPinOnCreate } from './pin.js';
 import { webUpdateBoot, webUpdateConfirm, webUpdateReady, checkWebUpdate, applyWebUpdate } from './updater.js';
 import { startPlaylistSync } from './playlist-sync.js';
 import { openCarMode } from './car.js';
@@ -46,6 +46,8 @@ async function pickProfile(force = false) {
     while (!name) name = await promptText("Comment tu t'appelles ?", { placeholder: 'Prénom', label: 'Continuer' });
     const p = await createProfile(name);
     state.profiles.push(p);
+    hideSplash();
+    await offerPinOnCreate(p);
     return p;
   }
   return new Promise((resolve) => {
@@ -67,7 +69,10 @@ async function pickProfile(force = false) {
       box.querySelector('[data-add]').onclick = async () => {
         const name = await promptText('Nouveau profil', { placeholder: 'Prénom', label: 'Créer' });
         if (!name) return;
-        state.profiles.push(await createProfile(name));
+        const np = await createProfile(name);
+        state.profiles.push(np);
+        render();
+        await offerPinOnCreate(np);
         render();
       };
       box.querySelector('#manage')?.addEventListener('click', () => {

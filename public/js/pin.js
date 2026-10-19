@@ -21,20 +21,20 @@ export function hashPin(profileId, pin) {
 
 // Clavier du code. mode 'check' : vérifie le code de `profile` ; mode 'set' : demande un nouveau code (deux fois).
 // Résout avec true / le code choisi, ou false si annulé.
-export function pinPad(profile, { mode = 'check', title = null } = {}) {
+export function pinPad(profile, { mode = 'check', title = null, cancelLabel = 'Annuler' } = {}) {
   return new Promise((resolve) => {
     const ov = document.createElement('div');
     ov.className = 'pin-ov';
     let digits = '';
     let first = null;
     let fours = 0;
-    const heading = () => (mode === 'set' ? (first ? 'Confirme le code' : 'Choisis un code à 4 chiffres') : title || `Code de ${profile.name}`);
+    const heading = () => (mode === 'set' ? (first ? 'Confirme le code' : title || 'Choisis un code à 4 chiffres') : title || `Code de ${profile.name}`);
     ov.innerHTML = String(html`<div class="pin-box">
       ${profile.photo ? html`<div class="pin-pic" style="background:center/cover url('${profile.photo}')"></div>` : html`<div class="pin-pic" style="background:${profile.color || 'var(--accent)'}">${(profile.name || '?')[0].toUpperCase()}</div>`}
       <h2 class="pin-title"></h2>
       <div class="pin-dots"><i></i><i></i><i></i><i></i></div>
       <p class="pin-msg muted"></p>
-      <div class="pin-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => html`<button data-k="${n}">${n}</button>`)}<button data-k="cancel" class="pin-sm">Annuler</button><button data-k="0">0</button><button data-k="del" class="pin-sm" aria-label="Effacer">${icon('back', 22)}</button></div>
+      <div class="pin-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => html`<button data-k="${n}">${n}</button>`)}<button data-k="cancel" class="pin-sm">${cancelLabel}</button><button data-k="0">0</button><button data-k="del" class="pin-sm" aria-label="Effacer">${icon('back', 22)}</button></div>
     </div>`);
     document.body.appendChild(ov);
     const $ = (s) => ov.querySelector(s);
@@ -103,6 +103,17 @@ export function pinPad(profile, { mode = 'check', title = null } = {}) {
     document.addEventListener('keydown', onKey);
     paint();
   });
+}
+
+// Nouveau profil : on propose tout de suite un code (« Plus tard » pour passer, réglable ensuite dans les paramètres)
+export async function offerPinOnCreate(profile) {
+  const pin = await pinPad(profile, { mode: 'set', title: `Protège « ${profile.name} » : choisis un code à 4 chiffres`, cancelLabel: 'Plus tard' });
+  if (!pin) return false;
+  const h = hashPin(profile.id, pin);
+  await updateProfile(profile.id, { pin: h });
+  profile.pin = h;
+  toast('Code du profil enregistré : il sera demandé à la connexion et pour le supprimer');
+  return true;
 }
 
 // Définir / changer / retirer le code du profil (depuis les paramètres)
