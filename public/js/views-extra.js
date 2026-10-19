@@ -400,7 +400,7 @@ export async function settings(el) {
       <div class="storage-bar"><div style="width:${Math.min(100, (offline.media.storageUsed() / offline.limitBytes()) * 100)}%"></div></div></div></div>
     <div class="settings-row"><div style="flex:1"><b>Limite d'espace : <span id="s-lim-v">${ls.get('boombox.storageLimitGB', 1)}</span> Go</b><p>Au-delà, les titres écoutés il y a le plus longtemps (et non téléchargés volontairement) sont supprimés.</p><input type="range" class="range" id="s-lim" min="1" max="64" step="1" value="${ls.get('boombox.storageLimitGB', 1)}"></div></div>
     <div class="settings-row"><div><b>Télécharger seulement en Wi-Fi</b><p>Pour ne pas consommer ton forfait.</p></div><label class="switch"><input type="checkbox" id="s-wifi" ${setting('offlineWifiOnly', true) ? 'checked' : ''}><span></span></label></div>
-    <div class="settings-row"><div><b>Télécharger mes titres likés</b><p>Tous tes likes disponibles hors ligne, y compris les prochains.</p></div><label class="switch"><input type="checkbox" id="s-offliked" ${setting('offlineLiked', false) ? 'checked' : ''}><span></span></label></div>
+    <div class="settings-row"><div><b>Télécharger mes titres likés</b><p>Tous tes likes disponibles hors ligne, y compris les prochains.</p></div><label class="switch"><input type="checkbox" id="s-offliked" ${setting('offlineLiked', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Supprimer tous les téléchargements</b><p>Libère l'espace (les playlists restent marquées et se re-téléchargeront en Wi-Fi).</p></div><button class="btn ghost" id="s-dlclear">Tout supprimer</button></div>` : ''}
 
     <h2 style="font-size:20px;margin-top:32px">Assistant IA</h2>

@@ -16,6 +16,7 @@ import { askAi, pickModel } from './ai.js';
 import { findLyrics, searchByLyrics } from './lyrics.js';
 import { discover } from './discover.js';
 import { resolveInput } from './resolve.js';
+import * as relay from './relay.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let cfg = {};
@@ -29,6 +30,7 @@ process.on('uncaughtException', (e) => console.error('Erreur inattendue (le serv
 process.on('unhandledRejection', (e) => console.error('Erreur inattendue (le serveur continue) :', e?.message || e));
 
 const app = express();
+app.use(relay.guard); // requêtes arrivant par le tunnel Internet : clé secrète obligatoire
 app.use(express.json({ limit: '15mb' }));
 app.use(express.static(path.join(ROOT, 'public'), { extensions: ['html'] }));
 
@@ -46,7 +48,17 @@ function lanUrls() {
   return out;
 }
 
-app.get('/api/status', (req, res) => res.json({ ytdlp: !!ytDlpPath, lan: lanUrls(), spotifyApi: !!cfg.spotifyClientId, ai: !!cfg.geminiApiKey, aiModel: cfg.geminiModel || null }));
+app.get('/api/status', (req, res) => res.json({ ytdlp: !!ytDlpPath, lan: lanUrls(), spotifyApi: !!cfg.spotifyClientId, ai: !!cfg.geminiApiKey, aiModel: cfg.geminiModel || null, ...(relay.isLocal(req) ? { publicUrl: relay.publicUrl } : {}) }));
+// Relais Internet : l'appli du PC transmet la bibliothèque à laquelle le serveur doit s'annoncer (depuis ce PC seulement)
+app.post('/api/relay/config', (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).json({ error: 'Depuis ce PC uniquement' });
+  try {
+    relay.configure(req.body || {});
+    res.json({ ok: true, publicUrl: relay.publicUrl });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
 // ---------- YouTube ----------
 app.get('/api/search', wrap(async (req, res) => res.json(await yt.search(String(req.query.q || '').slice(0, 200), req.query.type || 'all'))));
@@ -233,4 +245,6 @@ http.createServer(app).listen(PORT, '0.0.0.0', () => {
   console.log(`  Sur ce PC :        http://localhost:${PORT}`);
   for (const u of lanUrls()) console.log(`  Sur ton téléphone : ${u}  (même Wi-Fi)`);
   console.log(`  Lecture audio directe (yt-dlp) : ${ytDlpPath ? 'activée' : 'non installée → lecteur YouTube intégré'}\n`);
+  relay.startTunnel(PORT, lanUrls);
+  relay.announce().catch(() => {});
 });

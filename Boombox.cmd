@@ -5,7 +5,8 @@ cd /d "%~dp0"
 
 powershell -NoProfile -Command "try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:8787/api/status) | Out-Null; exit 0 } catch { exit 1 }"
 if errorlevel 1 (
-  start "Boombox (serveur)" /min cmd /c "node server\index.js"
+  rem Serveur en arrière-plan, sans fenêtre, avec une icône près de l'horloge (scripts\tray.ps1)
+  start "" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0scripts\tray.ps1"
   powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:8787/api/status) | Out-Null; break } catch { Start-Sleep -Milliseconds 500 } }"
 )
 

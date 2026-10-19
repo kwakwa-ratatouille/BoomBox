@@ -46,9 +46,12 @@ function playerYt() {
 // Sur le même Wi-Fi que le PC, l'audio passe par son serveur (yt-dlp) : fiable et instantané.
 // Ailleurs (4G/5G, PC éteint), le téléphone récupère l'audio lui-même (ci-dessous).
 let relay = null;
-export function setRelay(base) {
+let relayK = null; // clé du tunnel Internet (le réseau local n'en a pas besoin)
+export function setRelay(base, key = null) {
   relay = base || null;
+  relayK = base ? key : null;
 }
+const relayUrl = (p) => `${relay}${p}${relayK ? `?k=${encodeURIComponent(relayK)}` : ''}`;
 export const getRelay = () => relay;
 
 const urlCache = new Map();
@@ -57,7 +60,10 @@ const urlCache = new Map();
 const CLIENTS = [
   ['IOS', 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)'],
   ['ANDROID', 'com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip'],
+  ['YTMUSIC_ANDROID', 'com.google.android.apps.youtube.music/7.27.52 (Linux; U; Android 14) gzip'],
+  ['TV_EMBEDDED', 'Mozilla/5.0 (PlayStation; PlayStation 4/12.02) AppleWebKit/605.1.15 (KHTML, like Gecko)'],
   ['TV', 'Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version'],
+  ['MWEB', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Mobile/15E148 Safari/604.1'],
   ['WEB_EMBEDDED', null],
   ['WEB', null],
 ];
@@ -163,10 +169,10 @@ export function downloadAudio(id, { keep = false } = {}) {
     let stat = null;
     let lastErr = null;
     // 1. Par le PC (même Wi-Fi)
-    if (relay) stat = await fetchTo(path, `${relay}/api/audio-file/${id}`).catch((e) => ((lastErr = e), null));
+    if (relay) stat = await fetchTo(path, relayUrl(`/api/audio-file/${id}`)).catch((e) => ((lastErr = e), null));
     // 2. Directement chez YouTube, en changeant de client si l'un est refusé
     const tried = [];
-    while (!stat && tried.length < 3) {
+    while (!stat && tried.length < 5) {
       const r = await remoteAudio(id, tried).catch((e) => ((lastErr = e), null));
       if (!r) break;
       tried.push(r.client);
@@ -193,7 +199,7 @@ export async function localAudioSrc(id, { stream = false } = {}) {
   if (!audioIndex[id] && !net.connected) throw new Error('Hors ligne : titre non téléchargé');
   if (stream && !audioIndex[id] && relay) {
     downloadAudio(id).catch(() => {});
-    return `${relay}/api/stream/${id}`;
+    return relayUrl(`/api/stream/${id}`);
   }
   await downloadAudio(id);
   const { uri } = await Filesystem.getUri({ path: `audio/${id}.m4a`, directory: Directory.Data });

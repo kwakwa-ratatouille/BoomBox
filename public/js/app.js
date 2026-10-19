@@ -1,7 +1,8 @@
 // Point d'entrée : profils, routeur, barre latérale, barre de lecture, panneau de droite, lecteur mobile.
 import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural } from './ui.js';
 import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
-import { cloud, parseInvite } from './cloud.js';
+import { cloud, parseInvite, getDoc } from './cloud.js';
+import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
 import { lists, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
@@ -1464,6 +1465,12 @@ async function boot() {
   sync.connect();
   // Appli mobile : lecture par le PC quand il est sur le même Wi-Fi (sinon récupération directe)
   if (isNative) startRelay().catch(() => {});
+  // PC : le serveur s'annonce lui-même à la bibliothèque (adresse locale + tunnel Internet), même page fermée
+  else if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    getDoc(cloud.ref('private', 'secret'))
+      .then((s) => s.exists() && api('/api/relay/config', { method: 'POST', body: { projectId: firebaseConfig.projectId, apiKey: firebaseConfig.apiKey, spaceId: cloud.spaceId, secret: s.data().value } }))
+      .catch(() => {});
+  }
   // Amis : fiche publique, activité d'écoute (si partagée) et messages
   const friendsBadge = () => {
     const b = $('#friends-badge');

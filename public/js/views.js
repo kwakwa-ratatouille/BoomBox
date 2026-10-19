@@ -472,7 +472,7 @@ export async function liked(el) {
       <div class="page-body" style="--hero:#c2456b">
         <div class="actions">
           <button class="big-play" data-playall>${playAllIcon(ctx)}</button>${shuffleBtn()}
-          ${dlButton(setting('offlineLiked', false), tracks)}
+          ${dlButton(setting('offlineLiked', true), tracks)}
           <button class="act-btn" id="lk-more" title="Plus d'options">${icon('more')}</button>
           <span class="spacer"></span>
           ${toolsHtml('Récemment ajoutés')}
@@ -482,7 +482,7 @@ export async function liked(el) {
     document.documentElement.style.setProperty('--topbar-bg', '#8a3150');
     wireListActions(el, () => el._shown || state.library.liked, ctx);
     el.querySelector('#dl-toggle')?.addEventListener('click', async () => {
-      const on = !setting('offlineLiked', false);
+      const on = !setting('offlineLiked', true);
       await saveSettings({ offlineLiked: on });
       toast(on ? 'Tes titres likés se téléchargent (et les prochains aussi)' : 'Titres likés retirés des téléchargements');
       offline.sync();

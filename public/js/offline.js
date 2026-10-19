@@ -32,7 +32,7 @@ export const offline = {
   },
 
   limitBytes() {
-    return Number(ls.get('boombox.storageLimitGB', 3)) * 1024 ** 3;
+    return Number(ls.get('boombox.storageLimitGB', 1)) * 1024 ** 3;
   },
 
   // Titres à garder sur le téléphone selon les réglages
@@ -40,7 +40,8 @@ export const offline = {
     const ids = new Map();
     const offPl = setting('offlinePlaylists', []);
     for (const p of state.library.playlists) if (offPl.includes(p.id)) p.tracks.forEach((t) => ids.set(t.id, t));
-    if (setting('offlineLiked', false)) state.library.liked.forEach((t) => ids.set(t.id, t));
+    // Likes téléchargés automatiquement (par défaut) : écoute possible PC éteint, dans la limite d'espace
+    if (setting('offlineLiked', true)) state.library.liked.forEach((t) => ids.set(t.id, t));
     return ids;
   },
 
@@ -59,7 +60,10 @@ export const offline = {
     this.running = true;
     localStorage.setItem('boombox.storageLimit', String(this.limitBytes()));
     let done = 0;
+    let fails = 0;
     while (this.queue.length && this.media.net.connected) {
+      // Sans PC joignable, la récupération directe est souvent bloquée par YouTube : on n'insiste pas
+      if (!this.media.getRelay() && fails >= 3) break;
       if (this.media.storageUsed() > this.limitBytes() * 0.97) {
         toast('Limite d’espace atteinte : augmente-la dans les Paramètres pour tout télécharger');
         break;
@@ -68,9 +72,12 @@ export const offline = {
       try {
         await this.media.downloadAudio(id, { keep: true });
         done++;
+        fails = 0;
         this.refreshSet();
         if (done % 5 === 0) document.dispatchEvent(new Event('offline-progress'));
-      } catch {}
+      } catch {
+        fails++;
+      }
     }
     this.running = false;
     this.refreshSet();

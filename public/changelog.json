@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.1019.1940",
+    "title": "Lecture partout par ton PC",
+    "items": [
+      "Ton téléphone lit maintenant la musique par ton PC, en Wi-Fi comme en 4G/5G (connexion sécurisée par une clé secrète).",
+      "Quand ton PC est joignable, tes titres likés se téléchargent tout seuls sur le téléphone : tu peux les écouter même PC éteint.",
+      "Le serveur Boombox du PC tourne en arrière-plan, avec une icône près de l'horloge."
+    ],
+    "date": "2026-10-19"
+  },
+  {
     "version": "2026.1019.1924",
     "title": "Corrections",
     "items": [
