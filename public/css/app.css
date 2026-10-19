@@ -549,7 +549,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   .hero.artist { min-height: 280px; }
   .hero.artist .cover { display: none; }
   .page-body { padding: 0 12px 24px; }
-  .tracks, .tracks.no-album { --cols: minmax(0, 1fr) auto; }
+  .tracks, .tracks.no-album, .tracks.no-date, .tracks.no-album.no-date, #recos .tracks { --cols: minmax(0, 1fr) auto; }
   .track-head { display: none; }
   .track { padding: 0 8px; gap: 8px; height: 60px; }
   .t-num, .t-album, .t-date, .t-dur { display: none !important; }
@@ -963,7 +963,13 @@ img.ai-badge { object-fit: cover; padding: 0; }
 #topbar { gap: 16px; padding: 0 20px; }
 #topbar .search-box { flex: 1 1 380px; max-width: 460px; min-width: 200px; padding: 0 14px 0 18px; }
 /* Barre du haut étroite : « Soirée » passe en icône seule, la recherche rétrécit */
-@container (max-width: 980px) { #btn-jam-top span { display: none; } #btn-jam-top { padding: 0; width: 40px; justify-content: center; } }
+/* Barre étroite : bouton Party réduit à un rond de 38 px, comme le bouton Amis (party en cours = anneau d'accent, sans point) */
+@container (max-width: 980px) {
+  #btn-jam-top span { display: none; }
+  #btn-jam-top { padding: 0; width: 38px; height: 38px; border-radius: 50%; justify-content: center; gap: 0; }
+  #btn-jam-top .ic { width: 19px; height: 19px; }
+  #btn-jam-top.live::after { display: none; }
+}
 #main { container-type: inline-size; }
 @media (max-width: 768px) { #app.nav-hidden .top-nav { display: none; } }
 @media (max-width: 768px) { .nav-split { display: none; } }

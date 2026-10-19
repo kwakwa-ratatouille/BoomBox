@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1019.1924",
+    "title": "Corrections",
+    "items": [
+      "Page artiste sur téléphone : les titres des sons populaires s'affichent de nouveau.",
+      "Bouton Party aligné avec les autres boutons du haut sur téléphone."
+    ],
+    "date": "2026-10-19"
+  },
+  {
     "version": "2026.1019.1910",
     "title": "Petites améliorations",
     "items": [
