@@ -121,9 +121,20 @@ jobs:
           # yt-dlp embarqué : bibliothèques natives extraites, et seulement les processeurs des téléphones récents (taille réduite)
           sed -i 's#<application#<application android:extractNativeLibs="true"#' "$M"
           printf '\nandroid {\n    packagingOptions { jniLibs { useLegacyPackaging = true } }\n    defaultConfig { ndk { abiFilters "arm64-v8a", "armeabi-v7a" } }\n}\n' >> android/app/build.gradle
+          # youtubedl-android demande Android 7 minimum et une compilation récente
+          sed -i 's/minSdkVersion = [0-9]*/minSdkVersion = 24/; s/compileSdkVersion = [0-9]*/compileSdkVersion = 35/' android/variables.gradle
+          cat android/variables.gradle
           npx cap sync android
       - name: Compilation
-        run: cd android && ./gradlew assembleDebug --no-daemon -q && cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Boombox.apk"
+        run: |
+          cd android
+          # En cas d'échec, les vraies erreurs remontent dans les annotations de GitHub (lisibles sans connexion)
+          if ! ./gradlew assembleDebug --no-daemon --warning-mode none > "$RUNNER_TEMP/gradle.log" 2>&1; then
+            grep -E "error:|e: |What went wrong|> |FAILURE|requires|Could not" "$RUNNER_TEMP/gradle.log" | head -n 25 | while IFS= read -r l; do echo "::error::$l"; done
+            tail -n 40 "$RUNNER_TEMP/gradle.log"
+            exit 1
+          fi
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Boombox.apk"
       - name: Publication
         uses: softprops/action-gh-release@v2
         with:
