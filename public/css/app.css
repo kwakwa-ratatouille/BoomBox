@@ -744,6 +744,12 @@ button:focus:not(:focus-visible) { outline: none; }
 .seed .cover { width: 26px; height: 26px; }
 .seed button { color: var(--muted); display: grid; }
 .seed button:hover { color: #fff; }
+button.seed { cursor: pointer; border: 1px solid transparent; color: inherit; }
+button.seed:hover { background: var(--elev-3, #3a3542); }
+button.seed.on { border-color: var(--accent); background: rgba(var(--accent-rgb, 176, 124, 247), 0.18); }
+button.seed.on .ic { width: 14px; height: 14px; opacity: 0.7; }
+/* Abonnements repliés : deux lignes visibles, tout le reste avec « Tout afficher » */
+.seed-follows:not(.open) .seed-list { max-height: 76px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
 .seed-search { max-width: 420px; height: 40px; }
 .seed-search .suggest button img { width: 28px; height: 28px; border-radius: 50%; }
 .seed-search .suggest .cover { width: 28px; height: 28px; }

@@ -10,12 +10,17 @@ let last = null; // résultats gardés en mémoire (on peut changer de page et r
 export async function discoverPage(el, _p, ctx) {
   let style = ls.get('boombox.discoverStyle', 'Pour toi');
 
-  // Artistes de référence : tes abonnements + ceux ajoutés ici (réglage du profil)
+  // Artistes de référence choisis ici (réglage du profil). Aucun choisi : on part de tous les abonnements
+  // (et des artistes les plus écoutés), sans les afficher un par un.
   const extraSeeds = () => setting('discoverSeeds', []);
-  const seeds = () => {
-    const out = [...state.library.follows.map((f) => ({ id: f.id, name: f.name, thumb: f.thumb, follow: true }))];
-    for (const s of extraSeeds()) if (!out.some((x) => x.id === s.id)) out.push(s);
-    return out;
+  const followSeeds = () => state.library.follows.map((f) => ({ id: f.id, name: f.name, thumb: f.thumb }));
+  const seeds = () => (extraSeeds().length ? extraSeeds() : followSeeds());
+  const isSeed = (id) => extraSeeds().some((s) => s.id === id);
+  let showFollows = ls.get('boombox.discoverFollowsOpen', false);
+  const setSeeds = async (list) => {
+    await saveSettings({ discoverSeeds: list.slice(-40) });
+    render();
+    load();
   };
 
   const render = () => {
@@ -23,9 +28,15 @@ export async function discoverPage(el, _p, ctx) {
       <div class="ai-head"><span class="ai-badge" style="background:linear-gradient(135deg,#ff4d8d,#ff9f2e)">${icon('radio', 28)}</span><div><h1>Découverte</h1><p class="muted">De nouveaux artistes et sons, pris hors de ce que tu écoutes déjà.</p></div></div>
       <div class="search-tabs">${STYLES.map((s) => html`<button class="chip ${s === style ? 'active' : ''}" data-style="${s}">${s}</button>`)}</div>
       ${style === 'Pour toi' ? html`<div class="np-card seeds">
-        <h4>Basé sur ces artistes <span class="muted" style="font-weight:400;font-size:13px">(tes abonnements + ceux que tu ajoutes)</span></h4>
-        <div class="seed-list">${seeds().length ? seeds().map((s) => html`<span class="seed">${cover(s, 'round', 64)}${s.name}${s.follow ? '' : html`<button data-unseed="${s.id}" aria-label="Retirer">${icon('close', 14)}</button>`}</span>`) : html`<span class="muted">Ajoute quelques artistes que tu aimes pour lancer les suggestions.</span>`}</div>
+        <div class="row-flex" style="justify-content:space-between;gap:12px;flex-wrap:wrap"><h4 style="margin:0">Basé sur ${extraSeeds().length ? plural(extraSeeds().length, 'artiste choisi') : 'tes abonnements et tes écoutes'}</h4>
+          ${extraSeeds().length ? html`<button class="more muted" id="seed-clear">Tout retirer</button>` : ''}</div>
+        ${extraSeeds().length
+          ? html`<div class="seed-list">${extraSeeds().map((s) => html`<button class="seed on" data-unseed="${s.id}" title="Retirer">${cover(s, 'round', 64)}${s.name}${icon('close', 14)}</button>`)}</div>`
+          : html`<p class="muted" style="margin:6px 0 10px;font-size:13px">Choisis des artistes (ci-dessous ou en cherchant) pour affiner les suggestions.</p>`}
         <div class="search-box seed-search"><input id="seed-q" placeholder="Ajouter un artiste de référence…" autocomplete="off"><div id="seed-res" class="suggest hidden"></div></div>
+        ${state.library.follows.length ? html`<div class="seed-follows ${showFollows ? 'open' : ''}">
+          <div class="row-flex" style="justify-content:space-between;margin:12px 0 6px"><span class="muted" style="font-size:13px">Tes abonnements (${state.library.follows.length}) · clique pour choisir</span><button class="more muted" id="seed-more">${showFollows ? 'Réduire' : 'Tout afficher'}</button></div>
+          <div class="seed-list">${followSeeds().map((s) => html`<button class="seed ${isSeed(s.id) ? 'on' : ''}" data-toggle-seed="${s.id}">${cover(s, 'round', 64)}${s.name}</button>`)}</div></div>` : ''}
       </div>` : ''}
       <div class="row-flex" style="margin:8px 0 24px">
         <button class="btn primary" id="dc-shuffle">${icon('shuffle', 18)} Sons aléatoires</button>
@@ -40,9 +51,16 @@ export async function discoverPage(el, _p, ctx) {
       render();
       if (!last || last.style !== style) load();
     }));
-    el.querySelectorAll('[data-unseed]').forEach((b) => (b.onclick = async () => {
-      await saveSettings({ discoverSeeds: extraSeeds().filter((s) => s.id !== b.dataset.unseed) });
+    el.querySelectorAll('[data-unseed]').forEach((b) => (b.onclick = () => setSeeds(extraSeeds().filter((s) => s.id !== b.dataset.unseed))));
+    el.querySelector('#seed-clear')?.addEventListener('click', () => setSeeds([]));
+    el.querySelector('#seed-more')?.addEventListener('click', () => {
+      showFollows = !showFollows;
+      ls.set('boombox.discoverFollowsOpen', showFollows);
       render();
+    });
+    el.querySelectorAll('[data-toggle-seed]').forEach((b) => (b.onclick = () => {
+      const f = followSeeds().find((x) => x.id === b.dataset.toggleSeed);
+      setSeeds(isSeed(f.id) ? extraSeeds().filter((s) => s.id !== f.id) : [...extraSeeds(), f]);
     }));
     wireSeedSearch();
     el.querySelector('#dc-shuffle').onclick = () => {
@@ -71,9 +89,7 @@ export async function discoverPage(el, _p, ctx) {
       box.classList.toggle('hidden', !items.length);
       box.querySelectorAll('[data-seed]').forEach((b) => (b.onmousedown = async () => {
         const a = items.find((x) => x.id === b.dataset.seed);
-        await saveSettings({ discoverSeeds: [...extraSeeds(), { id: a.id, name: a.name, thumb: a.thumb }].slice(-30) });
-        render();
-        load();
+        if (!isSeed(a.id)) await setSeeds([...extraSeeds(), { id: a.id, name: a.name, thumb: a.thumb }]);
       }));
     }, 250));
     input.addEventListener('blur', () => setTimeout(() => box.classList.add('hidden'), 200));
