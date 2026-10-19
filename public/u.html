@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <title>Profil Boombox</title>
+  <link rel="icon" href="/assets/favicon-32.png" type="image/png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body { overflow: auto; background: linear-gradient(var(--hero, #1f5c3a), #121212 460px) fixed; }
+    .pub { max-width: 980px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) 20px 60px; }
+    .pub-top { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; color: #fff; font-weight: 800; }
+    .pub-top img { width: 32px; }
+    .pub-head { display: flex; align-items: flex-end; gap: 28px; margin-bottom: 36px; }
+    .pub-head .avatar-img { width: 200px; height: 200px; font-size: 84px; box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5); flex: none; }
+    .pub-head h1 { font-size: clamp(36px, 7vw, 84px); line-height: 1; margin: 6px 0 10px; }
+    .pub-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; color: rgba(255, 255, 255, 0.85); font-size: 14px; }
+    .pub h2 { font-size: 24px; margin: 32px 0 14px; }
+    .pub .sub { color: var(--muted); font-size: 13px; margin: -10px 0 14px; }
+    .pub-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+    .pub-card { background: rgba(255, 255, 255, 0.04); border-radius: 8px; padding: 12px; }
+    .pub-card .cover { width: 100%; aspect-ratio: 1; height: auto; margin-bottom: 10px; }
+    .pub-card .cover.round { border-radius: 50%; }
+    .pub-card b, .pub-card span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pub-card span { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .pub-tracks .q-item { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 6px; }
+    .pub-tracks .num { width: 22px; text-align: right; color: var(--muted); }
+    .pub-tracks .cover { width: 44px; height: 44px; flex: none; }
+    .pub-tracks .t-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .pub-tracks .t-title, .pub-tracks .t-artists { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pub-tracks .t-artists { color: var(--muted); font-size: 13px; }
+    .pub-foot { margin-top: 48px; color: var(--muted); font-size: 13px; text-align: center; }
+    @media (max-width: 640px) { .pub-head { flex-direction: column; align-items: flex-start; } .pub-head .avatar-img { width: 150px; height: 150px; font-size: 60px; } }
+  </style>
+</head>
+<body>
+  <div class="pub" id="pub"><div class="loading"><div class="spinner"></div></div></div>
+  <script type="module" src="/js/public-profile.js"></script>
+</body>
+</html>

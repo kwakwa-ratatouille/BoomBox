@@ -1,0 +1,12 @@
+node_modules/
+config.json
+bin/
+data/
+cache/
+ios/
+android/
+public/js/local-api.bundle.js
+public/app-update/
+abonnements-spotify.txt
+*.log
+.firebase/

@@ -1,0 +1,11 @@
+{
+  "name": "boombox-native",
+  "version": "1.0.0",
+  "description": "Module natif de Boombox : lecture audio en arrière-plan (iOS) et date d'expiration de la signature SideStore",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "capacitor": {
+    "ios": { "src": "ios" }
+  },
+  "peerDependencies": { "@capacitor/core": "^6.0.0" }
+}

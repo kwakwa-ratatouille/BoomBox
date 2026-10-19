@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#131019">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Boombox</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="/assets/favicon-16.png" sizes="16x16" type="image/png">
+  <meta property="og:title" content="Boombox">
+  <meta property="og:image" content="/assets/og-image.png">
+  <link rel="apple-touch-icon" href="/assets/app-icon-1024.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://yt3.googleusercontent.com">
+  <link rel="preconnect" href="https://i.ytimg.com">
+  <link rel="preconnect" href="https://firestore.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div id="splash"><img class="splash-logo" src="/assets/logo-vertical.png" alt="Boombox"></div>
+  <div id="app" class="hidden">
+    <aside id="sidebar">
+      <nav class="panel nav-main">
+        <a href="#/" class="nav-link brand-link" data-nav="home"><img class="brand-logo" src="/assets/logo-horizontal.png" alt="Boombox"></a>
+        <a href="#/" class="nav-link" data-nav="home"><svg class="ic" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Accueil</a>
+        <a href="#/search" class="nav-link" data-nav="search"><svg class="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Rechercher</a>
+        <a href="#/releases" class="nav-link" data-nav="releases"><svg class="ic" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>Nouveautés<span class="badge hidden" id="releases-badge"></span></a>
+        <a href="#/discover" class="nav-link" data-nav="discover"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19zM12 10.9a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/></svg>Découverte</a>
+        <a href="#/ai" class="nav-link" data-nav="ai"><svg class="ic" viewBox="0 0 24 24"><path d="M10 2l1.9 5.6L17.5 9.5l-5.6 1.9L10 17l-1.9-5.6L2.5 9.5l5.6-1.9L10 2zm8 10l.95 2.55L21.5 15.5l-2.55.95L18 19l-.95-2.55-2.55-.95 2.55-.95L18 12z"/></svg>Assistant IA</a>
+      </nav>
+      <section class="panel library">
+        <header class="lib-head">
+          <button class="lib-title" id="lib-collapse" title="Réduire / déplier la bibliothèque"><svg class="ic" viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v5.5a2.5 2.5 0 0 1-5 0 2.5 2.5 0 0 1 2.5-2.5c.57 0 1.08.19 1.5.51V5h4v2zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/></svg><span>Bibliothèque</span></button>
+          <button class="icon-btn" id="btn-import" title="Importer une playlist"><svg class="ic" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></button>
+          <button class="icon-btn" id="btn-new-playlist" title="Créer une playlist ou un dossier"><svg class="ic" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></button>
+          <button class="icon-btn" id="lib-expand" title="Agrandir / réduire la bibliothèque"><svg class="ic" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+        </header>
+        <div class="chips" id="lib-chips">
+          <button class="chip" data-filter="playlists">Playlists</button>
+          <button class="chip" data-filter="artists">Artistes</button>
+        </div>
+        <div class="lib-tools"><input class="lib-filter" id="lib-filter" placeholder="Rechercher dans la bibliothèque" aria-label="Filtrer la bibliothèque">
+          <select id="lib-sort" class="lib-sort" aria-label="Trier la bibliothèque" title="Trier"><option value="custom">Ordre perso</option><option value="recent">Ajout récent</option><option value="alpha">Alphabétique</option><option value="size">Nb de titres</option></select></div>
+        <p class="lib-hint" id="lib-hint">Astuce : glisse une playlist (poignée ⋮⋮) pour la déplacer.</p>
+        <ul id="lib-list" class="lib-list"></ul>
+      </section>
+    </aside>
+
+    <main id="main" class="panel">
+      <header id="topbar">
+        <div class="nav-arrows">
+          <button class="round-btn" onclick="history.back()" aria-label="Précédent"><svg class="ic" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+          <button class="round-btn" onclick="history.forward()" aria-label="Suivant"><svg class="ic" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+        </div>
+        <nav class="top-nav" aria-label="Menu principal">
+          <a href="#/" data-nav="home" title="Accueil" aria-label="Accueil"><svg class="ic" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></a>
+          <a href="#/releases" data-nav="releases" title="Nouveautés" aria-label="Nouveautés"><svg class="ic" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.630 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="badge hidden" id="releases-badge-top"></span></a>
+          <a href="#/discover" data-nav="discover" title="Découverte" aria-label="Découverte"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19zM12 10.9a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/></svg></a>
+          <a href="#/ai" data-nav="ai" title="Assistant IA" aria-label="Assistant IA"><svg class="ic" viewBox="0 0 24 24"><path d="M10 2l1.9 5.6L17.5 9.5l-5.6 1.9L10 17l-1.9-5.6L2.5 9.5l5.6-1.9L10 2zm8 10l.95 2.55L21.5 15.5l-2.55.95L18 19l-.95-2.55-2.55-.95 2.55-.95L18 12z"/></svg></a>
+        </nav>
+        <div class="search-box" id="search-box">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input id="search-input" type="search" placeholder="Que veux-tu écouter ?" autocomplete="off" aria-label="Rechercher">
+          <button type="button" class="icon-btn hidden" id="voice-btn" title="Recherche vocale" aria-label="Recherche vocale"><svg class="ic" viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg></button>
+          <div id="suggest" class="suggest hidden"></div>
+        </div>
+        <div class="top-right">
+          <button class="pill-btn hidden" id="btn-jam-top"><svg class="ic" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg><span>Jam</span></button>
+          <button class="round-btn friends-btn" id="btn-friends" title="Activité des amis et messages" aria-label="Amis"><svg class="ic" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg><span class="badge hidden" id="friends-badge"></span></button>
+          <button class="avatar" id="btn-profile" aria-label="Profil"></button>
+        </div>
+      </header>
+      <div id="view" class="view"></div>
+    </main>
+
+    <aside id="rightpanel" class="panel hidden"></aside>
+
+    <footer id="playerbar"></footer>
+
+    <nav id="mobilenav">
+      <a href="#/" data-nav="home"><svg class="ic" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Accueil</span></a>
+      <a href="#/search" data-nav="search"><svg class="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><span>Rechercher</span></a>
+      <a href="#/library" data-nav="library"><svg class="ic" viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 5h-3v5.5a2.5 2.5 0 0 1-5 0 2.5 2.5 0 0 1 2.5-2.5c.57 0 1.08.19 1.5.51V5h4v2zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/></svg><span>Bibliothèque</span></a>
+      <a href="#/discover" data-nav="discover"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19zM12 10.9a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/></svg><span>Découvrir</span></a>
+      <a href="#/releases" class="hide-mobile" data-nav="releases"><svg class="ic" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Nouveautés</span></a>
+      <a href="#/ai" data-nav="ai"><svg class="ic" viewBox="0 0 24 24"><path d="M10 2l1.9 5.6L17.5 9.5l-5.6 1.9L10 17l-1.9-5.6L2.5 9.5l5.6-1.9L10 2zm8 10l.95 2.55L21.5 15.5l-2.55.95L18 19l-.95-2.55-2.55-.95 2.55-.95L18 12z"/></svg><span>IA</span></a>
+    </nav>
+  </div>
+
+  <div id="fullplayer" class="hidden"></div>
+  <div id="yt-wrap" class="offscreen"><div id="yt-player"></div></div>
+  <audio id="audio" preload="auto" playsinline></audio>
+  <div id="profile-picker" class="hidden"></div>
+  <div id="toasts"></div>
+  <div id="modal-root"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

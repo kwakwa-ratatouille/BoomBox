@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#131019">
+  <title>Boombox · Party</title>
+  <link rel="icon" href="/assets/favicon-32.png" type="image/png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body { overflow: auto; background: linear-gradient(#3a2160, #131019 420px) fixed; }
+    .party { max-width: 560px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 16px 40px; }
+    .party-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .party-head h1 { font-size: 22px; }
+    .party-head .code { margin-left: auto; font-weight: 800; letter-spacing: 0.15em; color: var(--accent); }
+    .now { display: flex; gap: 14px; align-items: center; background: rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 12px; margin-bottom: 20px; }
+    .now .cover { width: 64px; height: 64px; }
+    .now small { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: 0.08em; }
+    .box { background: var(--panel-2); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .box h2 { font-size: 16px; margin-bottom: 10px; }
+    .res { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+    .res .cover { width: 44px; height: 44px; }
+    .res .t-text { flex: 1; }
+    .res button { flex: none; }
+    .req { font-size: 13px; color: var(--muted); padding: 4px 0; }
+    .req.bad { color: var(--danger); }
+    .qrow { display: flex; gap: 10px; align-items: center; padding: 6px 0; }
+    .qrow .cover { width: 40px; height: 40px; }
+    .who { font-size: 12px; color: var(--muted); }
+    #toasts { bottom: 24px; }
+  </style>
+</head>
+<body>
+  <div class="party" id="party"><div class="loading"><div class="spinner"></div></div></div>
+  <div id="toasts"></div>
+  <div id="modal-root"></div>
+  <script type="module" src="/js/party.js"></script>
+</body>
+</html>

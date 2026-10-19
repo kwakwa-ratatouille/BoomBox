@@ -1,0 +1,119 @@
+rules_version = '2';
+
+// Règles de sécurité Boombox.
+// Un « espace » = tes appareils liés. Seuls ses membres peuvent lire/écrire sa bibliothèque.
+// Pour devenir membre, il faut le code secret (contenu dans le lien / QR « Lier un appareil »).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function spacePath(sid) {
+      return /databases/$(database)/documents/spaces/$(sid);
+    }
+    function isMember(sid) {
+      return signedIn() && exists(/databases/$(database)/documents/spaces/$(sid)/members/$(request.auth.uid));
+    }
+    function isOwner(sid) {
+      return signedIn() && get(spacePath(sid)).data.owner == request.auth.uid;
+    }
+
+    match /spaces/{sid} {
+      allow create: if signedIn() && request.resource.data.owner == request.auth.uid;
+      allow read: if isMember(sid);
+      allow update, delete: if false;
+
+      // Code secret de l'espace : créé par le propriétaire, lisible par les membres (pour inviter).
+      match /private/secret {
+        allow create: if isOwner(sid);
+        allow read: if isMember(sid);
+        allow update, delete: if false;
+      }
+
+      // Appareils membres : on ne peut s'ajouter qu'avec le bon code secret.
+      match /members/{uid} {
+        allow create: if signedIn() && uid == request.auth.uid && (
+          isOwner(sid) ||
+          request.resource.data.secret == get(/databases/$(database)/documents/spaces/$(sid)/private/secret).data.value
+        );
+        allow read: if isMember(sid) || (signedIn() && uid == request.auth.uid);
+        allow update: if signedIn() && uid == request.auth.uid && isMember(sid)
+                      && request.resource.data.secret == resource.data.secret;
+        allow delete: if isMember(sid);
+      }
+
+      // Bibliothèque (profils, playlists, likes, historique…) et appareils connectés
+      match /profiles/{rest=**} {
+        allow read, write: if isMember(sid);
+      }
+      match /devices/{rest=**} {
+        allow read, write: if isMember(sid);
+      }
+    }
+
+    // Playlists partagées : lisibles par tout utilisateur connecté qui a le code ; modifiables par leur auteur.
+    match /shares/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
+
+    // Profils publics (lien partageable) : lisibles par tous, modifiables seulement par leur auteur.
+    match /publicProfiles/{code} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
+
+    // Amis : fiche d'un profil (nom, photo, activité d'écoute si partagée), lisible par les utilisateurs connectés
+    // qui connaissent son code ami ; modifiable seulement par les appareils de l'espace du profil.
+    function personSpace(code) {
+      return get(/databases/$(database)/documents/people/$(code)).data.space;
+    }
+    match /people/{code} {
+      allow read: if signedIn();
+      allow create: if isMember(request.resource.data.space);
+      allow update: if isMember(resource.data.space) && request.resource.data.space == resource.data.space;
+      allow delete: if isMember(resource.data.space);
+
+      // Playlists partagées : une playlist précise se lit avec son lien ; la liste du profil ne montre que les publiques.
+      // Propriétaire : tout ; collaborateur (listé dans « collaborators ») : titres, nom et description seulement.
+      match /playlists/{pid} {
+        allow get: if signedIn();
+        allow list: if isMember(personSpace(code)) || (signedIn() && resource.data.visibility == 'public');
+        allow create, delete: if isMember(personSpace(code));
+        allow update: if isMember(personSpace(code)) || (
+          request.resource.data.editor is string
+          && request.resource.data.editor in resource.data.collaborators
+          && isMember(personSpace(request.resource.data.editor))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tracks', 'name', 'description', 'editor', 'editorName', 'editedAt', 'updatedAt'])
+        );
+      }
+
+      // Messages reçus : lisibles et gérables uniquement par les appareils du profil.
+      // Pour écrire, l'expéditeur doit être membre de l'espace du profil indiqué dans « peer » (pas d'usurpation),
+      // sauf pour sa propre copie (envoyée), écrite dans sa boîte à lui.
+      match /inbox/{mid} {
+        allow read, delete: if isMember(personSpace(code));
+        allow update: if isMember(personSpace(code))
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow create: if signedIn()
+                      && request.resource.data.peer is string
+                      && request.resource.data.text is string && request.resource.data.text.size() <= 2000
+                      && (
+                        (request.resource.data.out == false && isMember(personSpace(request.resource.data.peer)))
+                        || (request.resource.data.out == true && isMember(personSpace(code)))
+                      );
+      }
+    }
+
+    // Jams : ouvertes à tout utilisateur connecté qui connaît le code (pour inviter des amis).
+    match /jams/{code} {
+      allow read, write: if signedIn();
+      match /{rest=**} {
+        allow read, write: if signedIn();
+      }
+    }
+  }
+}

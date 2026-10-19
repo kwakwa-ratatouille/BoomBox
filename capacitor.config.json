@@ -1,0 +1,21 @@
+{
+  "appId": "app.boombox.music",
+  "appName": "Boombox",
+  "webDir": "public",
+  "backgroundColor": "#131019",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#131019",
+    "allowsLinkPreview": false
+  },
+  "android": {
+    "backgroundColor": "#131019"
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": false }
+  }
+}
