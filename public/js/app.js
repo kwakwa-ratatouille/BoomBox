@@ -1319,9 +1319,18 @@ async function boot() {
   if (isNative) {
     await webUpdateBoot();
     if (webUpdateReady() && (await applyWebUpdate())) return;
+    // Recherche de mise à jour dès le lancement (en fond) : même si le démarrage échoue, le correctif
+    // téléchargé s'appliquera à l'ouverture suivante
+    checkWebUpdate().catch(() => {});
   }
+  // Démarrage trop long (réseau, Firebase…) : on le dit à l'écran au lieu de rester sur le logo
+  const slow = setTimeout(() => {
+    const s = $('#splash');
+    if (s && !s.querySelector('.splash-msg')) s.insertAdjacentHTML('beforeend', '<p class="splash-msg">Connexion en cours… Vérifie ta connexion Internet. Si ça dure, ferme et rouvre Boombox.</p>');
+  }, 15000);
   state.status = await api('/api/status').catch(() => state.status);
   await cloud.signIn();
+  clearTimeout(slow);
   if (isNative) await handleLaunchLink();
   await ensureSpace();
   hideSplash();

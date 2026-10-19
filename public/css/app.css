@@ -1488,3 +1488,6 @@ img.ai-badge { object-fit: cover; padding: 0; }
 .collab-row input { width: 18px; height: 18px; accent-color: var(--accent); }
 /* Réactivité tactile : pas de délai de 300 ms ni de surbrillance grise sur iPhone */
 button, a, .track, .card, .ctrl, [role="button"] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+/* Démarrage lent : message sous le logo */
+.splash-msg { position: absolute; bottom: calc(48px + env(safe-area-inset-bottom)); left: 24px; right: 24px; text-align: center; color: #a7a3b3; font-size: 14px; line-height: 1.5; animation: fadeIn 0.4s; }

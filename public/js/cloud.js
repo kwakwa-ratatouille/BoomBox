@@ -2,7 +2,7 @@
 // Toutes les données (profils, playlists, likes…) vivent dans spaces/{espace}/… et se
 // synchronisent en direct entre appareils, avec un cache hors ligne.
 import { initializeApp } from '../vendor/firebase/firebase-app.js';
-import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from '../vendor/firebase/firebase-auth.js';
+import { getAuth, initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, signInAnonymously, onAuthStateChanged, signOut } from '../vendor/firebase/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED, getDocsFromCache, getDocsFromServer,
   doc, collection, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot,
@@ -11,7 +11,11 @@ import {
 import { firebaseConfig } from './firebase-config.js';
 
 export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// Appli mobile (Capacitor) : getAuth() charge le module de connexion par fenêtre web, qui ne répond jamais dans
+// une appli iPhone (l'appli restait bloquée au chargement). On initialise la connexion sans lui.
+export const auth = window.Capacitor?.isNativePlatform?.()
+  ? initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] })
+  : getAuth(app);
 export const db = initializeFirestore(app, {
   // Cache local sans limite de taille : la bibliothèque y est gardée en entier et n'est relue à Firebase que pour les changements
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager(), cacheSizeBytes: CACHE_SIZE_UNLIMITED }),
