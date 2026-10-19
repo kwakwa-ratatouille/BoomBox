@@ -161,6 +161,15 @@ export const social = {
     return (state.profile?.friends || []).some((f) => f.code === code);
   },
 
+  // Profil supprimé : sa fiche, ses playlists partagées et ses messages disparaissent aussi
+  async deleteCard(code) {
+    for (const sub of ['playlists', 'inbox']) {
+      const s = await getDocs(collection(db, 'people', code, sub)).catch(() => null);
+      for (const d of s?.docs || []) await deleteDoc(d.ref).catch(() => {});
+    }
+    await deleteDoc(peopleRef(code));
+  },
+
   // ----- Playlists publiques / partagées -----
   // Une playlist publique (ou avec des collaborateurs) est copiée dans people/{moi}/playlists/{id} :
   // publique → visible sur mon profil par mes amis (écoute, ajout à leur bibliothèque) ;

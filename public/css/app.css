@@ -178,7 +178,8 @@ svg.ic:not([width]) { width: 24px; height: 24px; }
 .act-btn:hover { color: var(--text); transform: scale(1.05); }
 .act-btn .ic { width: 32px; height: 32px; }
 .act-btn.on { color: var(--accent); }
-.outline-btn { border: 1px solid #878787; border-radius: 999px; padding: 6px 16px; font-weight: 700; font-size: 14px; }
+.outline-btn { border: 1px solid #878787; border-radius: 999px; padding: 6px 16px; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.outline-btn .ic { flex: none; }
 .outline-btn:hover { border-color: #fff; transform: scale(1.03); }
 .actions .spacer { flex: 1; }
 .list-tools { display: flex; align-items: center; gap: 8px; }
@@ -396,7 +397,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .switch input:checked + span { background: var(--accent); }
 .switch input:checked + span::after { transform: translateX(18px); }
 
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: grid; place-items: center; z-index: 100; padding: 16px; animation: fade 0.15s; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: grid; place-items: center; z-index: 300; /* au-dessus du choix de profil (150) et des menus (200), sous le clavier du code (400) */ padding: 16px; animation: fade 0.15s; }
 .modal { background: var(--elev-2); border-radius: 8px; width: min(480px, 100%); max-height: 90dvh; display: flex; flex-direction: column; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6); animation: pop 0.15s; }
 .modal.wide { width: min(720px, 100%); }
 .modal header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 8px; }
@@ -1494,3 +1495,12 @@ button, a, .track, .card, .ctrl, [role="button"] { touch-action: manipulation; -
 
 /* Démarrage lent : message sous le logo */
 .splash-msg { position: absolute; bottom: calc(48px + env(safe-area-inset-bottom)); left: 24px; right: 24px; text-align: center; color: #a7a3b3; font-size: 14px; line-height: 1.5; animation: fadeIn 0.4s; }
+
+/* iPhone (encoche, Dynamic Island, barre d'état) : l'interface commence sous la barre d'état. Sans effet sur PC (marge 0). */
+#app { padding-top: max(8px, env(safe-area-inset-top)); box-sizing: border-box; }
+@media (max-width: 768px) {
+  #app { padding-top: env(safe-area-inset-top); }
+  #rightpanel:not(.hidden) { padding-top: env(safe-area-inset-top); }
+}
+#profile-picker, .pin-ov, .party-screen { padding-top: max(24px, env(safe-area-inset-top)); }
+.ctx.sheet { padding-bottom: max(8px, env(safe-area-inset-bottom)); }

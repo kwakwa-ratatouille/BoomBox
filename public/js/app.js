@@ -55,7 +55,7 @@ async function pickProfile(force = false) {
         ${state.profiles.map((p) => html`<div class="profile-card" data-id="${p.id}">${p.photo ? html`<div class="pic" style="background:center/cover url('${p.photo}')"></div>` : html`<div class="pic" style="background:${p.color}">${p.name[0]?.toUpperCase()}</div>`}${p.name}</div>`)}
         <div class="profile-card" data-add><div class="pic add">${icon('plus')}</div>Ajouter</div>
       </div>
-      ${state.profiles.length > 1 ? html`<button class="btn ghost" style="margin-top:40px" id="manage">Supprimer un profil</button>` : ''}</div>`);
+      ${state.profiles.length ? html`<button class="btn ghost" style="margin-top:40px" id="manage">Supprimer un profil</button>` : ''}</div>`);
       box.querySelectorAll('[data-id]').forEach((c) => (c.onclick = async () => {
         const p = state.profiles.find((x) => x.id === c.dataset.id);
         // Code demandé pour un profil protégé, sauf si c'est déjà celui de cet appareil (simple retour)
@@ -74,11 +74,26 @@ async function pickProfile(force = false) {
         contextMenu(r.left, r.bottom, state.profiles.map((p) => ({
           label: `Supprimer « ${p.name} »`, icon: 'trash', danger: true,
           action: async () => {
+            // Profil protégé : son code d'abord ; puis confirmation en tapant le nom du profil (suppression définitive)
             if (p.pin && !(await pinPad(p, { title: `Code de ${p.name} pour le supprimer` }))) return;
-            const ok = await modal({ title: `Supprimer ${p.name} ?`, body: '<p class="muted">Ses playlists, likes et abonnements seront perdus.</p>', actions: [{ label: 'Annuler' }, { label: 'Supprimer', danger: true, value: () => 'ok' }] });
+            const mine = p.id === state.profile?.id || p.id === ls.get('boombox.profile');
+            const ok = await modal({
+              title: `Supprimer ${p.name} ?`,
+              body: String(html`<p class="muted">${mine ? "C'est le profil ouvert sur cet appareil. " : ''}Ses playlists, likes, abonnements, amis et messages seront définitivement perdus, sur tous les appareils.</p>
+                <p class="muted" style="margin-bottom:6px">Pour confirmer, tape <b>${p.name}</b> :</p><input class="input" autocomplete="off" style="width:100%">`),
+              actions: [{ label: 'Annuler' }, { label: 'Supprimer définitivement', danger: true, value: (w) => (w.querySelector('input').value.trim().toLowerCase() === p.name.trim().toLowerCase() ? 'ok' : 'mismatch') }],
+            });
+            if (ok === 'mismatch') return toast('Nom incorrect : profil non supprimé');
             if (ok !== 'ok') return;
+            if (p.socialCode) await social.deleteCard(p.socialCode).catch(() => {});
             await deleteProfile(p.id);
             state.profiles = state.profiles.filter((x) => x.id !== p.id);
+            toast(`Profil « ${p.name} » supprimé`);
+            // Profil de cet appareil supprimé : on repart de zéro (choix d'un autre profil, ou création)
+            if (mine) {
+              ls.set('boombox.profile', null);
+              return location.reload();
+            }
             render();
           },
         })));
