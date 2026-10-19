@@ -622,7 +622,10 @@ export async function settings(el) {
     const v = await fetch('version.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({}));
     const app = isNative ? await window.Capacitor?.Plugins?.App?.getInfo?.().catch(() => null) : null;
     const box = el.querySelector('#s-version');
-    if (box) box.textContent = `Interface ${v.version || 'inconnue'}${app ? ` · appli ${app.version} (${app.build})` : ''}`;
+    const check = localStorage.getItem('boombox.web.lastCheck');
+    const err = localStorage.getItem('boombox.web.lastError');
+    if (box) box.textContent = `Interface ${v.version || 'inconnue'}${app ? ` · appli ${app.version} (${app.build})` : ''}${isNative ? `\nDernière vérification : ${check || 'jamais'}${err ? `\nÉchec de mise à jour : ${err}` : ''}` : ''}`;
+    if (box) box.style.whiteSpace = 'pre-line';
   })();
   el.querySelector('#s-switch').onclick = () => document.dispatchEvent(new Event('pick-profile'));
   el.querySelector('#s-pin').onclick = async () => (await setProfilePin(state.profile)) && settings(el);

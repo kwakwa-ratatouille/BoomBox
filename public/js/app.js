@@ -1501,6 +1501,7 @@ async function boot() {
   renderPanel();
   await route();
 
+  setTimeout(showWhatsNew, 1500);
   // Appli mobile : l'interface a bien démarré ; on cherche une version plus récente en ligne (sans réinstaller l'appli)
   if (isNative) {
     webUpdateConfirm();
@@ -1524,6 +1525,26 @@ async function boot() {
 
 // ======================= APPLI MOBILE =======================
 // Ouverture par un lien boombox://join?s=…&k=… (QR code scanné depuis le PC)
+// Premier lancement après une mise à jour : récapitulatif des nouveautés (rien à la toute première installation)
+async function showWhatsNew() {
+  try {
+    const cur = (await fetch('version.json', { cache: 'no-store' }).then((r) => r.json()))?.version;
+    if (!cur) return;
+    const seen = ls.get('boombox.seenVersion', null);
+    ls.set('boombox.seenVersion', cur);
+    if (!seen || seen === cur) return;
+    const newer = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }) > 0;
+    const notes = await fetch('changelog.json', { cache: 'no-store' }).then((r) => r.json());
+    const fresh = notes.filter((n) => n.version !== 'next' && newer(n.version, seen) && !newer(n.version, cur));
+    if (!fresh.length) return;
+    await modal({
+      title: '✨ Quoi de neuf dans Boombox',
+      body: String(html`${fresh.map((n) => html`<div class="wn-block">${fresh.length > 1 ? html`<h4>${n.title || 'Mise à jour'} <span class="muted">· ${n.date || ''}</span></h4>` : ''}<ul class="wn-list">${n.items.map((i) => html`<li>${i}</li>`)}</ul></div>`)}`),
+      actions: [{ label: 'Super !', primary: true, value: () => 'ok' }],
+    });
+  } catch {}
+}
+
 async function handleLaunchLink() {
   try {
     const l = await window.Capacitor.Plugins.App?.getLaunchUrl?.();

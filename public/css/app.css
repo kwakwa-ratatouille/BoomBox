@@ -1513,3 +1513,8 @@ button, a, .track, .card, .ctrl, [role="button"] { touch-action: manipulation; -
 .ctx.sheet { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
 
 .diag-log { white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.5; max-height: 60vh; overflow-y: auto; background: rgba(0, 0, 0, 0.35); padding: 10px; border-radius: 8px; margin: 0; user-select: text; }
+
+/* Fenêtre « Quoi de neuf » */
+.wn-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }
+.wn-block + .wn-block { margin-top: 16px; }
+.wn-block h4 { margin: 0 0 8px; }

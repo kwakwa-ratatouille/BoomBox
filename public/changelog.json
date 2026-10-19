@@ -1,0 +1,18 @@
+[
+  {
+    "version": "2026.1019.1905",
+    "title": "Nouveautés de Boombox",
+    "items": [
+      "Amis : ajoute tes amis avec leur code, vois ce qu'ils écoutent (s'ils l'ont activé) et envoie-leur messages, sons et playlists.",
+      "Playlists publiques ou privées, et collaborateurs qui peuvent les modifier avec toi.",
+      "Profils d'amis avec leurs playlists publiques.",
+      "Mode party simplifié : un seul QR code, écran géant avec le clip en fond, les paroles et un fond animé.",
+      "Code à 4 chiffres proposé dès la création d'un profil, et demandé pour le supprimer.",
+      "Découverte : choisis toi-même les artistes de référence.",
+      "Appli mobile : lecture par ton PC en Wi-Fi, récupération plus fiable en 4G/5G, diagnostic de lecture dans les paramètres.",
+      "Stats : un son compte comme écouté après 30 secondes d'écoute réelle.",
+      "Corrections : démarrage bloqué sur iPhone, marges sous l'encoche, boutons alignés."
+    ],
+    "date": "2026-10-19"
+  }
+]

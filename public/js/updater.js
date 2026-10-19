@@ -58,10 +58,11 @@ export async function checkWebUpdate({ onReady } = {}) {
   try {
     const { Filesystem, CapacitorHttp, App } = plugins();
     const wv = webView();
-    if (!Filesystem || !CapacitorHttp || !wv) return;
+    if (!Filesystem || !CapacitorHttp || !wv) throw new Error(`modules natifs manquants (${[!Filesystem && 'Filesystem', !CapacitorHttp && 'CapacitorHttp', !wv && 'WebView'].filter(Boolean).join(', ')})`);
     const cur = await currentVersion();
     const res = await CapacitorHttp.request({ url: `${BASE}app-update/manifest.json?t=${Date.now()}`, method: 'GET', responseType: 'json', connectTimeout: 6000, readTimeout: 8000 });
     const m = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+    ls.set('boombox.web.lastCheck', `${new Date().toLocaleString('fr-FR')} : en ligne ${m?.version || '?'} (HTTP ${res.status})`);
     if (!m?.version || !newer(m.version, cur.version || '0')) return;
     // Interface qui demande un appli native plus récente : il faudra passer par SideStore
     const nativeBuild = Number((await App?.getInfo?.().catch(() => null))?.build || 1);
@@ -89,7 +90,10 @@ export async function checkWebUpdate({ onReady } = {}) {
       if (!keep.has(n)) await Filesystem.rmdir({ path: `web/${n}`, directory: 'DATA', recursive: true }).catch(() => {});
     }
     onReady?.(m.version);
+    ls.del('boombox.web.lastError');
   } catch (e) {
+    // Raison gardée et affichée dans Paramètres → Version (pour comprendre une mise à jour qui n'arrive pas)
+    ls.set('boombox.web.lastError', `${new Date().toLocaleString('fr-FR')} : ${String(e?.message || e).slice(0, 140)}`);
     console.warn('Mise à jour de l’interface :', e?.message || e);
   } finally {
     running = false;

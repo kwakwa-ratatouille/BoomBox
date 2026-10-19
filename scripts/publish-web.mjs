@@ -31,6 +31,14 @@ const MIN_NATIVE = 1;
 console.log('1/3 Serveur embarqué…');
 execSync('node scripts/build-mobile.mjs', { cwd: ROOT, stdio: 'inherit' });
 fs.writeFileSync(path.join(PUB, 'version.json'), JSON.stringify({ version, minNative: MIN_NATIVE }));
+// Notes de version : l'entrée « next » (nouveautés de cette publication) reçoit le numéro de version
+const CHANGELOG = path.join(PUB, 'changelog.json');
+if (fs.existsSync(CHANGELOG)) {
+  const notes = JSON.parse(fs.readFileSync(CHANGELOG, 'utf8'));
+  let stamped = false;
+  for (const n of notes) if (n.version === 'next') ((n.version = version), (n.date = d.toISOString().slice(0, 10)), (stamped = true));
+  if (stamped) fs.writeFileSync(CHANGELOG, JSON.stringify(notes, null, 2) + '\n');
+}
 
 console.log('2/3 Archive…');
 // Fichiers inutiles dans l'appli (déjà intégrés au natif, ou réservés au web)
