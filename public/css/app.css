@@ -1533,3 +1533,12 @@ button, a, .track, .card, .ctrl, [role="button"] { touch-action: manipulation; -
 .ro-grip { flex: none; padding: 10px 12px; font-size: 20px; letter-spacing: -3px; color: var(--muted, #a7a3b3); cursor: grab; touch-action: none; user-select: none; }
 .ro-item.ro-drag { transition: none; position: relative; z-index: 2; background: var(--elev-2, #2a2532); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5); }
 #fullplayer { will-change: transform; }
+
+/* Téléphone : la page ne doit jamais glisser sur les côtés ni zoomer.
+   iOS zoome tout seul sur un champ en moins de 16 px (et ne dézoome pas) : champs en 16 px. */
+html, body { overflow-x: hidden; overscroll-behavior-x: none; max-width: 100%; }
+@media (max-width: 768px) {
+  input, select, textarea, .input { font-size: 16px !important; }
+  #view { overflow-x: hidden; }
+  .page { max-width: 100vw; box-sizing: border-box; }
+}

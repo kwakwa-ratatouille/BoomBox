@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1019.2119",
+    "title": "Affichage sur téléphone",
+    "items": [
+      "L'écran ne glisse plus sur les côtés et ne zoome plus tout seul quand tu touches la recherche (iPhone)."
+    ],
+    "date": "2026-10-19"
+  },
+  {
     "version": "2026.1019.1940",
     "title": "Lecture partout par ton PC",
     "items": [
