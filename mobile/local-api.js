@@ -70,7 +70,10 @@ async function remoteAudio(id, exclude = []) {
     if (exclude.includes(client)) continue;
     try {
       const info = await y.getBasicInfo(id, { client });
-      const fmt = info.chooseFormat({ type: 'audio', quality: 'best', format: 'mp4' }) || info.chooseFormat({ type: 'audio', quality: 'best' });
+      // Uniquement de l'AAC (M4A) : l'iPhone ne lit pas le WebM/Opus. Pas d'AAC chez ce client → client suivant.
+      const aac = (info.streaming_data?.adaptive_formats || []).filter((f) => f.has_audio && !f.has_video && /audio\/mp4/.test(f.mime_type || ''));
+      const fmt = aac.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      if (!fmt) throw new Error(`${client} : pas de format M4A`);
       const url = fmt.url || (await fmt.decipher(y.session.player));
       if (url) {
         const r = { url, client, ua: ua || navigator.userAgent, exp: Date.now() + 4 * 3600e3 };

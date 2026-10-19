@@ -125,7 +125,8 @@ class AudioEngine {
       el.addEventListener('playing', () => mine() && h.onPlaying());
       el.addEventListener('pause', () => mine() && !el.ended && h.onPaused());
       el.addEventListener('waiting', () => mine() && h.onBuffering());
-      el.addEventListener('error', () => mine() && el.getAttribute('src') && h.onError('audio'));
+      // Code du lecteur : 2 = réseau, 3 = décodage, 4 = format non pris en charge (ou fichier invalide)
+      el.addEventListener('error', () => mine() && el.getAttribute('src') && h.onError(`lecteur ${el.error?.code || '?'}${el.error?.message ? ' : ' + el.error.message.slice(0, 50) : ''}`));
     }
   }
   get a() { return this.els[this.cur]; }
@@ -971,6 +972,8 @@ export const player = {
     // repris au même endroit, avant d'abandonner le titre
     if (this.engine.name === 'audio' && this._retryTried !== t.id) {
       this._retryTried = t.id;
+      // Appli : fichier du cache refusé par le lecteur (format illisible, fichier abîmé) → supprimé, il sera retéléchargé
+      if (isNative && /^lecteur/.test(code)) await (await localApi()).media.deleteAudio(t.id).catch(() => {});
       const at = this.engine.time() || 0;
       this.buffering = true;
       emit('player:state');
