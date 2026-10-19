@@ -1518,3 +1518,12 @@ button, a, .track, .card, .ctrl, [role="button"] { touch-action: manipulation; -
 .wn-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }
 .wn-block + .wn-block { margin-top: 16px; }
 .wn-block h4 { margin: 0 0 8px; }
+
+/* Bibliothèque (téléphone) : réorganisation au doigt */
+.reorder-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ro-item { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); transition: transform 0.15s ease; }
+.ro-item .cover { width: 48px; height: 48px; flex: none; }
+.ro-item .t-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ro-grip { flex: none; padding: 10px 12px; font-size: 20px; letter-spacing: -3px; color: var(--muted, #a7a3b3); cursor: grab; touch-action: none; user-select: none; }
+.ro-item.ro-drag { transition: none; position: relative; z-index: 2; background: var(--elev-2, #2a2532); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5); }
+#fullplayer { will-change: transform; }

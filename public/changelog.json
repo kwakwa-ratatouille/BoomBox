@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.1019.1910",
+    "title": "Petites améliorations",
+    "items": [
+      "Sur téléphone, glisse le lecteur plein écran vers le bas pour le fermer.",
+      "Bibliothèque sur téléphone : bouton « Réorganiser » pour ranger tes playlists et dossiers au doigt, dans l'ordre que tu veux.",
+      "Message « Mise à jour prête » avec installation en un geste, et cette fenêtre des nouveautés."
+    ],
+    "date": "2026-10-19"
+  },
+  {
     "version": "2026.1019.1905",
     "title": "Nouveautés de Boombox",
     "items": [

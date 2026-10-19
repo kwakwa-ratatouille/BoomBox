@@ -846,7 +846,49 @@ function openFullPlayer() {
   if (!sync.view().track) return;
   fpOpen = true;
   history.pushState({ fp: true }, '');
+  setupFullPlayerSwipe();
   renderFullPlayer();
+}
+
+// Téléphone : on ferme le lecteur plein écran en le glissant vers le bas (comme Spotify), depuis le haut de la page
+let fpSwipeReady = false;
+function setupFullPlayerSwipe() {
+  if (fpSwipeReady) return;
+  fpSwipeReady = true;
+  const fp = $('#fullplayer');
+  let y0 = null;
+  let x0 = 0;
+  let dy = 0;
+  let t0 = 0;
+  fp.addEventListener('touchstart', (e) => {
+    // Pas pendant un défilement de la page, ni sur la barre de progression / le volume
+    if (fp.scrollTop > 0 || e.target.closest('.slider, input, .fp-seek, .fp-lyrics, [data-no-swipe]')) return (y0 = null);
+    y0 = e.touches[0].clientY;
+    x0 = e.touches[0].clientX;
+    dy = 0;
+    t0 = performance.now();
+    fp.style.transition = 'none';
+  }, { passive: true });
+  fp.addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    dy = e.touches[0].clientY - y0;
+    if (Math.abs(e.touches[0].clientX - x0) > Math.abs(dy) && dy < 30) return; // geste horizontal
+    if (dy > 0) fp.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+  fp.addEventListener('touchend', () => {
+    if (y0 == null) return;
+    const fast = dy > 60 && dy / (performance.now() - t0) > 0.6; // petit geste rapide vers le bas
+    fp.style.transition = 'transform 0.22s ease';
+    if (dy > 140 || fast) {
+      fp.style.transform = 'translateY(100%)';
+      setTimeout(() => {
+        closeFullPlayer();
+        fp.style.transition = '';
+        fp.style.transform = '';
+      }, 220);
+    } else fp.style.transform = '';
+    y0 = null;
+  });
 }
 function closeFullPlayer(fromPop = false) {
   if (!fpOpen) return;

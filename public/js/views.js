@@ -1,6 +1,6 @@
 // Pages principales : accueil, recherche, titres likés, playlists, albums, artistes, nouveautés, bibliothèque.
 import { html, raw, esc, icon, fmtTotal, fmtAgo, plural, toast, promptText, confirmBox, contextMenu, dominantColor, artistLinks, debounce, modal } from './ui.js';
-import { state, api, ls, emit, setting, saveSettings, toggleFollow, isFollowing, createPlaylist, addToPlaylist, getHistory, updatePlaylist, deletePlaylist, restorePlaylist, purgePlaylist, TRASH_DAYS, sharePlaylist, movePlaylist, moveRoot, folderOf, followMany, setKnownReleases, setFollowThumbs, likeAllPlaylistTracks, createFolder, renameFolder, deleteFolder, movePlaylistToFolder, removeItems, isLiked, toggleLike } from './state.js';
+import { state, api, ls, emit, setting, saveSettings, toggleFollow, isFollowing, createPlaylist, addToPlaylist, getHistory, updatePlaylist, deletePlaylist, restorePlaylist, purgePlaylist, TRASH_DAYS, sharePlaylist, movePlaylist, moveRoot, rootEntries, folderOf, followMany, setKnownReleases, setFollowThumbs, likeAllPlaylistTracks, createFolder, renameFolder, deleteFolder, movePlaylistToFolder, removeItems, isLiked, toggleLike } from './state.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
 import { cover, playlistCover, likedCover, trackList, card, rememberTracks, playlistSubmenu, playKey, openPlaylistPicker } from './components.js';
@@ -1104,24 +1104,74 @@ function artistQuickSearch(el, ctx) {
 
 // ======================= BIBLIOTHÈQUE (vue pleine page, surtout mobile) =======================
 export async function library(el) {
+  let reorder = false;
   const render = () => {
     const lib = state.library;
+    // Dossiers et playlists dans l'ordre perso (le même que la bibliothèque du PC)
+    const entries = rootEntries().map((e) => (e.kind === 'folder' ? { e, f: lib.folders.find((x) => x.id === e.id) } : { e, p: lib.playlists.find((x) => x.id === e.id) })).filter((x) => x.f || x.p);
     el.innerHTML = String(html`<div class="page">
       <div class="section-head"><h2>Ta bibliothèque</h2>
-        <div class="row-flex"><a class="icon-btn" href="#/import" title="Importer">${icon('import')}</a><button class="icon-btn" id="lib-new" title="Créer une playlist">${icon('plus')}</button></div></div>
-      <div class="cards">
+        <div class="row-flex"><button class="chip ${reorder ? 'active' : ''}" id="lib-reorder">${reorder ? 'Terminé' : 'Réorganiser'}</button><a class="icon-btn" href="#/import" title="Importer">${icon('import')}</a><button class="icon-btn" id="lib-new" title="Créer une playlist">${icon('plus')}</button></div></div>
+      ${reorder
+        ? html`<p class="muted" style="margin-top:-4px;font-size:13px">Fais glisser la poignée ⋮⋮ pour changer l'ordre.</p><ul class="reorder-list" id="reorder-list">${entries.map(({ e, f, p }) => html`<li class="ro-item" data-kind="${e.kind}" data-id="${e.id}">${f ? html`<div class="cover folder-cover">${icon('folder')}</div>` : playlistCover(p, '', 96)}<div class="t-text"><span class="t-title ellipsis">${f ? f.name : p.name}</span><span class="t-artists muted">${f ? 'Dossier' : `Playlist • ${plural(p.tracks.length, 'titre')}`}${e.pinned ? ' • épinglée' : ''}</span></div><span class="ro-grip" aria-label="Déplacer">⋮⋮</span></li>`)}</ul>`
+        : html`<div class="cards">
         ${card({ name: 'Titres likés', type: 'local-liked', coverHtml: likedCover() }, { sub: plural(lib.liked.length, 'titre'), href: '#/liked', play: 'liked' })}
-        ${(lib.folders || []).map((f) => card({ name: f.name, type: 'folder', coverHtml: html`<div class="cover folder-cover">${icon('folder')}</div>` }, { sub: `Dossier • ${plural(lib.playlists.filter((p) => p.folderId === f.id).length, 'playlist')}`, href: `#/folder/${f.id}`, play: '' }))}
-        ${lib.playlists.filter((p) => !p.folderId).map((p) => card({ ...p, type: 'local', coverHtml: playlistCover(p) }, { sub: `Playlist • ${plural(p.tracks.length, 'titre')}` }))}
+        ${entries.map(({ f, p }) => (f
+          ? card({ name: f.name, type: 'folder', coverHtml: html`<div class="cover folder-cover">${icon('folder')}</div>` }, { sub: `Dossier • ${plural(lib.playlists.filter((x) => x.folderId === f.id).length, 'playlist')}`, href: `#/folder/${f.id}`, play: '' })
+          : card({ ...p, type: 'local', coverHtml: playlistCover(p) }, { sub: `Playlist • ${plural(p.tracks.length, 'titre')}` })))}
         ${lib.follows.map((f) => card({ ...f, type: 'artist' }))}
-      </div>
+      </div>`}
       <div class="row-flex" style="margin-top:32px;gap:8px"><a class="chip" href="#/history">Historique</a><a class="chip" href="#/stats">Ton récap</a><a class="chip" href="#/jam">Jam</a><a class="chip" href="#/settings">Paramètres</a></div>
     </div>`);
     el.querySelector('#lib-new').onclick = async () => {
       const name = await promptText('Nouvelle playlist', { label: 'Créer', placeholder: 'Ma playlist' });
       if (name) location.hash = `#/playlist/${(await createPlaylist(name)).id}`;
     };
+    el.querySelector('#lib-reorder').onclick = () => ((reorder = !reorder), render());
+    if (reorder) wireReorder(el.querySelector('#reorder-list'));
   };
+  // Glisser-déposer au doigt (ou à la souris) par la poignée : l'élément suit le doigt, les autres s'écartent
+  function wireReorder(list) {
+    list.querySelectorAll('.ro-grip').forEach((grip) => {
+      grip.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        const li = grip.closest('.ro-item');
+        const items = [...list.children];
+        const h = li.getBoundingClientRect().height + 6;
+        const start = ev.clientY;
+        let to = items.indexOf(li);
+        const from = to;
+        li.classList.add('ro-drag');
+        grip.setPointerCapture(ev.pointerId);
+        const move = (e) => {
+          const dy = e.clientY - start;
+          li.style.transform = `translateY(${dy}px)`;
+          to = Math.max(0, Math.min(items.length - 1, from + Math.round(dy / h)));
+          items.forEach((x, i) => {
+            if (x === li) return;
+            x.style.transform = from < to && i > from && i <= to ? `translateY(${-h}px)` : from > to && i < from && i >= to ? `translateY(${h}px)` : '';
+          });
+        };
+        const up = async () => {
+          grip.removeEventListener('pointermove', move);
+          grip.removeEventListener('pointerup', up);
+          grip.removeEventListener('pointercancel', up);
+          items.forEach((x) => (x.style.transform = ''));
+          li.classList.remove('ro-drag');
+          if (to === from) return;
+          const me = { kind: li.dataset.kind, id: li.dataset.id };
+          const rest = items.filter((x) => x !== li);
+          const target = rest[to];
+          if (!target) await moveRoot(me, { edge: 'bottom' });
+          else if (me.kind === 'playlist' && target.dataset.kind === 'playlist') await movePlaylist(me.id, { before: target.dataset.id });
+          else await moveRoot(me, { before: { kind: target.dataset.kind, id: target.dataset.id } });
+        };
+        grip.addEventListener('pointermove', move);
+        grip.addEventListener('pointerup', up);
+        grip.addEventListener('pointercancel', up);
+      });
+    });
+  }
   render();
-  return { onLibrary: render };
+  return { onLibrary: () => !document.querySelector('.ro-drag') && render() };
 }
