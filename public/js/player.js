@@ -259,7 +259,8 @@ class AudioEngine {
     this.pending = null;
     this.preloaded = null;
     const el = this.a;
-    await this._setSrc(el, id, start, fresh).catch(() => this.h.onError('audio'));
+    // Raison précise affichée (ex. « IOS : réponse invalide ») : utile pour comprendre un échec sur téléphone
+    await this._setSrc(el, id, start, fresh).catch((e) => this.h.onError(String(e?.message || 'audio').slice(0, 80)));
     if (el !== this.a) return;
     el.playbackRate = 1;
     this._setLevel(this.a, 1);

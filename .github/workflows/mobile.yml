@@ -46,6 +46,10 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes array" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :LSApplicationQueriesSchemes:0 string sidestore" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" || true
+          # Lecture par le PC sur le même Wi-Fi (adresse http locale) : réseau local autorisé
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :NSLocalNetworkUsageDescription string 'Boombox lit ta musique par ton PC quand il est sur le même Wi-Fi.'" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Boombox" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Boombox" "$PLIST"
           sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $VERSION;/g; s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = ${{ github.run_number }};/g" ios/App/App.xcodeproj/project.pbxproj
       - name: Synchronisation Capacitor

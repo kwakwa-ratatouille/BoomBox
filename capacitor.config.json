@@ -5,7 +5,8 @@
   "backgroundColor": "#131019",
   "server": {
     "androidScheme": "https",
-    "iosScheme": "capacitor"
+    "iosScheme": "capacitor",
+    "cleartext": true
   },
   "ios": {
     "contentInset": "never",
@@ -13,7 +14,8 @@
     "allowsLinkPreview": false
   },
   "android": {
-    "backgroundColor": "#131019"
+    "backgroundColor": "#131019",
+    "allowMixedContent": true
   },
   "plugins": {
     "CapacitorHttp": { "enabled": false }

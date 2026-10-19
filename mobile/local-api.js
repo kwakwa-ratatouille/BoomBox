@@ -42,27 +42,61 @@ function playerYt() {
   return ytPlayer;
 }
 
+// ---------- Relais par le PC ----------
+// Sur le même Wi-Fi que le PC, l'audio passe par son serveur (yt-dlp) : fiable et instantané.
+// Ailleurs (4G/5G, PC éteint), le téléphone récupère l'audio lui-même (ci-dessous).
+let relay = null;
+export function setRelay(base) {
+  relay = base || null;
+}
+export const getRelay = () => relay;
+
 const urlCache = new Map();
-// Plusieurs « clients » YouTube sont essayés : si l'un est bloqué, on passe au suivant
-async function remoteAudioUrl(id) {
+// Chaque « client » YouTube donne des liens qui ne se téléchargent qu'en se présentant comme ce client
+// (sinon YouTube répond 403) : on garde son User-Agent avec le lien.
+const CLIENTS = [
+  ['IOS', 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)'],
+  ['ANDROID', 'com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip'],
+  ['TV', 'Mozilla/5.0 (ChromiumStylePlatform) Cobalt/Version'],
+  ['WEB_EMBEDDED', null],
+  ['WEB', null],
+];
+async function remoteAudio(id, exclude = []) {
   const hit = urlCache.get(id);
-  if (hit && hit.exp > Date.now()) return hit.url;
+  if (hit && hit.exp > Date.now() && !exclude.includes(hit.client)) return hit;
   const y = await playerYt();
   let lastErr = null;
-  for (const client of ['IOS', 'ANDROID', 'TV', 'WEB_EMBEDDED', 'WEB']) {
+  for (const [client, ua] of CLIENTS) {
+    if (exclude.includes(client)) continue;
     try {
       const info = await y.getBasicInfo(id, { client });
       const fmt = info.chooseFormat({ type: 'audio', quality: 'best', format: 'mp4' }) || info.chooseFormat({ type: 'audio', quality: 'best' });
       const url = fmt.url || (await fmt.decipher(y.session.player));
       if (url) {
-        urlCache.set(id, { url, exp: Date.now() + 4 * 3600e3 });
-        return url;
+        const r = { url, client, ua: ua || navigator.userAgent, exp: Date.now() + 4 * 3600e3 };
+        urlCache.set(id, r);
+        return r;
       }
     } catch (e) {
       lastErr = e;
     }
   }
   throw lastErr || new Error('Audio introuvable');
+}
+// Compatibilité (autres appels) : lien seul
+async function remoteAudioUrl(id) {
+  return (await remoteAudio(id)).url;
+}
+
+// Téléchargement vérifié : un fichier minuscule = page d'erreur de YouTube, pas un son
+async function fetchTo(path, url, headers = {}) {
+  await Filesystem.downloadFile({ url, path, directory: Directory.Data, recursive: true, headers });
+  const stat = await Filesystem.stat({ path, directory: Directory.Data });
+  if (stat.size < 30 * 1024) {
+    await Filesystem.deleteFile({ path, directory: Directory.Data }).catch(() => {});
+    throw new Error(`réponse invalide (${stat.size} o)`);
+  }
+  return stat;
 }
 
 // Index des fichiers audio présents sur le téléphone : { id: { size, at, used, keep } }
@@ -85,11 +119,25 @@ export function downloadAudio(id, { keep = false } = {}) {
   }
   if (downloads.has(id)) return downloads.get(id);
   const p = (async () => {
-    const url = await remoteAudioUrl(id);
     const path = `audio/${id}.m4a`;
     await Filesystem.mkdir({ path: 'audio', directory: Directory.Data, recursive: true }).catch(() => {});
-    await Filesystem.downloadFile({ url, path, directory: Directory.Data, recursive: true });
-    const stat = await Filesystem.stat({ path, directory: Directory.Data });
+    let stat = null;
+    let lastErr = null;
+    // 1. Par le PC (même Wi-Fi)
+    if (relay) stat = await fetchTo(path, `${relay}/api/audio-file/${id}`).catch((e) => ((lastErr = e), null));
+    // 2. Directement chez YouTube, en changeant de client si l'un est refusé
+    const tried = [];
+    while (!stat && tried.length < 3) {
+      const r = await remoteAudio(id, tried).catch((e) => ((lastErr = e), null));
+      if (!r) break;
+      tried.push(r.client);
+      stat = await fetchTo(path, r.url, { 'User-Agent': r.ua }).catch((e) => {
+        lastErr = new Error(`${r.client} : ${e.message}`);
+        urlCache.delete(id);
+        return null;
+      });
+    }
+    if (!stat) throw lastErr || new Error('téléchargement impossible');
     audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep };
     saveIndex();
     pruneCache();
@@ -99,17 +147,14 @@ export function downloadAudio(id, { keep = false } = {}) {
   return p;
 }
 
-// stream : titre pas encore sur le téléphone → lecture immédiate en streaming pendant que le fichier se
-// télécharge en arrière-plan (la prochaine écoute sera locale). Sans stream (nouvel essai, mix Web Audio qui
-// ne peut pas lire un flux d'un autre domaine), on attend le fichier local.
+// stream : titre pas encore sur le téléphone et PC joignable → lecture immédiate par le PC pendant que le
+// fichier se télécharge en arrière-plan (la prochaine écoute sera locale). Un lien YouTube direct ne peut pas
+// être lu tel quel par le lecteur (il exige l'en-tête du client) : sans PC, on attend le fichier local.
 export async function localAudioSrc(id, { stream = false } = {}) {
   if (!audioIndex[id] && !net.connected) throw new Error('Hors ligne : titre non téléchargé');
-  if (stream && !audioIndex[id]) {
-    const url = await remoteAudioUrl(id).catch(() => null);
-    if (url) {
-      downloadAudio(id).catch(() => {});
-      return url;
-    }
+  if (stream && !audioIndex[id] && relay) {
+    downloadAudio(id).catch(() => {});
+    return `${relay}/api/stream/${id}`;
   }
   await downloadAudio(id);
   const { uri } = await Filesystem.getUri({ path: `audio/${id}.m4a`, directory: Directory.Data });
@@ -250,4 +295,4 @@ export function unkeep(id) {
   if (audioIndex[id]) (audioIndex[id].keep = false), saveIndex();
 }
 
-export const media = { localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net };
+export const media = { localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay };

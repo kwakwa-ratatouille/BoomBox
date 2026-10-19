@@ -27,6 +27,7 @@ import { offline } from './offline.js';
 import { social } from './social.js';
 import { friendsPage, friendsPanel } from './views-social.js';
 import { userPage, sharedPlaylistPage } from './views-share.js';
+import { startRelay } from './relay.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -1409,6 +1410,8 @@ async function boot() {
   // Analyses reçues / plan d'automix : on rafraîchit l'affichage BPM / tonalité
   on('player:automix', () => panelMode === 'queue' && !$('#rightpanel').classList.contains('hidden') && renderPanel());
   sync.connect();
+  // Appli mobile : lecture par le PC quand il est sur le même Wi-Fi (sinon récupération directe)
+  if (isNative) startRelay().catch(() => {});
   // Amis : fiche publique, activité d'écoute (si partagée) et messages
   const friendsBadge = () => {
     const b = $('#friends-badge');

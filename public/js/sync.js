@@ -26,7 +26,9 @@ export const sync = {
 
   async connect() {
     const { device, profile } = state;
-    await setDoc(this.devRef(), { name: device.name, kind: device.kind, profileId: profile.id, profileName: profile.name, lastSeen: Date.now(), online: true }, { merge: true }).catch(() => {});
+    // PC : ses adresses sur le réseau local, pour que le téléphone lise par lui quand il est sur le même Wi-Fi
+    const lan = window.Capacitor?.isNativePlatform?.() ? [] : state.status?.lan || [];
+    await setDoc(this.devRef(), { name: device.name, kind: device.kind, profileId: profile.id, profileName: profile.name, lan, lastSeen: Date.now(), online: true }, { merge: true }).catch(() => {});
     this.connected = true;
 
     this._unsubs.push(

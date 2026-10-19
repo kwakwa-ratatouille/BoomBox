@@ -370,7 +370,7 @@ export async function settings(el) {
 
     <h2 style="font-size:20px;margin-top:24px">Amis</h2>
     <div class="settings-row"><div><b>Partager mon activité d'écoute</b><p>Tes amis Boombox voient le son que tu écoutes en ce moment, ou le dernier écouté (« il y a 8 h »). Désactivé : ils ne voient rien.</p></div><label class="switch"><input type="checkbox" id="s-share" ${social.sharing ? 'checked' : ''}><span></span></label></div>
-    <div class="settings-row"><div><b>Mon code ami</b><p>Donne-le à tes amis pour qu'ils t'ajoutent (activité, messages, envoi de sons et de playlists).</p></div><div class="row-flex"><span class="code big">${social.code || '…'}</span><button class="btn ghost" id="s-fcode">${icon('copy', 16)} Copier</button></div></div>
+    <div class="settings-row"><div><b>Mon code ami</b><p>Donne-le à tes amis pour qu'ils t'ajoutent (activité, messages, envoi de sons et de playlists).</p></div><div class="row-flex" style="flex-wrap:nowrap;gap:10px;flex:none"><span class="code big">${social.code || '…'}</span><button class="btn ghost" id="s-fcode" style="white-space:nowrap">${icon('copy', 16)} Copier</button></div></div>
     <div class="settings-row"><div><b>Mes amis</b><p>${plural(social.friends.length, 'ami')}${social.unread ? ` · ${plural(social.unread, 'message non lu')}` : ''}</p></div><a class="btn ghost" href="#/friends">Amis et messages</a></div>
 
     <div class="settings-row"><div><b>Couleur de l'appli</b><p>Couleur d'accent des boutons et de la lecture, pour ce profil. « Auto » : la couleur suit la pochette du son en cours.</p></div>
