@@ -266,10 +266,10 @@ function sheetDrag(el) {
     y0 = null;
     const fast = dy > 40 && dy / (performance.now() - t0) > 0.5;
     if (dy > Math.min(140, el.offsetHeight * 0.35) || fast) {
-      el.style.transition = `transform 0.3s ${ease}`;
+      el.style.transition = `transform 0.55s ${ease}`;
       el.style.transform = 'translateY(105%)';
-      if (el._backdrop) (el._backdrop.style.transition = 'opacity 0.3s'), (el._backdrop.style.opacity = '0');
-      setTimeout(() => openMenu === el && closeMenu(), 300);
+      if (el._backdrop) (el._backdrop.style.transition = 'opacity 0.55s'), (el._backdrop.style.opacity = '0');
+      setTimeout(() => openMenu === el && closeMenu(), 550);
     } else {
       el.style.transition = `transform 0.25s ${ease}`;
       el.style.transform = '';

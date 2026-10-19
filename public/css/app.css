@@ -1620,3 +1620,15 @@ body:has(.party-screen) .modal-backdrop { z-index: 500; }
 .fp-extra .ctrl.on { color: var(--accent); }
 /* Paroles : revenir à la ligne en cours */
 .lyr-resync { position: sticky; bottom: 10px; margin: 8px auto 0; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: #fff; color: #000; font-weight: 700; font-size: 13px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); z-index: 2; }
+
+/* Paroles plein écran : sous l'encoche de l'iPhone */
+.kara-head { padding-top: max(24px, calc(env(safe-area-inset-top) + 8px)); }
+.kara-foot { padding-bottom: max(28px, calc(env(safe-area-inset-bottom) + 12px)); }
+.fp-lyrics #fp-lyr { cursor: pointer; }
+/* Lecteur plein écran : l'artiste sous les paroles */
+.fp-artist { margin-top: 24px; padding-bottom: 32px; }
+.fp-artist .fa-head { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); margin-bottom: 8px; }
+.fp-artist .fa-head .cover { width: 64px; height: 64px; flex: none; }
+.fp-artist .fa-head b { font-size: 18px; display: block; }
+.fp-artist .section { margin-top: 18px; }
+.fp-artist h3 { font-size: 18px; margin: 0 0 8px; }

@@ -5,7 +5,7 @@ import { cloud, parseInvite, getDoc } from './cloud.js';
 import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
-import { lists, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
+import { lists, card, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
 import { mountLyrics, openKaraoke } from './lyrics.js';
 import { openPlaylistPicker } from './components.js';
 import { pinPad, offerPinOnCreate } from './pin.js';
@@ -934,7 +934,8 @@ function renderFullPlayer() {
       <button class="ctrl" id="fp-repeat">${icon('repeat')}</button>
     </div>
     <div class="fp-extra"><button class="ctrl" id="fp-devices">${icon('devices')}</button><button class="ctrl ${setting('automix', false) ? 'on' : ''}" id="fp-mix" title="Mix">${icon('mixer')}</button><button class="ctrl fp-speed" id="fp-speed" title="Vitesse">×${String(player.rate || 1).replace('.', ',')}</button><button class="ctrl" id="fp-sleep">${icon('moon')}</button><button class="ctrl" id="fp-queue">${icon('queue')}</button></div>
-    <div class="fp-lyrics"><div class="row-flex" style="justify-content:space-between;margin:0 0 12px"><h4 style="margin:0">Paroles</h4><div class="row-flex"><button class="icon-btn" id="fp-car" title="Mode voiture">${icon('car', 20)}</button><button class="icon-btn" id="fp-kara" title="Paroles en plein écran">${icon('fullscreen', 20)}</button></div></div><div id="fp-lyr"></div></div>`);
+    <div class="fp-lyrics"><div class="row-flex" style="justify-content:space-between;margin:0 0 12px"><h4 style="margin:0">Paroles</h4><div class="row-flex"><button class="icon-btn" id="fp-car" title="Mode voiture">${icon('car', 20)}</button><button class="icon-btn" id="fp-kara" title="Paroles en plein écran">${icon('fullscreen', 20)}</button></div></div><div id="fp-lyr"></div></div>
+    <div class="fp-artist" id="fp-artist"></div>`);
   $('#fp-close').onclick = () => closeFullPlayer();
   $('#fp-like').onclick = () => toggleLike(t);
   $('#fp-play').onclick = () => ctl.toggle();
@@ -973,6 +974,22 @@ function renderFullPlayer() {
   dominantColor(t.thumb).then((c) => c && (fp.style.setProperty('--fp', c), fp.style.setProperty('--lyr', c)));
   fpCleanup = mountLyrics($('#fp-lyr'), t);
   $('#fp-kara')?.addEventListener('click', openKaraoke);
+  // Un appui sur les paroles les met en plein écran
+  $('#fp-lyr').addEventListener('click', (e) => (e.stopPropagation(), openKaraoke()), true);
+  // En continuant de descendre : la page de l'artiste (discographie, artistes similaires)
+  const ar = t.artists?.find((a) => a.id);
+  if (ar) {
+    api(`/api/artist/${ar.id}`).then((a) => {
+      const box = $('#fp-artist');
+      if (!box || !fpOpen || sync.view().track?.id !== t.id) return;
+      const pick = (re) => a.sections.filter((s) => re.test(s.title) && s.items.length);
+      const secs = [...pick(/album|single|\bep\b/i), ...pick(/similaire|aiment aussi|fans|similar|also like/i)];
+      box.innerHTML = String(html`<a class="fa-head" href="#/artist/${ar.id}">${cover(a, 'round', 300)}<div style="min-width:0"><small class="muted">À propos de l'artiste</small><b class="ellipsis">${a.name}</b>${a.monthlyListeners ? html`<span class="muted">${a.monthlyListeners.toLocaleString('fr-FR')} auditeurs mensuels</span>` : ''}</div></a>
+        <a class="outline-btn" href="#/discography/${ar.id}" style="display:inline-block;margin-top:6px">Voir la discographie</a>
+        ${secs.map((s) => html`<section class="section"><h3>${s.title}</h3><div class="cards row">${s.items.slice(0, 12).map((i) => card(i))}</div></section>`)}`);
+      box.addEventListener('click', (e) => e.target.closest('a[href^="#/"]') && closeFullPlayer(true));
+    }).catch(() => {});
+  }
   $('#fp-car')?.addEventListener('click', openCarMode);
   updateFullPlayerState();
 }
