@@ -664,6 +664,8 @@ export const player = {
     this._mixPlan = null;
     this._preparedFor = null;
     this._logged = false;
+    this._heard = 0; // secondes réellement écoutées de ce son (pour les stats)
+    this._heardAt = 0;
     this._fallbackTried = null;
     this._retryTried = null;
     this.buffering = true;
@@ -1035,7 +1037,13 @@ export const player = {
     }
     if (!this.paused) emit('player:time');
     const t = this.time();
-    if (!this._logged && !this.paused && (t > 30 || (this.duration() && t > this.duration() / 2))) {
+    // Stats : un son compte comme écouté après 30 s d'écoute réelle (moitié du son s'il dure moins d'une minute),
+    // sans compter les pauses, les chargements, ni l'avance rapide ou un mix qui le démarre en plein milieu
+    const now = performance.now();
+    if (!this.paused && !this.buffering && this._heardAt) this._heard += Math.min(1, (now - this._heardAt) / 1000);
+    this._heardAt = now;
+    const d = this.duration();
+    if (!this._logged && this._heard >= (d && d < 60 ? d / 2 : 30)) {
       this._logged = true;
       addHistory(this.track);
     }
