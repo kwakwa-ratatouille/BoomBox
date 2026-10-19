@@ -885,14 +885,14 @@ function setupFullPlayerSwipe() {
     if (y0 == null) return;
     const fast = dy > 60 && dy / (performance.now() - t0) > 0.6; // petit geste rapide vers le bas
     const ease = 'cubic-bezier(0.22, 0.8, 0.24, 1)';
-    if (dy > 140 || fast) {
-      fp.style.transition = `transform 0.34s ${ease}, border-radius 0.34s ${ease}`;
-      fp.style.transform = 'translateY(105%)';
+    if (dy > Math.max(200, innerHeight * 0.3) || fast) {
+      fp.style.transition = `transform 0.42s ${ease}, border-radius 0.42s ${ease}`;
+      fp.style.transform = 'translateY(110%)';
       fp.style.borderRadius = '28px 28px 0 0';
       setTimeout(() => {
         closeFullPlayer();
         fp.style.transition = fp.style.transform = fp.style.borderRadius = '';
-      }, 340);
+      }, 430);
     } else {
       fp.style.transition = `transform 0.28s ${ease}, border-radius 0.28s ${ease}`;
       fp.style.transform = '';
@@ -933,7 +933,7 @@ function renderFullPlayer() {
       <button class="ctrl big" id="fp-next">${icon('next')}</button>
       <button class="ctrl" id="fp-repeat">${icon('repeat')}</button>
     </div>
-    <div class="fp-extra"><button class="ctrl" id="fp-devices">${icon('devices')}</button><button class="ctrl" id="fp-sleep">${icon('moon')}</button><button class="ctrl" id="fp-queue">${icon('queue')}</button></div>
+    <div class="fp-extra"><button class="ctrl" id="fp-devices">${icon('devices')}</button><button class="ctrl ${setting('automix', false) ? 'on' : ''}" id="fp-mix" title="Mix">${icon('mixer')}</button><button class="ctrl fp-speed" id="fp-speed" title="Vitesse">×${String(player.rate || 1).replace('.', ',')}</button><button class="ctrl" id="fp-sleep">${icon('moon')}</button><button class="ctrl" id="fp-queue">${icon('queue')}</button></div>
     <div class="fp-lyrics"><div class="row-flex" style="justify-content:space-between;margin:0 0 12px"><h4 style="margin:0">Paroles</h4><div class="row-flex"><button class="icon-btn" id="fp-car" title="Mode voiture">${icon('car', 20)}</button><button class="icon-btn" id="fp-kara" title="Paroles en plein écran">${icon('fullscreen', 20)}</button></div></div><div id="fp-lyr"></div></div>`);
   $('#fp-close').onclick = () => closeFullPlayer();
   $('#fp-like').onclick = () => toggleLike(t);
@@ -945,11 +945,31 @@ function renderFullPlayer() {
   $('#fp-devices').onclick = () => (closeFullPlayer(), togglePanel('devices'));
   $('#fp-queue').onclick = () => (closeFullPlayer(), togglePanel('queue'));
   $('#fp-sleep').onclick = (e) => contextMenu(e.clientX - 120, e.clientY - 260, sleepItems());
+  // Vitesse (speed up) et mix, comme sur PC
+  $('#fp-speed').onclick = (e) => contextMenu(e.clientX - 120, e.clientY - 260, [0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.5].map((v) => ({ label: `×${String(v).replace('.', ',')}${v === 1 ? ' (normal)' : v > 1 ? ' (speed up)' : ' (slowed)'}`, icon: (player.rate || 1) === v ? 'check' : null, action: () => (player.setRate(v), renderFullPlayer()) })));
+  $('#fp-mix').onclick = (e) => {
+    const on = setting('automix', false);
+    const smart = on && setting('mixSmart', false);
+    const start = async (smartMode) => {
+      if (player.engine?.name !== 'audio') return toast('Le mix nécessite la lecture audio directe');
+      await saveSettings({ automix: true, mixSmart: smartMode });
+      player.setAutomix(true);
+      if (smartMode && !player.shuffle) ctl.toggleShuffle();
+      toast(smartMode ? 'Mix intelligent activé' : 'Mix activé : chaque transition est mixée');
+      renderFullPlayer();
+    };
+    contextMenu(e.clientX - 120, e.clientY - 260, [
+      { label: 'Mixer les transitions', icon: on && !smart ? 'check' : 'mixer', action: () => start(false) },
+      { label: 'Mix intelligent (sons compatibles)', icon: smart ? 'check' : 'automix', action: () => start(true) },
+      { label: `Transition : ${TRANSITION_NAMES[setting('mixStyle', 'auto')] || 'Auto'}`, icon: 'mixer', submenu: () => Object.entries(TRANSITION_NAMES).map(([k, label]) => ({ label, icon: setting('mixStyle', 'auto') === k ? 'check' : null, action: async () => (await saveSettings({ mixStyle: k }), player._planNext?.()) })) },
+      on && { sep: true },
+      on && { label: 'Arrêter le mix', icon: 'close', action: async () => (await saveSettings({ automix: false, mixSmart: false }), player.setAutomix(false), renderFullPlayer()) },
+    ]);
+  };
   $('#fp-more').onclick = (e) => import('./components.js').then((c) => c.trackMenu(t, e.clientX - 220, e.clientY));
   fpSeek = slider($('#fp-seek'), { onCommit: (f) => ctl.seek(f * (sync.view().duration || 0)) });
   swipe(fp.querySelector('.fp-art'), { left: () => ctl.next(), right: () => ctl.prev() });
-  swipe(fp.querySelector('.fp-head'), { down: () => closeFullPlayer() });
-  swipe(fp.querySelector('.fp-art'), { down: () => closeFullPlayer() });
+  // (la fermeture vers le bas est gérée par setupFullPlayerSwipe, qui suit le doigt et anime jusqu'en bas)
   dominantColor(t.thumb).then((c) => c && (fp.style.setProperty('--fp', c), fp.style.setProperty('--lyr', c)));
   fpCleanup = mountLyrics($('#fp-lyr'), t);
   $('#fp-kara')?.addEventListener('click', openKaraoke);

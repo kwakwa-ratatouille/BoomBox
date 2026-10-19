@@ -1,5 +1,18 @@
 [
   {
+    "version": "next",
+    "title": "Lecteur sur téléphone",
+    "items": [
+      "Notification de lecture : précédent / suivant au lieu de ±10 s (iPhone).",
+      "Lecteur plein écran : il suit le doigt jusqu'en bas et se ferme avec une vraie animation, plus de disparition d'un coup.",
+      "Menu ⋯ : se ferme en le glissant vers le bas.",
+      "Lecteur plein écran : boutons Mix et vitesse (speed up / slowed), comme sur PC.",
+      "Mode voiture : boutons de lecture plus raisonnables, gros bouton pour quitter.",
+      "Paroles : bouton « Revenir au son » quand tu les as fait défiler."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1019.2353",
     "title": "Discographie et profils",
     "items": [

@@ -1088,6 +1088,9 @@ export const player = {
   _updateMediaSession() {
     if (!('mediaSession' in navigator) || !this.track) return;
     const t = this.track;
+    // iPhone : les boutons de la notification sont oubliés quand l'élément audio change (fondu, titre suivant) :
+    // on les remet à chaque titre, sinon il réaffiche « ±10 s »
+    this._setupMediaSession();
     navigator.mediaSession.metadata = new MediaMetadata({
       title: t.title,
       artist: artistNames(t),

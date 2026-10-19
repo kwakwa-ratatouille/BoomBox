@@ -231,11 +231,51 @@ export function contextMenu(x, y, items) {
     el._backdrop = bd;
     document.body.appendChild(el);
     openMenu = el;
+    sheetDrag(el);
     return;
   }
   document.body.appendChild(el);
   openMenu = el;
   place(el, x, y);
+}
+
+// Téléphone : le menu (feuille du bas) se ferme en le glissant vers le bas, depuis sa poignée ou quand il est
+// déjà défilé tout en haut ; il suit le doigt puis part en bas avec une animation
+function sheetDrag(el) {
+  let y0 = null;
+  let dy = 0;
+  let t0 = 0;
+  const ease = 'cubic-bezier(0.22, 0.8, 0.24, 1)';
+  el.addEventListener('touchstart', (e) => {
+    if (el.scrollTop > 0) return (y0 = null);
+    y0 = e.touches[0].clientY;
+    dy = 0;
+    t0 = performance.now();
+    el.style.transition = 'none';
+  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    dy = e.touches[0].clientY - y0;
+    if (dy <= 0) return (el.style.transform = '');
+    if (e.cancelable) e.preventDefault(); // pas de défilement de la liste pendant qu'on la descend
+    el.style.transform = `translateY(${dy}px)`;
+    if (el._backdrop) el._backdrop.style.opacity = String(Math.max(0, 1 - dy / 400));
+  }, { passive: false });
+  el.addEventListener('touchend', () => {
+    if (y0 == null) return;
+    y0 = null;
+    const fast = dy > 40 && dy / (performance.now() - t0) > 0.5;
+    if (dy > Math.min(140, el.offsetHeight * 0.35) || fast) {
+      el.style.transition = `transform 0.3s ${ease}`;
+      el.style.transform = 'translateY(105%)';
+      if (el._backdrop) (el._backdrop.style.transition = 'opacity 0.3s'), (el._backdrop.style.opacity = '0');
+      setTimeout(() => openMenu === el && closeMenu(), 300);
+    } else {
+      el.style.transition = `transform 0.25s ${ease}`;
+      el.style.transform = '';
+      if (el._backdrop) el._backdrop.style.opacity = '';
+    }
+  });
 }
 
 function buildMenu(items) {

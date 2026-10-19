@@ -40,7 +40,10 @@ export function mountLyrics(el, track) {
   let userScroll = 0;
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   const scroller = el.closest('.kara-lyrics, .view, #rightpanel, .fp-lyrics, #fullplayer') || el;
-  const onScroll = () => (userScroll = Date.now());
+  const onScroll = () => {
+    userScroll = Date.now();
+    el.querySelector('.lyr-resync')?.classList.remove('hidden');
+  };
   scroller.addEventListener('wheel', onScroll, { passive: true });
   scroller.addEventListener('touchmove', onScroll, { passive: true });
 
@@ -52,8 +55,17 @@ export function mountLyrics(el, track) {
       return;
     }
     el.innerHTML = (l.source ? `<div class="lyrics-source">Paroles : ${esc(l.source)}${l.synced ? '' : ' · non synchronisées'}</div>` : '')
-      + `<div class="lyrics ${l.synced ? '' : 'plain'}">${l.lines.map((x, i) => `<p data-i="${i}">${esc(x.text)}</p>`).join('')}</div>`;
+      + `<div class="lyrics ${l.synced ? '' : 'plain'}">${l.lines.map((x, i) => `<p data-i="${i}">${esc(x.text)}</p>`).join('')}</div>`
+      + (l.synced ? '<button class="lyr-resync hidden" type="button">↻ Revenir au son</button>' : '');
     if (l.synced) {
+      // Paroles déplacées à la main : un bouton les recale sur le passage en cours du son
+      el.querySelector('.lyr-resync').onclick = (e) => {
+        e.stopPropagation();
+        userScroll = 0;
+        e.currentTarget.classList.add('hidden');
+        const cur = el.querySelector('.lyrics p.now') || el.querySelector('.lyrics p');
+        cur?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      };
       el.querySelector('.lyrics').onclick = (e) => {
         const p = e.target.closest('p');
         if (p) ctl.seek(l.lines[p.dataset.i].t);
@@ -74,7 +86,10 @@ export function mountLyrics(el, track) {
         p.classList.toggle('now', i === idx);
       });
       const cur = el.querySelector('.lyrics p.now');
-      if (cur && Date.now() - userScroll > 3000) cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (cur && Date.now() - userScroll > 3000) {
+        cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        el.querySelector('.lyr-resync')?.classList.add('hidden');
+      }
     }
   }
   const iv = setInterval(tick, 200);

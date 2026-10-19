@@ -1605,3 +1605,18 @@ body:has(.party-screen) .modal-backdrop { z-index: 500; }
 .user-banner { height: 180px; border-radius: 14px; background-size: cover; background-position: center; margin-bottom: -40px; }
 .pe-banner-box { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
 .pe-banner { aspect-ratio: 3 / 1; border-radius: 10px; background: var(--elev-2) center / cover; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+
+/* Mode voiture : boutons de lecture moins énormes, bouton quitter bien plus grand */
+.car-ctrl button { width: 84px; height: 84px; }
+.car-ctrl .car-play { width: 104px; height: 104px; }
+.car-ctrl button .ic { width: 38px; height: 38px; }
+.car-head [data-c="close"] { width: 64px; height: 64px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); }
+.car-head [data-c="close"] .ic { width: 36px; height: 36px; }
+/* Menu ⋯ sur téléphone : poignée pour le descendre */
+.ctx.sheet { touch-action: pan-y; will-change: transform; }
+.ctx.sheet::before { content: ''; display: block; width: 40px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.3); margin: 0 auto 10px; }
+/* Lecteur plein écran : vitesse */
+.fp-speed { font-weight: 800; font-size: 14px; min-width: 44px; }
+.fp-extra .ctrl.on { color: var(--accent); }
+/* Paroles : revenir à la ligne en cours */
+.lyr-resync { position: sticky; bottom: 10px; margin: 8px auto 0; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: #fff; color: #000; font-weight: 700; font-size: 13px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); z-index: 2; }
