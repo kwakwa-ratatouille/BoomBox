@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1020.0012",
     "title": "Paroles et artiste",
     "items": [
       "Lecteur plein écran : appuie sur les paroles pour les mettre en plein écran.",
@@ -8,7 +8,7 @@
       "En descendant sous les paroles : l'artiste, sa discographie et des artistes similaires.",
       "Menu ⋯ : il descend plus doucement quand tu le fermes."
     ],
-    "date": "2026-10-20"
+    "date": "2026-10-19"
   },
   {
     "version": "2026.1020.0006",
