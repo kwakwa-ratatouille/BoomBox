@@ -16,6 +16,8 @@ export const app = initializeApp(firebaseConfig);
 export const auth = window.Capacitor?.isNativePlatform?.()
   ? initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] })
   : getAuth(app);
+// Jeton de connexion (vérifié par le mini-serveur de l'assistant IA : seules les applis Boombox connectées passent)
+window.__bbIdToken = () => auth.currentUser?.getIdToken() ?? Promise.resolve(null);
 export const db = initializeFirestore(app, {
   // Cache local sans limite de taille : la bibliothèque y est gardée en entier et n'est relue à Firebase que pour les changements
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager(), cacheSizeBytes: CACHE_SIZE_UNLIMITED }),

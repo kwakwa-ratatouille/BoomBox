@@ -5,7 +5,10 @@ import * as yt from '../server/yt.js';
 import { findLyrics, searchByLyrics } from '../server/lyrics.js';
 import { discover } from '../server/discover.js';
 import { resolveInput } from '../server/resolve.js';
-import { askAi, pickModel } from '../server/ai.js';
+import { askAi, pickModel, resolveAiResult } from '../server/ai.js';
+
+// Mini-serveur de l'assistant IA (Cloudflare Workers) : la clé Gemini y est gardée secrète (voir cloud/ai-worker)
+const AI_WORKER = 'https://boombox-ai.boombox-matis.workers.dev';
 import { startImport, getJob, spotifyApiToken, startMatch, syncPlaylist } from '../server/importers.js';
 import { concertsFor } from '../server/spotify-stats.js';
 import { Innertube, Platform } from 'youtubei.js';
@@ -300,9 +303,21 @@ export async function handle(path, { method = 'GET', body } = {}) {
     return t;
   }
   if (p === '/api/ai') {
-    // Clé propre au téléphone, sinon l'IA de ton PC (sa clé reste sur le PC, jamais dans l'appli)
+    // 1. Clé propre au téléphone ; 2. mini-serveur Cloudflare (clé secrète côté serveur, limites par personne) ;
+    // 3. l'IA de ton PC par le relais. Aucune clé n'est jamais mise dans l'appli.
     if (cfg.geminiApiKey) return askAi(cfg, body || {});
-    if (!relay) throw new Error("L'assistant IA passe par ton PC : allume-le (serveur Boombox lancé), puis réessaie.");
+    const token = await globalThis.__bbIdToken?.().catch(() => null);
+    if (token) {
+      try {
+        const r = await fetch(AI_WORKER, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify(body || {}) });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) return resolveAiResult(data);
+        if (r.status === 429 || !relay) throw new Error(data.error || `Assistant IA : erreur ${r.status}`);
+      } catch (e) {
+        if (!relay) throw e;
+      }
+    }
+    if (!relay) throw new Error("L'assistant IA est injoignable pour le moment : vérifie ta connexion et réessaie.");
     const r = await fetch(relayUrl('/api/ai'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || `IA du PC : erreur ${r.status}`);

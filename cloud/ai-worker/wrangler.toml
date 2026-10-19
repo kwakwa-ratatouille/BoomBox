@@ -1,0 +1,16 @@
+# Mini-serveur de l'assistant IA (Cloudflare Workers, offre gratuite).
+# Mise en ligne : npx wrangler deploy (depuis ce dossier). La clé Gemini se règle avec : npx wrangler secret put GEMINI_KEY
+name = "boombox-ai"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+FIREBASE_PROJECT = "musikal-b72d1"
+GEMINI_MODEL = "gemini-3.8-flash"
+PER_USER_DAY = "30"
+GLOBAL_DAY = "400"
+
+# Compteurs des limites quotidiennes
+[[kv_namespaces]]
+binding = "LIMITS"
+id = "1fc71ee665d9447a84f8d1496284523a"
