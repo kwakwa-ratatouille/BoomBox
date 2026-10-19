@@ -35,6 +35,19 @@ export async function findRelay() {
   return null;
 }
 
+// Diagnostic : adresses annoncées par les PC et réponse de chacune
+export async function relayReport(log) {
+  try {
+    const snap = await getDocs(cloud.col('devices'));
+    const pcs = snap.docs.map((d) => d.data()).filter((d) => (d.lan || []).length);
+    if (!pcs.length) log("Aucun PC n'a annoncé son adresse : ouvre Boombox sur le PC et fais Ctrl+R.");
+    for (const pc of pcs) for (const base of pc.lan) log(`PC « ${pc.name} » ${base} : ${(await reachable(base)) ? 'joignable ✓' : 'injoignable ✗'}`);
+  } catch (e) {
+    log(`Liste des appareils : ${e.message}`);
+  }
+  return findRelay();
+}
+
 // Au démarrage, à chaque changement de réseau, puis toutes les 2 minutes (PC allumé entre-temps…)
 export async function startRelay() {
   if (!isNative) return;

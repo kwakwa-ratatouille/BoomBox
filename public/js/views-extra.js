@@ -1,5 +1,5 @@
 // Pages annexes : import, Jam, paramètres, récap d'écoute, historique, paroles plein écran.
-import { ACCENTS, html, raw, icon, plural, toast, fmtAgo, artistLinks, dominantColor, confirmBox, esc } from './ui.js';
+import { ACCENTS, html, raw, icon, plural, toast, fmtAgo, artistLinks, dominantColor, confirmBox, esc, modal } from './ui.js';
 import { state, api, ls, getShare, createPlaylist, likeMany, addReport, saveSettings, setting, updateProfile, getHistory, getStats, exportLibrary, restoreLibrary } from './state.js';
 import { cloud } from './cloud.js';
 import { player, ctl } from './player.js';
@@ -13,7 +13,7 @@ const onJam = (fn) => {
   return () => bus.removeEventListener('jam', h);
 };
 import { spotifyDataFlow, loadJsZip } from './spotify-data.js';
-import { isNative } from './native.js';
+import { isNative, localApi } from './native.js';
 import { offline } from './offline.js';
 import { setProfilePin, removeProfilePin } from './pin.js';
 import { social } from './social.js';
@@ -442,6 +442,7 @@ export async function settings(el) {
       <div class="row-flex"><button class="btn ghost" id="s-copylink">Copier le lien</button><span class="muted" style="font-size:12px">⚠️ Ce lien donne accès à ta bibliothèque : ne le partage qu'avec tes appareils.</span></div></div></div>
     <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Appareils liés</b><p>Tous les appareils qui partagent ta bibliothèque. Retire un appareil perdu ou vendu : il n'aura plus accès à rien.</p><div id="s-members" class="members"><p class="muted">Chargement…</p></div></div></div>
     <div class="settings-row"><div><b>Version</b><p id="s-version">…</p></div></div>
+    ${isNative ? html`<div class="settings-row"><div><b>Diagnostic lecture</b><p>Si les sons ne se lancent pas : teste chaque étape (PC, YouTube, téléchargement) et envoie une capture du résultat.</p></div><button class="btn ghost" id="s-diag">Lancer</button></div>` : ''}
 
     <h2 style="font-size:20px;margin-top:32px">Données</h2>
     <div class="settings-row"><div><b>Sauvegarder ma bibliothèque</b><p>Télécharge un fichier JSON avec playlists, likes, artistes suivis.</p></div><button class="btn ghost" id="s-export">Exporter</button></div>
@@ -597,6 +598,25 @@ export async function settings(el) {
     }));
   };
   drawMembers();
+  el.querySelector('#s-diag')?.addEventListener('click', () => {
+    modal({
+      title: 'Diagnostic lecture',
+      body: '<pre id="diag-log" class="diag-log">Test en cours…\n</pre>',
+      actions: [{ label: 'Fermer' }],
+      onMount: async (w) => {
+        const pre = w.querySelector('#diag-log');
+        const log = (s) => ((pre.textContent += s + '\n'), (pre.scrollTop = pre.scrollHeight));
+        const v = await fetch('version.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({}));
+        log(`Interface ${v.version || '?'}`);
+        const { relayReport } = await import('./relay.js');
+        await relayReport(log);
+        const id = player.track?.id || 'kJQP7kiw5Fk';
+        log(`Son testé : ${player.track?.title || id}`);
+        await (await localApi()).media.diagnose(id, log);
+        log('— Terminé —');
+      },
+    });
+  });
   // Version de l'interface (mise à jour en ligne) et, dans l'appli, version installée
   (async () => {
     const v = await fetch('version.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({}));

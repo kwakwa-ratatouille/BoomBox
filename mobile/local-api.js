@@ -91,6 +91,42 @@ async function remoteAudioUrl(id) {
   return (await remoteAudio(id)).url;
 }
 
+// Diagnostic (Paramètres → Diagnostic lecture) : teste chaque étape et l'écrit à l'écran
+export async function diagnose(id, log) {
+  log(`Réseau : ${net.connected ? (net.wifi ? 'Wi-Fi' : 'données mobiles') : 'hors ligne'}`);
+  log(`PC relais : ${relay || 'non trouvé'}`);
+  let y;
+  try {
+    const t = Date.now();
+    y = await playerYt();
+    log(`YouTube (Innertube) : OK en ${Date.now() - t} ms`);
+  } catch (e) {
+    return log(`YouTube (Innertube) : ÉCHEC ${String(e?.message || e).slice(0, 120)}`);
+  }
+  for (const [client, ua] of CLIENTS) {
+    try {
+      const info = await y.getBasicInfo(id, { client });
+      const af = info.streaming_data?.adaptive_formats || [];
+      const aac = af.filter((f) => f.has_audio && !f.has_video && /audio\/mp4/.test(f.mime_type || ''));
+      log(`${client} : ${info.playability_status?.status || '?'} · ${af.length} formats dont ${aac.length} M4A`);
+      if (!aac.length) continue;
+      const f = aac.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+      const url = f.url || (await f.decipher(y.session.player));
+      const path = `diag-${client}.m4a`;
+      const t = Date.now();
+      try {
+        const st = await fetchTo(path, url, { 'User-Agent': ua || navigator.userAgent });
+        log(`   ↳ téléchargement OK : ${Math.round(st.size / 1024)} Ko en ${Date.now() - t} ms`);
+        await Filesystem.deleteFile({ path, directory: Directory.Data }).catch(() => {});
+      } catch (e) {
+        log(`   ↳ téléchargement ÉCHEC : ${String(e?.message || e).slice(0, 120)}`);
+      }
+    } catch (e) {
+      log(`${client} : ÉCHEC ${String(e?.message || e).slice(0, 120)}`);
+    }
+  }
+}
+
 // Téléchargement vérifié : un fichier minuscule = page d'erreur de YouTube, pas un son
 async function fetchTo(path, url, headers = {}) {
   await Filesystem.downloadFile({ url, path, directory: Directory.Data, recursive: true, headers });
@@ -298,4 +334,4 @@ export function unkeep(id) {
   if (audioIndex[id]) (audioIndex[id].keep = false), saveIndex();
 }
 
-export const media = { localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay };
+export const media = { localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };

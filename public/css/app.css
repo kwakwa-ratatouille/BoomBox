@@ -1511,3 +1511,5 @@ button, a, .track, .card, .ctrl, [role="button"] { touch-action: manipulation; -
 }
 #profile-picker, .pin-ov, .party-screen { padding-top: max(24px, env(safe-area-inset-top)); }
 .ctx.sheet { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+
+.diag-log { white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.5; max-height: 60vh; overflow-y: auto; background: rgba(0, 0, 0, 0.35); padding: 10px; border-radius: 8px; margin: 0; user-select: text; }
