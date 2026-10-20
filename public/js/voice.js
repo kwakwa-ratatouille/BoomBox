@@ -17,6 +17,7 @@ export async function runVoiceLink(url) {
   const u = new URL(String(url).replace(/^boombox:\/\//i, 'https://boombox.app/'));
   const what = u.pathname.replace(/^\/+/, '').toLowerCase() || u.hostname;
   const q = (u.searchParams.get('q') || u.searchParams.get('name') || u.searchParams.get('a') || '').trim();
+  toast(`🎙️ ${q || what}…`, { timeout: 2500 }); // la commande est bien arrivée
   try {
     if (what === 'control') return control(q);
     if (what === 'jam') {
