@@ -1820,3 +1820,5 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 #app.side-collapsed .brand-logo { content: none; height: 34px !important; }
 @media (max-width: 768px) { .brand-logo { height: 32px !important; } .brand-word { font-size: 24px; } }
 #app.nav-compact .brand-link, #app.nav-mini .brand-link { display: none !important; }
+.pip-vol { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.pip-vol input { flex: 1; accent-color: var(--accent, #b07cf7); height: 4px; }

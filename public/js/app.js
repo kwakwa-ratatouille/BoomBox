@@ -1273,7 +1273,7 @@ let pipWin = null;
 async function togglePip() {
   if (pipWin) return pipWin.close();
   if (!('documentPictureInPicture' in window)) return toast('Mini-lecteur disponible dans Chrome ou Edge');
-  pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: 150 });
+  pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: 184 });
   for (const ss of document.styleSheets) {
     try {
       const st = pipWin.document.createElement('style');
@@ -1310,7 +1310,11 @@ function renderPip(force = false) {
         <div class="pip-ctrl"><button class="ctrl" data-pip="shuffle" title="Aléatoire">${icon('shuffle')}</button><button class="ctrl" data-pip="prev">${icon('prev')}</button><button class="play-btn" data-pip="toggle">${icon('play')}</button><button class="ctrl" data-pip="next">${icon('next')}</button>
         <button class="like-btn" data-pip="like" title="Liker">${icon('heart')}</button><button class="ctrl" data-pip="add" title="Ajouter à une playlist">${icon('plus')}</button></div>
         <div class="pip-menu hidden"></div>
-        <div class="pip-bar"><div></div></div></div></div>`);
+        <div class="pip-bar"><div></div></div>
+        <div class="pip-vol"><button class="icon-btn" data-pip-mute title="Couper le son">${icon(player.muted || !player.volume ? 'volumeMute' : 'volume', 16)}</button><input type="range" min="0" max="1" step="0.01" value="${player.muted ? 0 : player.volume}" aria-label="Volume"></div></div></div>`);
+    // Volume (même réglage que la barre du lecteur)
+    d.querySelector('.pip-vol input').oninput = (e) => ctl.setVolume(Number(e.target.value));
+    d.querySelector('[data-pip-mute]').onclick = () => ctl.toggleMute();
     d.querySelectorAll('[data-pip]').forEach((b) => (b.onclick = () => {
       const a = b.dataset.pip;
       if (a === 'like') return t && toggleLike(t);
