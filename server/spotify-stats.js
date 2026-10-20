@@ -244,3 +244,34 @@ export async function spotifyPlaylist(id) {
   const img = (meta.images?.items?.[0]?.sources || []).slice().sort((a, b) => (b.width || 0) - (a.width || 0))[0]?.url || null;
   return { name: meta.name || 'Import Spotify', description: String(meta.description || '').replace(/<[^>]+>/g, ''), cover: img, owner: meta.ownerV2?.data?.name || null, items, hasDates: items.some((i) => i.addedAt) };
 }
+// ---------- Profils Spotify (sans clé API) ----------
+// Recherche d'utilisateurs Spotify (nom affiché) : même recherche que le lecteur web
+export async function searchSpotifyUsers(q) {
+  const vars = { searchTerm: String(q).slice(0, 100), offset: 0, limit: 10, numberOfTopResults: 5, includeAudiobooks: false, includeArtistHasConcertsField: false, includePreReleases: false, includeLocalConcertsField: false, includeAuthors: false };
+  const u = (await gql('searchDesktop', vars, HASH.search))?.searchV2?.users;
+  return (u?.items || []).map((it) => it.data).filter((d) => d?.id).map((d) => ({
+    id: d.id,
+    name: d.displayName || d.username || d.id,
+    avatar: (d.avatar?.sources || []).slice().sort((a, b) => (b.width || 0) - (a.width || 0))[0]?.url || null,
+  }));
+}
+
+// Profil public : nom, photo et playlists publiques (page du profil telle que Spotify la sert aux moteurs de recherche)
+const unesc = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+export async function spotifyUserProfile(id) {
+  if (!/^[\w.-]{1,64}$/.test(id)) throw new Error('Profil invalide');
+  const r = await fetch(`https://open.spotify.com/user/${encodeURIComponent(id)}`, { headers: { 'user-agent': 'Mozilla/5.0', 'accept-language': 'fr' } });
+  if (!r.ok) throw new Error(`Profil Spotify introuvable (${r.status})`);
+  const html = await r.text();
+  const meta = (p) => unesc(html.match(new RegExp(`property="og:${p}" content="([^"]*)"`))?.[1] || '');
+  const playlists = [];
+  const seen = new Set();
+  const re = /href="\/playlist\/([A-Za-z0-9]{22})"[^>]*>(?:<img[^>]*src="([^"]+)")?[\s\S]{0,1500}?<span[^>]*>([^<]{1,200})<\/span>/g;
+  let m;
+  while ((m = re.exec(html))) {
+    if (seen.has(m[1])) continue;
+    seen.add(m[1]);
+    playlists.push({ id: m[1], name: unesc(m[3]), cover: m[2] || null, url: `https://open.spotify.com/playlist/${m[1]}` });
+  }
+  return { id, name: meta('title') || id, avatar: meta('image') || null, playlists, url: `https://open.spotify.com/user/${id}` };
+}

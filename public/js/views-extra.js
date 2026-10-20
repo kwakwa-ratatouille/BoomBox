@@ -124,6 +124,11 @@ export async function importPage(el, _p, ctx) {
       toast(` ajouté${n > 1 ? 's' : ''} aux Titres likés`, { action: 'Voir', onAction: () => (location.hash = '#/liked') });
     };
   };
+  // Lien reçu (profil Spotify → playlist) : import lancé tout de suite
+  if (_p?.url) {
+    el.querySelector("#imp-input").value = _p.url;
+    el.querySelector("#imp-go").click();
+  }
 }
 
 // Import d'une playlist partagée par un ami (code)
@@ -308,6 +313,9 @@ function partyScreen(url) {
     shownId = t?.id || null;
     const vid = ov.querySelector('.ps-video');
     vid.innerHTML = t ? `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(t.id)}?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&loop=1&playlist=${encodeURIComponent(t.id)}&start=${Math.max(0, Math.floor(pos || 0))}" allow="autoplay; encrypted-media" tabindex="-1" title=""></iframe>` : '';
+    // Fondu une fois le clip lancé (on évite l'écran de chargement et le titre de YouTube)
+    vid.classList.remove("on");
+    vid.querySelector("iframe")?.addEventListener("load", () => setTimeout(() => vid.classList.add("on"), 2500));
     lyricsOff?.();
     lyricsOff = null;
     const ly = ov.querySelector('.ps-lyrics');

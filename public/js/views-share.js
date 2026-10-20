@@ -33,6 +33,9 @@ export async function userPage(el, params) {
       ${d.banner && !state.safeMode ? html`<div class="user-banner" style="background-image:url('${d.banner}')"></div>` : ''}
       <div class="user-hero">${avatar(f, 'user-av')}<div style="min-width:0"><div class="muted" style="font-size:12px">PROFIL</div><h1 class="ellipsis">${f.name}</h1><div class="user-act">${activityLine(f)}</div>
         <div class="row-flex" style="gap:8px;margin-top:10px"><a class="btn white" href="#/friends?c=${code}">${icon('chat', 16)} Message</a>${!social.isAdded(code) && !f.sameSpace ? html`<button class="btn ghost" id="u-add">${icon('plus', 16)} Ajouter</button>` : ''}</div></div></div>
+      ${d.top?.tracks?.length ? html`<section class="section"><div class="section-head"><h2>Son top du moment</h2><span class="muted">30 derniers jours${d.top.minutes ? ` · ${Math.round(d.top.minutes).toLocaleString('fr-FR')} min d'écoute` : ''}</span></div>
+        ${d.top.artists?.length ? html`<div class="cards row" style="margin-bottom:12px">${d.top.artists.map((a) => html`<a class="card" href="${a.id ? `#/artist/${a.id}` : `#/search?q=${encodeURIComponent(a.name)}`}">${cover({ thumb: a.thumb }, 'round')}<div class="card-title">${a.name}</div><div class="card-sub">${plural(a.count, 'écoute')}</div></a>`)}</div>` : ''}
+        <div class="u-top">${d.top.tracks.map((t, i) => html`<div class="u-top-row" data-top="${i}"><span class="n">${i + 1}</span>${cover(t, '', 96)}<div class="t-text"><span class="t-title ellipsis">${t.title}</span><span class="muted ellipsis">${artists(t)}</span></div><span class="plays">${plural(t.count, 'écoute')}</span></div>`)}</div></section>` : d.share === false ? html`<p class="muted">${d.name} ne partage pas son activité.</p>` : ''}
       <section class="section"><div class="section-head"><h2>Playlists publiques</h2></div>
         ${lists.length ? html`<div class="cards row">${lists.map((pl) => html`<a class="card" href="#/shared/${code}/${pl.id}">${playlistCover(pl)}<b class="ellipsis">${pl.name}</b><span class="muted ellipsis">${plural(pl.tracks.length, 'titre')}</span></a>`)}</div>` : html`<p class="muted">Aucune playlist publique pour l'instant.</p>`}
       </section>
@@ -43,6 +46,7 @@ export async function userPage(el, params) {
     el.querySelector('#u-likes')?.addEventListener('click', () => ((showLikes = !showLikes), draw()));
     el.querySelector('#u-lplay')?.addEventListener('click', () => ctl.playList(likes, 0, lctx));
     el.querySelectorAll('[data-li]').forEach((r) => (r.onclick = () => ctl.playList(likes, +r.dataset.li, lctx)));
+    el.querySelectorAll('[data-top]').forEach((r) => (r.onclick = () => ctl.playList(d.top.tracks, +r.dataset.top, { type: 'shared', name: `Top de ${d.name}` })));
     bindActivity(el);
     el.querySelector('#u-add')?.addEventListener('click', () => social.addFriend(code).then((n) => (toast(`Demande d’ami envoyée à ${n}`), draw())).catch((e) => toast(e.message)));
   };

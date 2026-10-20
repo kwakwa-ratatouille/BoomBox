@@ -4,6 +4,7 @@ import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistTo
 import { cloud, parseInvite, getDoc } from './cloud.js';
 import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
+import { spotifyUserPage } from './views-spotify.js';
 import { sync } from './sync.js';
 import { lists, card, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
 import { mountLyrics, openKaraoke } from './lyrics.js';
@@ -136,6 +137,7 @@ const routes = [
   [/^album\/([\w-]+)$/, V.album, 'album', ['id']],
   [/^artist\/([\w-]+)$/, V.artist, 'artist', ['id']],
   [/^discography\/([\w-]+)$/, V.discography, 'discography', ['id']],
+  [/^spuser\/([\w.-]+)$/, spotifyUserPage, 'spuser', ['id']],
   [/^ytplaylist\/([\w-]+)$/, V.ytplaylist, 'ytplaylist', ['id']],
   [/^releases$/, V.releases, 'releases'],
   [/^library$/, V.library, 'library'],

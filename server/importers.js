@@ -3,7 +3,7 @@
 // description et auteur de la playlist.
 import { matchTrack, ytPlaylist, album as ytAlbum, search } from './yt.js';
 import crypto from 'node:crypto';
-import { spotifyPlaylist } from './spotify-stats.js';
+import { spotifyPlaylist, spotifyUserProfile } from './spotify-stats.js';
 
 const uid = () => crypto.randomBytes(6).toString('base64url');
 
@@ -229,7 +229,17 @@ function fromText(text) {
 // Playlists publiques d'un profil Spotify (clé API Spotify nécessaire) : jusqu'à 40 titres de ses 4 plus grosses
 async function fromSpotifyUser(userId, cfg) {
   const token = await spotifyApiToken(cfg);
-  if (!token) throw new Error('Pour un profil Spotify, ajoute ta clé API Spotify (Paramètres) ou colle plutôt le lien d’une de ses playlists');
+  if (!token) {
+    // Sans clé : playlists publiques du profil (page publique) puis leur contenu (lecteur web)
+    const prof = await spotifyUserProfile(userId);
+    if (!prof.playlists.length) throw new Error('Ce profil Spotify n’a pas de playlist publique');
+    const items = [];
+    for (const p of prof.playlists.slice(0, 4)) {
+      const src = await spotifyPlaylist(p.id).catch(() => null);
+      items.push(...(src?.items || []).sort(() => Math.random() - 0.5).slice(0, 40));
+    }
+    return { name: `Profil Spotify de ${prof.name}`, owner: prof.name, description: '', cover: null, items, hasDates: false };
+  }
   const r = await fetch(`https://api.spotify.com/v1/users/${encodeURIComponent(userId)}/playlists?limit=50`, { headers: { authorization: `Bearer ${token}` } });
   if (!r.ok) throw new Error(`Profil Spotify introuvable (${r.status})`);
   const j = await r.json();

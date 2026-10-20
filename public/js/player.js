@@ -791,7 +791,7 @@ export const player = {
   },
   _applyVolume() {
     // Courbe légèrement exponentielle : plus naturelle à l'oreille
-    const v = this.muted ? 0 : Math.pow(this.volume, 1.6);
+    const v = this.muted ? 0 : Math.pow(this.volume, 2.4); // courbe « logarithmique » : la moitié de la barre ≈ moitié du ressenti (avant : le son montait trop vite)
     Object.values(this.engines).forEach((e) => e.setVolume(v));
   },
 

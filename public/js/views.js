@@ -13,6 +13,7 @@ import { canSync, setPlaylistSync, syncPlaylistNow, linkSource } from './playlis
 import { concertCard } from './views-concerts.js';
 import { openSyncPanel } from './views-reports.js';
 import { automix } from './automix.js';
+import { spotifyUserCards } from './views-spotify.js';
 
 // Bouton « Télécharger » (appli mobile) : état + nombre de titres déjà sur le téléphone
 function dlButton(on, tracks) {
@@ -382,7 +383,7 @@ export async function search(el, params, ctx) {
   }
   ls.set('boombox.recentSearches', [q, ...recents.filter((r) => r.toLowerCase() !== q.toLowerCase())].slice(0, 10));
 
-  const tabs = [['all', 'Tout'], ['song', 'Titres'], ['artist', 'Artistes'], ['album', 'Albums'], ['playlist', 'Playlists'], ['video', 'Vidéos'], ['lyrics', 'Paroles']];
+  const tabs = [['all', 'Tout'], ['song', 'Titres'], ['artist', 'Artistes'], ['album', 'Albums'], ['playlist', 'Playlists'], ['video', 'Vidéos'], ['people', 'Profils Spotify'], ['lyrics', 'Paroles']];
   el.innerHTML = String(html`<div class="page">
     <div class="search-tabs">${tabs.map(([k, l]) => html`<a class="chip ${k === type ? 'active' : ''}" href="#/search?q=${encodeURIComponent(q)}&type=${k}">${l}</a>`)}</div>
     <div id="results">${loading}</div>
@@ -390,6 +391,14 @@ export async function search(el, params, ctx) {
   // Recherche par paroles : « je me souviens juste d'une phrase »
   const lyricsHits = (list) => html`<section class="section lyr-hits"><div class="section-head"><h2>Trouvé dans les paroles</h2></div>${list.map((h, i) => html`<div class="lyr-hit" data-lh="${i}">${cover(h.track, '', 96)}<div class="t-text"><span class="t-title">${h.track.title}</span><span class="t-artists muted">${(h.track.artists || []).map((a) => a.name).join(', ')}</span><q>${h.line}</q></div><button class="play-btn" aria-label="Écouter">${icon('play')}</button></div>`)}</section>`;
   const wireHits = (box, list) => box.querySelectorAll('[data-lh]').forEach((r) => (r.onclick = () => ctl.playList(list.map((h) => h.track), +r.dataset.lh, { type: 'search', name: `Paroles : ${q}` })));
+  // Profils Spotify (recherche par nom) : voir ses playlists et les ajouter à sa bibliothèque
+  if (type === 'people') {
+    const box = el.querySelector('#results');
+    const users = await api(`/api/spotify/users?q=${encodeURIComponent(q)}`).catch(() => []);
+    if (!ctx.alive()) return;
+    box.innerHTML = users.length ? String(spotifyUserCards(users)) : String(html`<div class="empty"><h2>Aucun profil Spotify « ${q} »</h2><p>Essaie avec le nom affiché sur son profil Spotify.</p></div>`);
+    return;
+  }
   if (type === 'lyrics') {
     const box = el.querySelector('#results');
     box.innerHTML = String(html`<p class="muted">Recherche de « ${q} » dans les paroles…</p>${loading}`);
@@ -455,7 +464,13 @@ export async function search(el, params, ctx) {
     ${res.albums.length ? raw(section('Albums', res.albums.map((a) => card(a)), `#/search?q=${encodeURIComponent(q)}&type=album`)) : ''}
     ${res.playlists.length ? raw(section('Playlists', res.playlists.map((a) => card(a)), `#/search?q=${encodeURIComponent(q)}&type=playlist`)) : ''}
     ${res.videos.length ? raw(section('Vidéos', res.videos.map((v) => card({ ...v, type: 'video' })), `#/search?q=${encodeURIComponent(q)}&type=video`)) : ''}
+    <div id="sp-users"></div>
   `);
+  api(`/api/spotify/users?q=${encodeURIComponent(q)}`).then((users) => {
+    const box = el.querySelector('#sp-users');
+    if (!box || !users.length) return;
+    box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Profils Spotify</h2><a href="#/search?q=${encodeURIComponent(q)}&type=people">Tout afficher</a></div>${spotifyUserCards(users.slice(0, 6))}</section>`);
+  }).catch(() => {});
 }
 
 // ======================= TITRES LIKÉS =======================

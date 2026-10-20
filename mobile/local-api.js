@@ -10,7 +10,7 @@ import { askAi, pickModel, resolveAiResult } from '../server/ai.js';
 // Mini-serveur de l'assistant IA (Cloudflare Workers) : la clé Gemini y est gardée secrète (voir cloud/ai-worker)
 const AI_WORKER = 'https://boombox-ai.boombox-matis.workers.dev';
 import { startImport, getJob, spotifyApiToken, startMatch, syncPlaylist } from '../server/importers.js';
-import { concertsFor } from '../server/spotify-stats.js';
+import { concertsFor, searchSpotifyUsers, spotifyUserProfile } from '../server/spotify-stats.js';
 import { Innertube, Platform } from 'youtubei.js';
 import { poTokens } from './potoken.js';
 
@@ -295,6 +295,8 @@ export async function handle(path, { method = 'GET', body } = {}) {
   if ((m = p.match(/^\/api\/album\/([\w-]+)$/))) return yt.album(m[1]);
   if ((m = p.match(/^\/api\/discography\/([\w-]+)$/))) return yt.discography(m[1]);
   if (p === '/api/new-releases') return yt.newReleases();
+  if (p === '/api/spotify/users') return searchSpotifyUsers(String(q.q || ''));
+  if ((m = p.match(/^\/api\/spotify\/user\/([\w.-]+)$/))) return spotifyUserProfile(m[1]);
   if ((m = p.match(/^\/api\/ytplaylist\/([\w-]+)$/))) return yt.ytPlaylist(m[1], 300);
   if ((m = p.match(/^\/api\/radio\/([\w-]+)$/))) return yt.radio(m[1]);
   if (p === '/api/lyrics') return findLyrics({ videoId: q.videoId || null, title: q.title, artist: q.artist, album: q.album, duration: q.duration });

@@ -2,7 +2,7 @@
 // Chaque profil a un « code ami » et une fiche publique people/{code} : nom, photo, et — seulement si le partage
 // est activé dans les paramètres — le son en cours ou le dernier écouté. Les messages arrivent dans
 // people/{code}/inbox, lisible uniquement par les appareils du profil (voir firestore.rules).
-import { state, emit, on, updateProfile, cleanTrack, addToPlaylist, removeFromPlaylist, updatePlaylist } from './state.js';
+import { state, emit, on, updateProfile, cleanTrack, addToPlaylist, removeFromPlaylist, updatePlaylist, getStatsFull } from './state.js';
 import { cloud, db, doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, where, orderBy, limit, writeBatch } from './cloud.js';
 import { player } from './player.js';
 import { toast } from './ui.js';
@@ -48,6 +48,8 @@ export const social = {
     this._watchInbox();
     this.refreshFriends();
     this._startPlaylistSharing();
+    setTimeout(() => this.publishTop(), 15e3);
+    setInterval(() => this.publishTop(), 6 * 3600e3);
     on('player:track', () => this.publishActivity());
     on('player:state', () => this.publishActivity());
     // Nom / photo changés dans le profil : la fiche suit
@@ -86,6 +88,22 @@ export const social = {
     this._lastPub = { id: null, playing: null, at: 0 };
     if (on) this.publishActivity(true);
     emit('social');
+  },
+
+  // Top du moment (30 derniers jours) visible sur mon profil par mes amis, si l'activité est partagée.
+  // Recalculé au démarrage puis toutes les 6 h.
+  async publishTop() {
+    if (!this.code) return;
+    if (!this.sharing) return updateDoc(peopleRef(this.code), { top: null }).catch(() => {});
+    const st = await getStatsFull(30, null, 10).catch(() => null);
+    if (!st) return;
+    const top = {
+      at: Date.now(),
+      tracks: (st.topTracks || []).slice(0, 10).map((t) => ({ ...slim(t.track), count: t.count })),
+      artists: (st.topArtists || []).slice(0, 6).map((a) => ({ id: a.artist.id || null, name: a.artist.name, thumb: a.thumb || null, count: a.count })),
+      minutes: st.minutes || 0,
+    };
+    await updateDoc(peopleRef(this.code), { top }).catch(() => {});
   },
 
   // Son en cours (ou dernier écouté) : écrit au changement de titre, à la lecture / pause, et au plus toutes les 10 s

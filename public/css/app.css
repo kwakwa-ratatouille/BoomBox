@@ -1706,3 +1706,30 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .fa-track .fa-txt .t-title { font-size: 13px; }
 .fa-track .fa-txt .muted { font-size: 12px; }
 .fa-track .fa-when { font-size: 12px; }
+
+/* Écran party : clip en fond plus discret — agrandi (plus de bandes noires ni de barre en bas), flou, fondu à l'arrivée */
+.ps-video iframe { transform: translate(-50%, -50%) scale(1.45); filter: blur(14px) saturate(1.2) brightness(0.8); opacity: 0; transition: opacity 2.5s ease; }
+.ps-video.on iframe { opacity: 0.5; }
+.ps-video { -webkit-mask-image: radial-gradient(ellipse at center, #000 45%, transparent 85%); mask-image: radial-gradient(ellipse at center, #000 45%, transparent 85%); }
+.ps-shade { background: radial-gradient(ellipse at 70% 45%, rgba(8, 6, 12, 0.25), rgba(8, 6, 12, 0.8) 75%), linear-gradient(90deg, rgba(8, 6, 12, 0.6), transparent 45%); }
+.party-screen { overflow: hidden; }
+.ps-bg { inset: 0; }
+/* Profil Spotify */
+.sp-av { width: 140px; height: 140px; border-radius: 50%; overflow: hidden; flex: none; background: var(--elev-2); display: grid; place-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
+.sp-av img { width: 100%; height: 100%; object-fit: cover; }
+.sp-pls { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+.sp-pl { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sp-pl .cover { width: 100%; aspect-ratio: 1; height: auto; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.sp-pl-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; align-items: flex-start; }
+@media (max-width: 640px) { .sp-av { width: 96px; height: 96px; } .sp-pls { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+/* Profil d'un ami : son top */
+.u-top { display: flex; flex-direction: column; gap: 2px; max-width: 720px; }
+.u-top-row { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 8px; cursor: pointer; }
+.u-top-row:hover { background: rgba(255, 255, 255, 0.06); }
+.u-top-row .n { width: 22px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.u-top-row .cover { width: 44px; height: 44px; flex: none; }
+.u-top-row .t-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.u-top-row .plays { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.chat-head .fa-av, .chat-head .fa-main b { cursor: pointer; }
+.chat-name { color: inherit; text-decoration: none; }
+.chat-name:hover b { text-decoration: underline; }

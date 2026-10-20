@@ -128,11 +128,19 @@ export function sendToFriend(payload, at = null) {
 }
 
 // ---------- Page Amis / conversation ----------
+let chatScroll = 'bottom';
 export async function friendsPage(el, params) {
   if (params.add) social.addFriend(params.add).then((n) => toast(`Demande d’ami envoyée à ${n}`)).catch((e) => toast(e.message));
   const code = params.c || null;
 
+  let lastCount = -1;
   const draw = () => {
+    // Position du fil avant de redessiner : une réaction ou un « vu » ne doit pas renvoyer tout en bas
+    const prev = el.querySelector('#chat-msgs');
+    const keep = prev && { top: prev.scrollTop, atBottom: prev.scrollHeight - prev.scrollTop - prev.clientHeight < 40 };
+    const count = code ? social.thread(code).length : 0;
+    chatScroll = !keep || keep.atBottom || count > lastCount ? 'bottom' : keep.top;
+    lastCount = count;
     const list = sortedFriends();
     const f = code && social.friend(code);
     const lastMsg = (c) => social.inbox.find((m) => m.peer === c);
@@ -180,8 +188,8 @@ export async function friendsPage(el, params) {
     const lastOut = [...msgs].reverse().find((m) => m.out);
     return html`<header class="chat-head">
         <a class="icon-btn chat-back" href="#/friends" aria-label="Retour">${icon('back')}</a>
-        <div class="fa-av">${avatar(who)}${listeningNow(who.activity) ? html`<i class="fa-dot"></i>` : ''}</div>
-        <div class="fa-main"><b>${who.name}</b>${f ? activityLine(f) : html`<span class="muted">Pas dans tes amis</span>`}</div>
+        <a class="fa-av" href="#/user/${c}" title="Voir son profil">${avatar(who)}${listeningNow(who.activity) ? html`<i class="fa-dot"></i>` : ''}</a>
+        <div class="fa-main"><a href="#/user/${c}" class="chat-name" title="Voir son profil"><b>${who.name}</b></a>${f ? activityLine(f) : html`<span class="muted">Pas dans tes amis</span>`}</div>
         <button class="icon-btn" id="chat-more" aria-label="Plus">${icon('more')}</button>
       </header>
       <div class="chat-msgs" id="chat-msgs">
@@ -221,7 +229,7 @@ export async function friendsPage(el, params) {
       el.addEventListener('contextmenu', (e) => (e.preventDefault(), open()));
     });
     const box = root.querySelector('#chat-msgs');
-    if (box) box.scrollTop = box.scrollHeight;
+    if (box) box.scrollTop = chatScroll === 'bottom' ? box.scrollHeight : chatScroll;
     social.markRead(c);
     const input = root.querySelector('#chat-input');
     if (!input) return;
