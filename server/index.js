@@ -17,6 +17,7 @@ import { findLyrics, searchByLyrics } from './lyrics.js';
 import { discover } from './discover.js';
 import { resolveInput } from './resolve.js';
 import * as relay from './relay.js';
+import { setPresence } from './discord.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let cfg = {};
@@ -64,6 +65,11 @@ app.post('/api/relay/config', (req, res) => {
 app.get('/api/search', wrap(async (req, res) => res.json(await yt.search(String(req.query.q || '').slice(0, 200), req.query.type || 'all'))));
 app.get('/api/suggest', wrap(async (req, res) => res.json(await yt.suggest(String(req.query.q || '').slice(0, 200)))));
 app.get('/api/artist/:id', wrap(async (req, res) => res.json(await yt.artist(req.params.id))));
+// Statut Discord « Écoute Boombox » (seulement depuis ce PC, là où Discord est ouvert)
+app.post('/api/discord/presence', wrap(async (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).json({ error: 'Depuis ce PC uniquement' });
+  res.json(await setPresence(req.body?.title ? req.body : null));
+}));
 app.get('/api/spotify/users', wrap(async (req, res) => res.json(await searchSpotifyUsers(String(req.query.q || '')))));
 app.get('/api/spotify/user/:id', wrap(async (req, res) => res.json(await spotifyUserProfile(req.params.id))));
 app.get('/api/new-releases', wrap(async (req, res) => res.json(await yt.newReleases())));

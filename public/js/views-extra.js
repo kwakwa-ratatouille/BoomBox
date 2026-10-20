@@ -390,6 +390,7 @@ export async function settings(el) {
 
     <h2 style="font-size:20px;margin-top:24px">Amis</h2>
     <div class="settings-row"><div><b>Partager mon activité d'écoute</b><p>Tes amis Boombox voient le son que tu écoutes en ce moment, ou le dernier écouté (« il y a 8 h »). Désactivé : ils ne voient rien.</p></div><label class="switch"><input type="checkbox" id="s-share" ${social.sharing ? 'checked' : ''}><span></span></label></div>
+    ${isNative ? '' : html`<div class="settings-row"><div><b>Afficher ce que j'écoute sur Discord</b><p>« Écoute Boombox » sur ton profil Discord : titre, artiste, pochette et progression. Il faut l'appli Discord ouverte sur ce PC.</p></div><label class="switch"><input type="checkbox" id="s-discord" ${setting('discordPresence', true) ? 'checked' : ''}><span></span></label></div>`}
     <div class="settings-row"><div><b>Montrer mes titres likés à mes amis</b><p>Sur ton profil, tes amis peuvent ouvrir et écouter tes titres likés. Désactivé : ils ne les voient pas.</p></div><label class="switch"><input type="checkbox" id="s-sharelikes" ${social.sharingLikes ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Mon code ami</b><p>Donne-le à tes amis pour qu'ils t'ajoutent (activité, messages, envoi de sons et de playlists).</p></div><div class="row-flex" style="flex-wrap:nowrap;gap:10px;flex:none"><span class="code big">${social.code || '…'}</span><button class="btn ghost" id="s-fcode" style="white-space:nowrap">${icon('copy', 16)} Copier</button></div></div>
     <div class="settings-row"><div><b>Mes amis</b><p>${plural(social.friends.length, 'ami')}${social.unread ? ` · ${plural(social.unread, 'message non lu')}` : ''}</p></div><a class="btn ghost" href="#/friends">Amis et messages</a></div>
@@ -455,6 +456,7 @@ export async function settings(el) {
     ${isNative ? html`<div class="settings-row"><div><b>Diagnostic lecture</b><p>Si les sons ne se lancent pas : teste chaque étape (PC, YouTube, téléchargement) et envoie une capture du résultat.</p></div><button class="btn ghost" id="s-diag">Lancer</button></div>` : ''}
     ${isNative ? '' : html`<div class="settings-row"><div><b>Raccourcis clavier</b><p>Espace : lecture/pause · Ctrl+→ / Ctrl+← : suivant/précédent · Maj+→ / Maj+← : ±10 s · Ctrl+↑/↓ : volume · L : liker · / : rechercher</p></div></div>`}
   </div>`);
+  el.querySelector('#s-discord')?.addEventListener('change', (e) => saveSettings({ discordPresence: e.target.checked }));
   el.querySelector('#s-sharelikes')?.addEventListener('change', (e) => social.setShareLikes(e.target.checked).then(() => toast(e.target.checked ? 'Tes amis peuvent voir tes titres likés' : 'Tes titres likés sont privés')));
   el.querySelector('#s-pedit')?.addEventListener('click', () => editProfile().then(() => settings(el)));
   el.querySelector('#s-engine').value = setting('engine', 'auto');

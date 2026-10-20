@@ -1840,3 +1840,34 @@ boot().catch((e) => {
   document.body.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#fff">Impossible de démarrer Boombox : ${esc(msg)}<br><br>Le serveur local est-il lancé ? (<code>npm start</code>)</div>`;
 });
 
+
+// Statut Discord « Écoute Boombox » : le PC envoie au serveur local ce qui joue (ici ou sur l'appareil piloté),
+// le serveur le transmet à l'appli Discord ouverte sur ce PC. Désactivable dans les paramètres.
+(function discordPresence() {
+  if (isNative || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+  let timer = null;
+  let lastKey = '';
+  const send = () => {
+    const v = sync.view();
+    const t = v.track;
+    const on = setting('discordPresence', true);
+    const body = on && t && !v.paused ? {
+      title: t.title,
+      artist: (t.artists || []).map((a) => a.name).join(', '),
+      album: t.album?.name || '',
+      cover: t.thumb || null,
+      duration: v.duration || t.duration || 0,
+      position: v.position || 0,
+      playing: true,
+      url: `https://musikal-b72d1.web.app/#/search?q=${encodeURIComponent(`${t.title} ${(t.artists || [])[0]?.name || ''}`.trim())}`,
+    } : {};
+    const key = JSON.stringify([body.title, body.artist, Math.round((body.position || 0) / 5)]);
+    if (key === lastKey) return;
+    lastKey = key;
+    api('/api/discord/presence', { method: 'POST', body }).catch(() => {});
+  };
+  const later = () => (clearTimeout(timer), (timer = setTimeout(send, 800)));
+  ['player:track', 'player:state', 'sync', 'settings'].forEach((ev) => on(ev, later));
+  setInterval(send, 30e3); // garde la barre de progression juste après une avance rapide
+  addEventListener('beforeunload', () => navigator.sendBeacon?.('/api/discord/presence', new Blob(['{}'], { type: 'application/json' })));
+})();
