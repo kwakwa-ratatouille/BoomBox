@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Classement",
+    "items": [
+      "Nouveau : Classement (bouton à gauche de Party) avec tous les utilisateurs de Boombox, par minutes, écoutes, artistes ou titres, sur la semaine, le mois ou l'année. Appuie sur quelqu'un pour voir son profil, l'ajouter en ami ou enregistrer ses playlists.",
+      "Profils des amis : même en-tête que le tien, avec leur bannière, leur photo et leurs compteurs.",
+      "Lecteur plein écran sur téléphone : la section artiste sous les paroles est à la bonne taille."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.1351",
     "title": "Profils Spotify et amis",
     "items": [

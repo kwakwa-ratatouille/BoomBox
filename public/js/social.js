@@ -49,7 +49,7 @@ export const social = {
     this.refreshFriends();
     this._startPlaylistSharing();
     setTimeout(() => this.publishTop(), 15e3);
-    setInterval(() => this.publishTop(), 6 * 3600e3);
+    setInterval(() => this.publishTop(), 3600e3);
     on('player:track', () => this.publishActivity());
     on('player:state', () => this.publishActivity());
     // Nom / photo changés dans le profil : la fiche suit
@@ -94,7 +94,7 @@ export const social = {
   // Recalculé au démarrage puis toutes les 6 h.
   async publishTop() {
     if (!this.code) return;
-    if (!this.sharing) return updateDoc(peopleRef(this.code), { top: null }).catch(() => {});
+    if (!this.sharing) return updateDoc(peopleRef(this.code), { top: null, stats: null }).catch(() => {});
     const st = await getStatsFull(30, null, 10).catch(() => null);
     if (!st) return;
     const top = {
@@ -103,7 +103,16 @@ export const social = {
       artists: (st.topArtists || []).slice(0, 6).map((a) => ({ id: a.artist.id || null, name: a.artist.name, thumb: a.thumb || null, count: a.count })),
       minutes: st.minutes || 0,
     };
-    await updateDoc(peopleRef(this.code), { top }).catch(() => {});
+    // Chiffres pour le classement Boombox : semaine (depuis lundi), mois, année en cours
+    const now = new Date();
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
+    const ranges = { week: monday, month: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), year: new Date(now.getFullYear(), 0, 1).getTime() };
+    const stats = { at: Date.now(), week0: monday, month0: ranges.month, year0: ranges.year };
+    for (const [k, since] of Object.entries(ranges)) {
+      const r = await getStatsFull(0, { since, until: Date.now() }, 1).catch(() => null);
+      stats[k] = r ? { minutes: r.minutes || 0, plays: r.plays || 0, artists: r.uniqueArtists || 0, tracks: r.uniqueTracks || 0 } : null;
+    }
+    await updateDoc(peopleRef(this.code), { top, stats }).catch(() => {});
   },
 
   // Son en cours (ou dernier écouté) : écrit au changement de titre, à la lecture / pause, et au plus toutes les 10 s

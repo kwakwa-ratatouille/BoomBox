@@ -8,6 +8,7 @@ import { cover, playlistCover, openPlaylistPicker } from './components.js';
 import { db, doc, getDoc } from './cloud.js';
 import { social } from './social.js';
 import { avatar, activityLine, bindActivity, sortedFriends, searchAndSend, addFriendDialog } from './views-social.js';
+import { avatarHtml } from './views-profile.js';
 
 const artists = (t) => (t?.artists || []).map((a) => a.name).join(', ');
 const listen = (type, fn) => {
@@ -29,10 +30,18 @@ export async function userPage(el, params) {
   const lctx = { type: 'shared', name: `Titres likés de ${d.name}` };
   const draw = () => {
     const f = social.friend(code) || { code, name: d.name, photo: d.photo, color: d.color, share: !!d.share, activity: d.share ? d.activity : null };
-    el.innerHTML = String(html`<div class="page">
-      ${d.banner && !state.safeMode ? html`<div class="user-banner" style="background-image:url('${d.banner}')"></div>` : ''}
-      <div class="user-hero">${avatar(f, 'user-av')}<div style="min-width:0"><div class="muted" style="font-size:12px">PROFIL</div><h1 class="ellipsis">${f.name}</h1><div class="user-act">${activityLine(f)}</div>
-        <div class="row-flex" style="gap:8px;margin-top:10px"><a class="btn white" href="#/friends?c=${code}">${icon('chat', 16)} Message</a>${!social.isAdded(code) && !f.sameSpace ? html`<button class="btn ghost" id="u-add">${icon('plus', 16)} Ajouter</button>` : ''}</div></div></div>
+    // Même mise en page que « mon profil » : bannière, grande photo ronde, nom, compteurs
+    const banner = d.banner && !state.safeMode;
+    el.innerHTML = String(html`
+      <div class="hero profile-hero ${banner ? 'has-banner' : ''}" style="--hero:${f.color || '#b07cf7'};${banner ? `background-image:url('${d.banner}')` : ''}">
+        <div class="pe-photo static">${avatarHtml(f, 'hero')}</div>
+        <div class="hero-info"><span class="hero-type">Profil${social.isAdded(code) ? ' · ami' : ''}</span><h1>${f.name}</h1>
+          <div class="hero-meta"><span>${plural(lists.length, 'playlist publique')}</span>${likes ? html`<span class="sep"></span><span>${plural(likes.length, 'titre liké')}</span>` : ''}${d.top?.minutes ? html`<span class="sep"></span><span>${Math.round(d.top.minutes).toLocaleString('fr-FR')} min ce mois</span>` : ''}</div>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="actions"><a class="btn white" href="#/friends?c=${code}">${icon('chat', 16)} Message</a>${!social.isAdded(code) && !f.sameSpace ? html`<button class="outline-btn" id="u-add">${icon('plus', 16)} Ajouter en ami</button>` : social.isPending(code) ? html`<span class="muted">Demande envoyée</span>` : ''}</div>
+        <div class="user-act" style="margin-bottom:16px">${activityLine(f)}</div>
       ${d.top?.tracks?.length ? html`<section class="section"><div class="section-head"><h2>Son top du moment</h2><span class="muted">30 derniers jours${d.top.minutes ? ` · ${Math.round(d.top.minutes).toLocaleString('fr-FR')} min d'écoute` : ''}</span></div>
         ${d.top.artists?.length ? html`<div class="cards row" style="margin-bottom:12px">${d.top.artists.map((a) => html`<a class="card" href="${a.id ? `#/artist/${a.id}` : `#/search?q=${encodeURIComponent(a.name)}`}">${cover({ thumb: a.thumb }, 'round')}<div class="card-title">${a.name}</div><div class="card-sub">${plural(a.count, 'écoute')}</div></a>`)}</div>` : ''}
         <div class="u-top">${d.top.tracks.map((t, i) => html`<div class="u-top-row" data-top="${i}"><span class="n">${i + 1}</span>${cover(t, '', 96)}<div class="t-text"><span class="t-title ellipsis">${t.title}</span><span class="muted ellipsis">${artists(t)}</span></div><span class="plays">${plural(t.count, 'écoute')}</span></div>`)}</div></section>` : d.share === false ? html`<p class="muted">${d.name} ne partage pas son activité.</p>` : ''}

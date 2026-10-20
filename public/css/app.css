@@ -1743,3 +1743,29 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .fp-artist .card .cover { width: 100%; height: auto; aspect-ratio: 1; }
 .fp-artist .card-title { font-size: 13px; }
 .fp-artist .card-sub { font-size: 12px; }
+
+/* Profil d'un ami : même en-tête que mon profil */
+.pe-photo.static { cursor: default; }
+.pe-photo.static span { display: none; }
+/* Classement */
+.rk-tabs { flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.rk-podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 10px; max-width: 560px; margin: 18px 0 20px; }
+.rk-pod { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); color: inherit; text-decoration: none; text-align: center; min-width: 0; }
+.rk-pod .avatar-img { width: 64px; height: 64px; font-size: 24px; }
+.rk-pod.p1 { padding-top: 26px; background: linear-gradient(180deg, rgba(255, 200, 60, 0.25), rgba(255, 255, 255, 0.05)); }
+.rk-pod.p1 .avatar-img { width: 84px; height: 84px; }
+.rk-pod b { max-width: 100%; font-size: 14px; }
+.rk-pod span { font-size: 12px; color: var(--muted); }
+.rk-pod i { position: absolute; top: -10px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 900; font-size: 13px; color: #000; background: #c0c0c0; }
+.rk-pod.p1 i { background: #ffc83c; }
+.rk-pod.p3 i { background: #cd8a4f; }
+.rk-list { display: flex; flex-direction: column; gap: 2px; max-width: 720px; }
+.rk-row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; color: inherit; text-decoration: none; }
+.rk-row:hover { background: rgba(255, 255, 255, 0.06); }
+.rk-row.me { background: rgba(var(--accent-rgb, 168, 85, 247), 0.15); }
+.rk-n { width: 26px; text-align: center; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rk-n.top1 { color: #ffc83c; } .rk-n.top2 { color: #c0c0c0; } .rk-n.top3 { color: #cd8a4f; }
+.rk-row .avatar-img { width: 40px; height: 40px; }
+.rk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rk-main span { font-size: 12px; }
+.rk-v { font-weight: 700; font-size: 14px; white-space: nowrap; }
