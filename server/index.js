@@ -11,7 +11,9 @@ import * as yt from './yt.js';
 import { startImport, getJob, spotifyApiToken, startMatch, syncPlaylist } from './importers.js';
 import { concertsFor, spotifyLatest, norm, searchSpotifyUsers, spotifyUserProfile } from './spotify-stats.js';
 import { autostartStatus, setAutostart } from './autostart.js';
-import { streamHandler, prefetchHandler, audioFileHandler, ytDlpPath, predownload, predownloadStatus } from './stream.js';
+import { streamHandler, prefetchHandler, audioFileHandler, ytDlpPath, predownload, predownloadStatus, download } from './stream.js';
+import * as local from './localfiles.js';
+import { execFile } from 'node:child_process';
 import { askAi, pickModel, resolveAiResult } from './ai.js';
 import { findLyrics, searchByLyrics } from './lyrics.js';
 import { discover } from './discover.js';
@@ -78,6 +80,44 @@ app.get('/api/album/:id',wrap(async (req, res) => res.json(await yt.album(req.pa
 app.get('/api/ytplaylist/:id', wrap(async (req, res) => res.json(await yt.ytPlaylist(req.params.id, 300))));
 app.get('/api/radio/:id', wrap(async (req, res) => res.json(await yt.radio(req.params.id))));
 app.get('/api/stream/:id', streamHandler);
+// Connexion Spotify (PC) : la page de retour dépose le code ici, l'appli vient le chercher (une seule fois)
+const spotifyCodes = new Map();
+app.post('/api/spotify/code', (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).end();
+  if (req.body?.state) spotifyCodes.set(String(req.body.state), { ...req.body, at: Date.now() });
+  res.json({ ok: true });
+});
+app.get('/api/spotify/code', (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).end();
+  const c = spotifyCodes.get(String(req.query.state || ''));
+  if (c) spotifyCodes.delete(String(req.query.state));
+  res.json(c && Date.now() - c.at < 10 * 60e3 ? c : {});
+});
+// « Mes fichiers » : musiques déjà sur le PC
+app.get('/api/local', wrap(async (req, res) => res.json({ folders: local.folders(), tracks: await local.scan(!!req.query.refresh) })));
+app.post('/api/local/folders', wrap(async (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).json({ error: 'Depuis ce PC uniquement' });
+  res.json({ folders: local.folders(), tracks: await local.setFolders(req.body?.folders) });
+}));
+app.get('/api/local/cover/:id', wrap(async (req, res) => {
+  const c = await local.cover(req.params.id);
+  if (!c) return res.status(404).end();
+  res.set('cache-control', 'max-age=86400').type(c.type).send(c.data);
+}));
+// Télécharger des sons (ou une playlist) dans Musique\Boombox sur ce PC
+app.post('/api/download', wrap(async (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).json({ error: 'Depuis ce PC uniquement' });
+  const r = await local.downloadTracks((req.body?.tracks || []).slice(0, 2000), req.body?.name || '', download);
+  if (req.body?.open) execFile('explorer.exe', [r.dir], () => {});
+  res.json(r);
+}));
+app.post('/api/download/open', (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).end();
+  const dir = local.downloadDir(req.body?.name || '');
+  fs.mkdirSync(dir, { recursive: true });
+  execFile('explorer.exe', [dir], () => {});
+  res.json({ ok: true });
+});
 app.post('/api/prefetch/:id', prefetchHandler);
 app.get('/api/audio-file/:id', audioFileHandler);
 

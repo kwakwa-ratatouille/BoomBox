@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boombox · Spotify</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #131019; color: #fff; font: 16px system-ui, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+    p { color: #a7a3b3; }
+  </style>
+</head>
+<body>
+  <div><h2 id="t">Connexion à Spotify…</h2><p id="m">Tu peux fermer cette fenêtre si elle ne se ferme pas toute seule.</p></div>
+  <script>
+    // Retour de Spotify après « Se connecter » : on renvoie le code à Boombox
+    // - PC (fenêtre ouverte par Boombox) : message à la fenêtre d'origine, puis fermeture
+    // - Appli téléphone : on rouvre l'appli avec le code (lien boombox://)
+    (function () {
+      var p = new URLSearchParams(location.search);
+      var data = { type: 'boombox-spotify', code: p.get('code'), error: p.get('error'), state: p.get('state') };
+      var pc = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+      if (window.opener) {
+        try { window.opener.postMessage(data, '*'); } catch (e) {}
+      }
+      if (pc) {
+        // PC : Boombox récupère aussi le code auprès du serveur local (si la fenêtre d'origine n'est plus reliée)
+        fetch('/api/spotify/code', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }).catch(function () {});
+        document.getElementById('m').textContent = "Retourne dans Boombox, c'est bon.";
+        setTimeout(function () { window.close(); }, 1200);
+      } else if (window.opener) {
+        setTimeout(function () { window.close(); }, 300);
+      } else if (data.code || data.error) {
+        location.href = 'boombox://spotify?' + p.toString();
+      }
+      if (data.error) {
+        document.getElementById('t').textContent = 'Connexion annulée';
+      } else {
+        document.getElementById('t').textContent = 'Connecté à Spotify ✓';
+      }
+    })();
+  </script>
+</body>
+</html>

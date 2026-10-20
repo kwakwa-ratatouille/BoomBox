@@ -276,7 +276,7 @@ export function subscribeLibrary() {
     onSnapshot(cloud.ref('profiles', state.profile.id), (d) => {
       if (!d.exists()) return;
       const data = d.data();
-      Object.assign(state.profile, { name: data.name, color: data.color, photo: data.photo || null, pin: data.pin || null, banner: data.banner || null, shareLikes: data.shareLikes !== false });
+      Object.assign(state.profile, { name: data.name, color: data.color, photo: data.photo || null, pin: data.pin || null, banner: data.banner || null, shareLikes: data.shareLikes !== false, spotifyAuth: data.spotifyAuth || null });
       state.library.settings = data.settings || {};
       emit('settings', state.library.settings);
       emit('profile', state.profile);

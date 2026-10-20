@@ -6,6 +6,7 @@ import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { spotifyUserPage } from './views-spotify.js';
 import { rankingPage } from './views-ranking.js';
+import { localPage } from './views-local.js';
 import { sync } from './sync.js';
 import { lists, card, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
 import { mountLyrics, openKaraoke } from './lyrics.js';
@@ -140,6 +141,7 @@ const routes = [
   [/^discography\/([\w-]+)$/, V.discography, 'discography', ['id']],
   [/^spuser\/([\w.-]+)$/, spotifyUserPage, 'spuser', ['id']],
   [/^ranking$/, rankingPage, 'ranking'],
+  [/^local$/, localPage, 'local'],
   [/^ytplaylist\/([\w-]+)$/, V.ytplaylist, 'ytplaylist', ['id']],
   [/^releases$/, V.releases, 'releases'],
   [/^library$/, V.library, 'library'],
@@ -473,6 +475,7 @@ function setupSidebar() {
       { label: sync.jam ? 'Mode party (en cours)' : 'Mode party', icon: 'users', action: () => (location.hash = '#/jam') },
       { label: 'Assistant IA', icon: 'sparkle', action: () => (location.hash = '#/ai') },
       // PC : déjà un bouton « Importer » à côté de la bibliothèque ; on le garde dans ce menu seulement sur téléphone
+      { label: 'Mes fichiers (musiques du PC)', icon: 'folder', action: () => (location.hash = '#/local') },
       isMobile() && { label: 'Importer une playlist', icon: 'import', action: () => (location.hash = '#/import') },
       { label: `Corbeille${state.library.trash?.length ? ` (${state.library.trash.length})` : ''}`, icon: 'trash', action: () => (location.hash = '#/trash') },
       { sep: true },
@@ -1480,6 +1483,7 @@ async function boot() {
   refreshPublicProfile();
   // PC : les titres likés sont pré-téléchargés en arrière-plan (lecture instantanée, moins de requêtes à YouTube)
   if (!isNative && setting('predownload', true)) setTimeout(() => api('/api/predownload', { method: 'POST', body: { ids: state.library.liked.map((t) => t.id) } }).catch(() => {}), 60e3);
+  import('./spotify-sync.js').then((m) => m.startSpotifySync()).catch(() => {}); // likes et playlists aussi sur Spotify (si connecté)
   startPlaylistSync(); // playlists importées liées à leur source (Spotify…) : nouveaux titres ajoutés tout seuls
   // En décembre, comme Spotify : on annonce une fois que le Wrapped de l'année est prêt
   {
@@ -1498,6 +1502,8 @@ async function boot() {
     document.addEventListener('offline-progress', () => refreshTrackMarks(true));
     checkExpiry();
     window.Capacitor.Plugins.App?.addListener('appUrlOpen', async (e) => {
+      // Retour de la connexion Spotify
+      if (/^boombox:\/\/spotify/.test(e.url)) return import('./spotify-sync.js').then((m) => m.handleSpotifyLink(e.url));
       if (parseInvite(e.url) && (await confirmBox('Lier cet appareil ?', 'Cet appareil affichera la bibliothèque de ce lien.', 'Lier'))) {
         location.hash = '#/join?' + e.url.split('?')[1];
         location.reload();

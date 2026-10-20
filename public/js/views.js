@@ -13,6 +13,7 @@ import { canSync, setPlaylistSync, syncPlaylistNow, linkSource } from './playlis
 import { concertCard } from './views-concerts.js';
 import { openSyncPanel } from './views-reports.js';
 import { automix } from './automix.js';
+import { canUseLocal, downloadToPc } from './views-local.js';
 import { spotifyUserCards } from './views-spotify.js';
 
 // Bouton « Télécharger » (appli mobile) : état + nombre de titres déjà sur le téléphone
@@ -757,6 +758,8 @@ export function playlistMenu(p, x, y) {
       { label: 'Changer le lien de la playlist', icon: 'edit', action: () => linkSource(p) },
     ] },
     { label: 'Chercher les doublons', icon: 'copy', action: () => findDuplicates(p) },
+    state.profile?.spotifyAuth && { label: p.spotifyId ? 'Synchronisée avec ton Spotify ✓' : 'Copier sur mon Spotify', icon: 'sync', action: () => import('./spotify-sync.js').then((m) => m.copyPlaylistToSpotify(p)) },
+    canUseLocal() && p.tracks.length && { label: 'Télécharger sur le PC (Musique\\Boombox)', icon: 'import', action: () => downloadToPc(p.tracks, p.name) },
     { label: 'Dupliquer', icon: 'plus', action: async () => (await createPlaylist(`${p.name} (copie)`, p.tracks, p.description), toast('Playlist dupliquée')) },
     { label: 'Ajouter à une autre playlist…', icon: 'library', action: () => openPlaylistPicker(p.tracks, { x, y: y + 300 }) },
     ...playlistShareItems(p),

@@ -1,3 +1,4 @@
+import { isLocalId, localPath } from './localfiles.js';
 // Lecture audio directe via yt-dlp (optionnel). Permet la lecture écran éteint sur téléphone
 // et les contrôles sur l'écran de verrouillage. Sans yt-dlp, l'app utilise le lecteur YouTube intégré.
 import { execFile, execFileSync } from 'node:child_process';
@@ -64,7 +65,7 @@ const CACHE_MAX = 4 * 1024 ** 3;
 const cacheSize = () => { try { return fs.readdirSync(AUDIO_DIR).filter((f) => f.endsWith('.m4a')).reduce((s, f) => s + fs.statSync(path.join(AUDIO_DIR, f)).size, 0); } catch { return 0; } };
 let lastStream = 0; // dernière lecture : le pré-téléchargement se met en pause pendant l'écoute active
 const downloads = new Map();
-function download(id) {
+export function download(id) {
   const file = path.join(AUDIO_DIR, `${id}.m4a`);
   if (fs.existsSync(file)) return Promise.resolve(file);
   if (downloads.has(id)) return downloads.get(id);
@@ -98,6 +99,7 @@ function pruneAudioCache() {
 }
 export async function audioFileHandler(req, res) {
   const { id } = req.params;
+  if (isLocalId(id)) return localPath(id) ? res.sendFile(localPath(id)) : res.status(404).end();
   if (!ytDlpPath) return res.status(501).json({ error: 'yt-dlp non installé' });
   if (!/^[\w-]{11}$/.test(id)) return res.status(400).end();
   try {
@@ -118,6 +120,8 @@ export function prefetchHandler(req, res) {
 export async function streamHandler(req, res) {
   const { id } = req.params;
   lastStream = Date.now();
+  // Fichier de « Mes fichiers » (musique déjà sur le PC) : lu directement
+  if (isLocalId(id)) return localPath(id) ? res.sendFile(localPath(id)) : res.status(404).end();
   if (!ytDlpPath) return res.status(501).json({ error: 'yt-dlp non installé' });
   if (!/^[\w-]{11}$/.test(id)) return res.status(400).end();
   // Déjà téléchargé (analyse automix, écoute précédente) : lecture immédiate depuis le disque

@@ -431,6 +431,10 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Télécharger mes titres likés</b><p>Tous tes likes disponibles hors ligne, y compris les prochains.</p></div><label class="switch"><input type="checkbox" id="s-offliked" ${setting('offlineLiked', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Supprimer tous les téléchargements</b><p>Libère l'espace (les playlists restent marquées et se re-téléchargeront en Wi-Fi).</p></div><button class="btn ghost" id="s-dlclear">Tout supprimer</button></div>` : ''}
 
+    <h2 style="font-size:20px;margin-top:32px">Mon compte Spotify</h2>
+    <div class="settings-row"><div><b>${p.spotifyAuth ? `Connecté : ${p.spotifyAuth.name}` : 'Relier mon compte Spotify'}</b><p>Ce que tu likes et les playlists que tu crées dans Boombox sont aussi ajoutés sur ton Spotify (les sons absents de Spotify sont ignorés). Menu d'une playlist → « Copier sur mon Spotify » pour une playlist existante.</p></div>
+      <div class="row-flex" style="gap:8px;flex:none">${p.spotifyAuth ? html`<button class="btn ghost" id="s-sp-likes">Envoyer tous mes likes</button><button class="btn ghost" id="s-sp-off">Déconnecter</button>` : html`<button class="btn primary" id="s-sp-on">Se connecter à Spotify</button>`}</div></div>
+
     <h2 style="font-size:20px;margin-top:32px">Import Spotify</h2>
     <div class="settings-row" style="align-items:flex-start"><div><b>Clé API Spotify ${st.spotifyApi ? '✅' : ''}</b>
       <p>${st.spotifyApi ? 'Active : utilisée pour les profils Spotify (Blend) et en secours pour les imports.' : 'Facultatif, gratuit. Les playlists sont lues en entier même sans clé ; elle sert pour faire un Blend avec un profil Spotify.'}</p>
@@ -457,6 +461,9 @@ export async function settings(el) {
     ${isNative ? '' : html`<div class="settings-row"><div><b>Raccourcis clavier</b><p>Espace : lecture/pause · Ctrl+→ / Ctrl+← : suivant/précédent · Maj+→ / Maj+← : ±10 s · Ctrl+↑/↓ : volume · L : liker · / : rechercher</p></div></div>`}
   </div>`);
   el.querySelector('#s-discord')?.addEventListener('change', (e) => saveSettings({ discordPresence: e.target.checked }));
+  el.querySelector('#s-sp-on')?.addEventListener('click', () => import('./spotify-sync.js').then(async (m) => (await m.connectSpotify()) && settings(el)));
+  el.querySelector('#s-sp-off')?.addEventListener('click', () => import('./spotify-sync.js').then(async (m) => (await m.disconnectSpotify(), settings(el))));
+  el.querySelector('#s-sp-likes')?.addEventListener('click', () => import('./spotify-sync.js').then((m) => m.pushAllLikes()));
   el.querySelector('#s-sharelikes')?.addEventListener('change', (e) => social.setShareLikes(e.target.checked).then(() => toast(e.target.checked ? 'Tes amis peuvent voir tes titres likés' : 'Tes titres likés sont privés')));
   el.querySelector('#s-pedit')?.addEventListener('click', () => editProfile().then(() => settings(el)));
   el.querySelector('#s-engine').value = setting('engine', 'auto');

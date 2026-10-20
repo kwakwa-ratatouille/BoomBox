@@ -280,6 +280,7 @@ export function trackMenu(track, x, y, { playlistId, index } = {}) {
     { label: "Ajouter à la file d'attente", icon: 'addQueue', action: () => ctl.addToQueue(track) },
     { label: 'Lire ensuite', icon: 'playNext', action: () => ctl.playNext(track) },
     sync.jam && { label: 'Ajouter à la party', icon: 'users', action: () => sync.jamAdd(track) },
+    !track.local && !window.Capacitor?.isNativePlatform?.() && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && { label: 'Télécharger sur le PC', icon: 'import', action: () => import('./views-local.js').then((m) => m.downloadToPc([track])) },
     { sep: true },
     { label: 'Ajouter à une playlist…', icon: 'plus', action: () => openPlaylistPicker(track, { x, y: y + 40 }) },
     { label: isLiked(track.id) ? 'Retirer des Titres likés' : 'Ajouter aux Titres likés', icon: isLiked(track.id) ? 'heartFill' : 'heart', action: () => toggleLike(track) },

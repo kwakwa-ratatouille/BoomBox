@@ -21,6 +21,7 @@
     "bgutils-js": "^4.0.3",
     "boombox-native": "file:mobile/plugins/boombox-native",
     "express": "^5.3.0",
+    "music-metadata": "^10.9.1",
     "youtubei.js": "^18.1.0"
   },
   "type": "module",

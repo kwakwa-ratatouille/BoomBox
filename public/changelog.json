@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Mes fichiers et Spotify",
+    "items": [
+      "Mes fichiers (PC) : tes musiques déjà sur le PC (.mp3, .m4a, .flac…) apparaissent dans Boombox, jouables, likables et ajoutables à tes playlists. Menu du profil → Mes fichiers.",
+      "Télécharger sur le PC : un son ou une playlist entière dans MusiqueBoombox (menu ⋯ du son ou de la playlist).",
+      "Relier ton compte Spotify (Paramètres) : tes nouveaux likes et playlists sont aussi ajoutés sur Spotify."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.2029",
     "title": "Corrections téléphone",
     "items": [
