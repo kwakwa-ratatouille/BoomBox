@@ -182,13 +182,16 @@ export const sync = {
   },
 
   async jamLeave() {
-    const code = this._jamCode;
-    if (!code) return;
-    const host = this.isJamHost();
+    // Code de la party : celui de l'abonnement, sinon celui de la party affichée (reprise après redémarrage)
+    const code = this._jamCode || this.jam?.code || ls.get('boombox.jam');
+    if (!code) return this._setJam(null);
+    const host = this.isJamHost() || this.jam?.host === state.device.id;
     this._unsubscribeJam();
     this._setJam(null);
-    if (host) await updateDoc(doc(db, 'jams', code), { ended: true }).catch(() => {});
-    else await updateDoc(doc(db, 'jams', code), { [`members.${state.device.id}`]: deleteField() }).catch(() => {});
+    const ok = host
+      ? await updateDoc(doc(db, 'jams', code), { ended: true }).then(() => true).catch(() => false)
+      : await updateDoc(doc(db, 'jams', code), { [`members.${state.device.id}`]: deleteField() }).then(() => true).catch(() => false);
+    toast(host ? (ok ? 'Party terminée' : 'Party terminée sur cet appareil (hors connexion : elle se fermera pour les autres au retour du réseau)') : 'Tu as quitté la party');
   },
 
   jamAdd(track) {

@@ -39,7 +39,7 @@ export function mountLyrics(el, track) {
   let lastIdx = -1;
   let userScroll = 0;
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  const scroller = el.closest('.kara-lyrics, .view, #rightpanel, .fp-lyrics, #fullplayer') || el;
+  const scroller = el.closest('.kara-lyrics, .fp-lyrics, .np-lyrics, .rp-body, .view, #rightpanel, #fullplayer') || el;
   const onScroll = () => {
     userScroll = Date.now();
     el.querySelector('.lyr-resync')?.classList.remove('hidden');
@@ -64,7 +64,7 @@ export function mountLyrics(el, track) {
         userScroll = 0;
         e.currentTarget.classList.add('hidden');
         const cur = el.querySelector('.lyrics p.now') || el.querySelector('.lyrics p');
-        cur?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        cur && center(cur, true);
       };
       el.querySelector('.lyrics').onclick = (e) => {
         const p = e.target.closest('p');
@@ -74,6 +74,17 @@ export function mountLyrics(el, track) {
     tick();
   });
 
+  // Recentre la ligne en cours en faisant défiler SEULEMENT le cadre des paroles (avant : toute la page bougeait
+  // avec, ce qui faisait sauter le lecteur plein écran sur téléphone). Doux, et seulement si la ligne sort du milieu.
+  function center(line, force = false) {
+    const box = scroller;
+    if (!box || box === document.scrollingElement) return;
+    const b = box.getBoundingClientRect();
+    const r = line.getBoundingClientRect();
+    const mid = b.top + b.height / 2;
+    if (!force && Math.abs(r.top + r.height / 2 - mid) < b.height * 0.18) return;
+    box.scrollTo({ top: box.scrollTop + (r.top + r.height / 2 - mid), behavior: 'smooth' });
+  }
   function tick() {
     if (!alive || !lyr?.synced || player.track?.id !== track.id) return;
     const t = player.time() + 0.25;
@@ -87,7 +98,7 @@ export function mountLyrics(el, track) {
       });
       const cur = el.querySelector('.lyrics p.now');
       if (cur && Date.now() - userScroll > 3000) {
-        cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        center(cur);
         el.querySelector('.lyr-resync')?.classList.add('hidden');
       }
     }

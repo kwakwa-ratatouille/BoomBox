@@ -154,10 +154,24 @@ export async function shareStory(blob, name = 'boombox-recap.png') {
       if (e?.name === 'AbortError') return;
     }
   }
+  // Appli iPhone / Android (et navigateurs mobiles sans partage) : le téléchargement ne marche pas ; on affiche
+  // l'image en grand, un appui long permet de l'enregistrer dans Photos ou de la partager (Instagram…)
+  if (window.Capacitor?.isNativePlatform?.() || /iphone|ipad|android/i.test(navigator.userAgent)) return showImage(blob);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   toast('Image enregistrée : publie-la en Story depuis ton téléphone');
+}
+
+function showImage(blob) {
+  const url = URL.createObjectURL(blob);
+  const ov = document.createElement('div');
+  ov.className = 'story-save';
+  ov.innerHTML = `<div class="ss-box"><img src="${url}" alt="Ton récap"><p><b>Appuie longuement sur l'image</b> puis « Enregistrer dans Photos » (ou « Partager » → Instagram).</p><button class="btn white">Fermer</button></div>`;
+  document.body.appendChild(ov);
+  const close = () => (ov.remove(), URL.revokeObjectURL(url));
+  ov.querySelector('button').onclick = close;
+  ov.addEventListener('click', (e) => e.target === ov && close());
 }

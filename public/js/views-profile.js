@@ -158,7 +158,7 @@ export async function profilePage(el, _p, ctx) {
       </div>
       <div class="page-body">
         <div class="actions"><button class="outline-btn" id="pf-share">${icon('share', 16)} Partager mon profil</button><a class="outline-btn" href="#/wrapped">Mon récap</a><button class="act-btn" id="pf-edit" title="Modifier le profil">${icon('more')}</button></div>
-        <div id="pf-tops"><div class="sk sk-title"></div><div class="sk-cards">${'<div class="sk sk-card"></div>'.repeat(5)}</div></div>
+        <div id="pf-tops"><div class="sk sk-title"></div><div class="sk-cards">${raw('<div class="sk sk-card"></div>'.repeat(5))}</div></div>
         ${lib.playlists.some((x) => x.visibility === 'public') ? html`<section class="section"><div class="section-head"><div><h2>Playlists publiques</h2><div class="muted">${plural(lib.playlists.filter((x) => x.visibility !== 'public').length, 'playlist privée')} masquée${lib.playlists.filter((x) => x.visibility !== 'public').length > 1 ? 's' : ''} (bouton « Privée / Publique » sur chaque playlist)</div></div><a href="#/library">Tout afficher</a></div><div class="cards row">${lib.playlists.filter((x) => x.visibility === 'public').map((pl) => card({ ...pl, type: 'local', coverHtml: playlistCover(pl) }, { sub: `${pl.visibility === 'public' ? 'Publique' : 'Privée'} · ${plural(pl.tracks.length, 'titre')}` }))}</div></section>` : ''}
         ${lib.follows.length ? html`<section class="section"><div class="section-head"><h2><a class="link" href="#/following">Abonnements</a></h2><a href="#/following">Tout afficher</a></div><div class="cards row">${lib.follows.map((f) => card({ ...f, type: 'artist' }))}</div></section>` : ''}
       </div>`);

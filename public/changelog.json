@@ -1,5 +1,18 @@
 [
   {
+    "version": "next",
+    "title": "Corrections téléphone",
+    "items": [
+      "« Terminer la party » marche à coup sûr (avec confirmation à l'écran).",
+      "Story Instagram sur téléphone : l'image s'affiche en grand, appui long pour l'enregistrer dans Photos ou la partager.",
+      "La photo de profil ne sort plus de l'écran quand la recherche est ouverte.",
+      "Plus de code bizarre pendant le chargement du profil et de Découverte ; la couleur de l'accueil monte jusqu'en haut.",
+      "Découverte : tous tes abonnements se font défiler sur une ligne (ou « Voir les N »).",
+      "Paroles : seul le cadre des paroles défile, en douceur (la page ne saute plus à chaque ligne)."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.1632",
     "title": "Volume égalisé",
     "items": [

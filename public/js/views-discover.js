@@ -1,5 +1,5 @@
 // Découverte : nouveaux artistes et sons, par style ou « pour toi » (basé sur des artistes de référence).
-import { html, icon, plural, toast, debounce, contextMenu } from './ui.js';
+import { html, raw, icon, plural, toast, debounce, contextMenu } from './ui.js';
 import { state, api, ls, setting, saveSettings, getStats, toggleFollow, isFollowing } from './state.js';
 import { ctl } from './player.js';
 import { card, cover, trackList, playlistSubmenu, openPlaylistPicker } from './components.js';
@@ -35,7 +35,7 @@ export async function discoverPage(el, _p, ctx) {
           : html`<p class="muted" style="margin:6px 0 10px;font-size:13px">Choisis des artistes (ci-dessous ou en cherchant) pour affiner les suggestions.</p>`}
         <div class="search-box seed-search"><input id="seed-q" placeholder="Ajouter un artiste de référence…" autocomplete="off"><div id="seed-res" class="suggest hidden"></div></div>
         ${state.library.follows.length ? html`<div class="seed-follows ${showFollows ? 'open' : ''}">
-          <div class="row-flex" style="justify-content:space-between;margin:12px 0 6px"><span class="muted" style="font-size:13px">Tes abonnements (${state.library.follows.length}) · clique pour choisir</span><button class="more muted" id="seed-more">${showFollows ? 'Réduire' : 'Tout afficher'}</button></div>
+          <div class="row-flex" style="justify-content:space-between;margin:12px 0 6px"><span class="muted" style="font-size:13px">Tes abonnements (${state.library.follows.length}) · clique pour choisir</span><button class="outline-btn sm" id="seed-more">${showFollows ? 'Réduire' : `Voir les ${state.library.follows.length}`}</button></div>
           <div class="seed-list">${followSeeds().map((s) => html`<button class="seed ${isSeed(s.id) ? 'on' : ''}" data-toggle-seed="${s.id}">${cover(s, 'round', 64)}${s.name}</button>`)}</div></div>` : ''}
       </div>` : ''}
       <div class="row-flex" style="margin:8px 0 24px">
@@ -43,7 +43,7 @@ export async function discoverPage(el, _p, ctx) {
         <button class="btn ghost" id="dc-refresh">Actualiser</button>
         <button class="btn ghost" id="dc-addall">Tout ajouter à une playlist</button>
       </div>
-      <div id="dc-results">${last && last.style === style ? '' : '<div class="sk-page"><div class="sk sk-title"></div><div class="sk-cards">' + '<div class="sk sk-card"></div>'.repeat(6) + '</div></div>'}</div>
+      <div id="dc-results">${last && last.style === style ? '' : raw('<div class="sk-page"><div class="sk sk-title"></div><div class="sk-cards">' + '<div class="sk sk-card"></div>'.repeat(6) + '</div></div>')}</div>
     </div>`);
     el.querySelectorAll('[data-style]').forEach((b) => (b.onclick = () => {
       style = b.dataset.style;

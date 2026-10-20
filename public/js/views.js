@@ -320,7 +320,7 @@ export async function home(el, _p, ctx) {
   }).catch(() => el.querySelector('#reco-day')?.remove());
 
   const firstThumb = recent[0]?.thumb || lib.liked[0]?.thumb;
-  if (firstThumb) dominantColor(firstThumb).then((c) => c && el.querySelector('.home-bg')?.style.setProperty('--home-color', c));
+  if (firstThumb) dominantColor(firstThumb).then((c) => c && (el.querySelector('.home-bg')?.style.setProperty('--home-color', c), document.documentElement.style.setProperty('--topbar-bg', c)));
 }
 
 // Recommandation du jour : radio d'un de tes titres favoris → premier titre ni liké ni déjà écouté. Gardée pour la journée.

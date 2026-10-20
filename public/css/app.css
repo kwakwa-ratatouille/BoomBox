@@ -1865,3 +1865,22 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 /* Alignement logo + nom : la police pixel est dessinée haut dans sa ligne, on la recentre sur la boombox */
 .brand-word { position: relative; top: 4px; }
 @media (max-width: 768px) { .brand-word { top: 3px; } }
+
+/* Découverte : abonnements fermés = une rangée qu'on fait défiler au doigt (tous accessibles) */
+.seed-follows:not(.open) .seed-list { max-height: none; flex-wrap: nowrap; overflow-x: auto; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); scrollbar-width: none; padding-bottom: 4px; }
+.seed-follows:not(.open) .seed-list::-webkit-scrollbar { display: none; }
+.seed-follows:not(.open) .seed { flex: none; }
+/* Téléphone : barre du haut avec la recherche ouverte — on cache les boutons secondaires pour que la photo reste visible */
+@media (max-width: 768px) {
+  #topbar.show-search #btn-rank, #topbar.show-search #btn-jam-top { display: none !important; }
+  #topbar .search-box { min-width: 0; }
+  #topbar .top-right { flex: none; gap: 8px; }
+  #btn-profile { flex: none; }
+}
+/* Image de story à enregistrer (téléphone) */
+.story-save { position: fixed; inset: 0; z-index: 700; background: rgba(0, 0, 0, 0.85); display: grid; place-items: center; padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
+.ss-box { display: flex; flex-direction: column; align-items: center; gap: 14px; max-height: 100%; text-align: center; color: #fff; }
+.ss-box img { max-height: 70vh; max-width: 100%; border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); -webkit-touch-callout: default; -webkit-user-select: auto; user-select: auto; }
+.ss-box p { margin: 0; font-size: 14px; color: #ddd; max-width: 320px; }
+/* Accueil : la couleur monte jusque sous la barre du haut */
+.home-bg { top: -80px; height: 420px; }
