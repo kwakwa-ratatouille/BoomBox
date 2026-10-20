@@ -8,7 +8,7 @@ import { state, on, updateProfile, updatePlaylist, ls } from './state.js';
 import { toast, plural } from './ui.js';
 
 // Identifiant (public) de l'application Spotify « Boombox » du tableau de bord développeur Spotify
-export const SPOTIFY_CLIENT_ID = '';
+export const SPOTIFY_CLIENT_ID = '02d03bc4117947269cbfc2cacc04cfb0';
 const SCOPES = 'playlist-modify-private playlist-modify-public user-library-modify user-library-read user-read-private';
 const isPc = () => /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const native = () => !!window.Capacitor?.isNativePlatform?.();
