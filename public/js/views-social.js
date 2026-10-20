@@ -32,11 +32,11 @@ function friendCard(f) {
   const a = f.share ? f.activity : null;
   const now = listeningNow(a);
   return html`<div class="fc ${now ? 'live' : ''}" data-friend="${f.code}">
-    <div class="fa-av">${avatar(f)}${now ? html`<i class="fa-dot"></i>` : ''}</div>
+    <div class="fa-av" data-profile="${f.code}" title="Voir son profil">${avatar(f)}${now ? html`<i class="fa-dot"></i>` : ''}</div>
     <div class="fc-main">
-      <div class="fc-top"><b class="ellipsis">${f.name}</b>${a?.track ? html`<span class="fc-when">${now ? html`<i class="eq"><b></b><b></b><b></b></i>` : ago(a.at)}</span>` : ''}</div>
+      <div class="fc-top"><b class="ellipsis fc-name" data-profile="${f.code}" title="Voir son profil">${f.name}</b>${a?.track ? html`<span class="fc-when">${now ? html`<i class="eq"><b></b><b></b><b></b></i>` : ago(a.at)}</span>` : ''}</div>
       ${a?.track
-        ? html`<span class="fc-title ellipsis">${a.track.title}</span><span class="fc-sub ellipsis">${artists(a.track)}</span>
+        ? html`<span class="fc-title ellipsis" data-play-act="${f.code}" title="Écouter">${a.track.title}</span><span class="fc-sub ellipsis">${artists(a.track)}</span>
           ${a.context?.name ? html`<span class="fc-ctx ellipsis">${icon(a.context.type === 'playlist' ? 'library' : 'music', 12)} ${a.context.name}</span>` : ''}`
         : html`<span class="fc-sub">${f.share ? 'Rien écouté récemment' : 'Activité non partagée'}</span>`}
     </div>
@@ -69,6 +69,8 @@ export function friendsPanel(rp, closeBtn, onClose) {
         <div class="fc-foot"><a class="btn white" href="#/friends">${icon('chat', 16)} Messages${social.unread ? html` <span class="badge">${social.unread}</span>` : ''}</a>${social.requests().length ? html`<a class="btn ghost" href="#/friends">${plural(social.requests().length, 'demande')}</a>` : ''}</div>
       </div>`);
     bindActivity(rp);
+    // Photo ou nom → profil ; son → lecture (bindActivity) ; le reste de la carte → conversation
+    rp.querySelectorAll('[data-profile]').forEach((b) => (b.onclick = (e) => (e.stopPropagation(), (location.hash = `#/user/${b.dataset.profile}`))));
     rp.querySelectorAll('[data-friend]').forEach((r) => (r.onclick = () => (location.hash = `#/friends?c=${r.dataset.friend}`)));
     rp.querySelectorAll('[data-msg]').forEach((b) => (b.onclick = (e) => (e.stopPropagation(), (location.hash = `#/friends?c=${b.dataset.msg}`))));
     rp.querySelector('#fp-add').onclick = addFriendDialog;

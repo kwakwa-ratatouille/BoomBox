@@ -1779,3 +1779,6 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .party-screen:fullscreen { width: 100vw; height: 100vh; }
 .party-screen::backdrop { background: #0b0910; }
 .ps-shade { inset: -2px; background: radial-gradient(ellipse at 70% 45%, rgba(8, 6, 12, 0.25), rgba(8, 6, 12, 0.8) 75%), linear-gradient(90deg, rgba(8, 6, 12, 0.6), transparent 45%), linear-gradient(transparent 75%, rgba(8, 6, 12, 0.85)); }
+.fc-name, .fc .fa-av { cursor: pointer; }
+.fc-name:hover, .fc-title:hover { text-decoration: underline; }
+.fc-title { cursor: pointer; }
