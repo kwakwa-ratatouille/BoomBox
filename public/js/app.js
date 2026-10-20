@@ -473,7 +473,6 @@ function setupSidebar() {
       { label: sync.jam ? 'Mode party (en cours)' : 'Mode party', icon: 'users', action: () => (location.hash = '#/jam') },
       { label: 'Assistant IA', icon: 'sparkle', action: () => (location.hash = '#/ai') },
       { label: 'Importer une playlist', icon: 'import', action: () => (location.hash = '#/import') },
-      { label: "Rapports d'import", icon: 'sync', action: () => (location.hash = '#/reports') },
       { label: `Corbeille${state.library.trash?.length ? ` (${state.library.trash.length})` : ''}`, icon: 'trash', action: () => (location.hash = '#/trash') },
       { sep: true },
       { label: 'Paramètres', icon: 'settings', action: () => (location.hash = '#/settings') },
@@ -1483,6 +1482,8 @@ async function boot() {
     if (new Date().getMonth() === 11 && !ls.get(`boombox.wrappedSeen.${y}`, false)) {
       setTimeout(() => toast(`✨ Ton Wrapped ${y} est prêt !`, { action: 'Voir', timeout: 12000, onAction: () => ((location.hash = `#/wrapped?year=${y}`), ls.set(`boombox.wrappedSeen.${y}`, true)) }), 4000);
     }
+    // Et la playlist « Ton top de l'année », proposée une fois
+    if (new Date().getMonth() === 11) setTimeout(() => import('./year-playlist.js').then((m) => m.offerYearPlaylist()).catch(() => {}), 9000);
   }
   setupPlayerBar();
   setupKeys();

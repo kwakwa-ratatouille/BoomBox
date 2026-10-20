@@ -1782,3 +1782,12 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .fc-name, .fc .fa-av { cursor: pointer; }
 .fc-name:hover, .fc-title:hover { text-decoration: underline; }
 .fc-title { cursor: pointer; }
+
+/* Playlist « Ton top {année} » : écoutes en jaune, bannière pailletée */
+.t-count { color: #e8ff5a; font-weight: 700; }
+.hero.year-banner { background-size: cover; background-position: center; position: relative; }
+.hero.year-banner::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 30%, rgba(0, 0, 0, 0.6)); pointer-events: none; }
+.hero.year-banner > * { position: relative; }
+.yp-preview { aspect-ratio: 2 / 1; border-radius: 12px; background-size: cover; background-position: center; margin-bottom: 12px; }
+.w-yp { border: 0; background: linear-gradient(135deg, #f5c542, #b8790f); color: #1a1200; font-size: 15px; cursor: pointer; }
+.w-yp small { color: rgba(26, 18, 0, 0.75); }

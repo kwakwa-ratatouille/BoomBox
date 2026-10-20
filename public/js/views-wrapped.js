@@ -109,7 +109,12 @@ function chooser(el) {
   listeningYears().then((years) => {
     const box = el.querySelector('#w-years');
     if (!box) return;
+    box.onclick = (e) => {
+      const b = e.target.closest('[data-yp]');
+      if (b) import('./year-playlist.js').then((m) => m.makeAndOpen(Number(b.dataset.yp)));
+    };
     box.innerHTML = String(html`${years.map((yy) => (yearWrappedReady(yy) ? html`<a class="w-year" href="#/wrapped?year=${yy}">${yy}</a>` : html`<span class="w-year off" title="Disponible le 1er décembre">${yy}<small>prêt le 1er déc.</small></span>`))}
+      ${years.filter((yy) => yearWrappedReady(yy)).slice(0, 1).map((yy) => html`<button class="w-year w-yp" data-yp="${yy}"><b>🎉 Playlist</b><small>Ton top ${yy}</small></button>`)}
       ${years.length < 2 ? html`<a class="w-year w-import" href="#/import"><b>+ Années d'avant</b><small>Importe ton historique Spotify</small></a>` : ''}`);
   });
 }

@@ -401,6 +401,9 @@ export async function createPlaylist(name, tracks = [], description = '', extra 
     createdAt: Date.now(),
     ...(extra.cover ? { cover: extra.cover } : {}),
     ...(extra.source ? { source: extra.source } : {}),
+    ...(extra.banner ? { banner: extra.banner } : {}),
+    ...(extra.playCounts ? { playCounts: extra.playCounts } : {}),
+    ...(extra.topYear ? { topYear: extra.topYear } : {}),
   };
   const seen = new Set();
   const uniq = tracks.filter((t) => t?.id && !seen.has(t.id) && seen.add(t.id));

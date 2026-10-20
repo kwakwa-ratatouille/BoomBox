@@ -598,7 +598,7 @@ export async function playlist(el, { id }, ctx) {
     const total = p.tracks.reduce((s, t) => s + (t.duration || 0), 0);
     const pctx = { type: 'playlist', id: p.id, name: p.name };
     el.innerHTML = String(html`
-      <div class="hero"><button class="cover-edit" id="pl-cover" title="Changer l'image">${playlistCover(p, '', 544)}<span>${icon('edit')}Choisir une photo</span></button>
+      <div class="hero ${p.banner ? 'has-banner year-banner' : ''}" style="${p.banner ? `background-image:url('${p.banner}')` : ''}"><button class="cover-edit" id="pl-cover" title="Changer l'image">${playlistCover(p, '', 544)}<span>${icon('edit')}Choisir une photo</span></button>
         <div class="hero-info"><span class="hero-type">Playlist</span>
           <h1 class="editable" id="pl-name" title="Renommer">${p.name}</h1>
           ${p.description ? html`<div class="hero-desc">${p.description}</div>` : ''}
@@ -620,7 +620,7 @@ export async function playlist(el, { id }, ctx) {
       </div>`);
     heroColor(el, p.cover || p.tracks[0]?.thumb);
     wireListActions(el, () => el._shown || p.tracks, pctx);
-    if (p.tracks.length) wireTools(el, `pl.${p.id}`, () => p.tracks, (tr, custom) => ((el._shown = tr), trackList(tr, { context: pctx, added: true, playlistId: p.id, reorder: custom })), (list, tr) => p.mixed && drawTransitions(list, tr, p));
+    if (p.tracks.length) wireTools(el, `pl.${p.id}`, () => p.tracks, (tr, custom) => ((el._shown = tr), trackList(tr, { context: pctx, added: true, playlistId: p.id, reorder: custom, counts: p.playCounts })), (list, tr) => p.mixed && drawTransitions(list, tr, p));
     el.querySelector('#pl-name').onclick = () => editPlaylist(p);
     el.querySelector('#pl-cover').onclick = () => editPlaylist(p);
     el.querySelector('#dl-toggle')?.addEventListener('click', async () => (await offline.togglePlaylist(p.id), render()));
