@@ -88,7 +88,7 @@ export async function makeStory(data) {
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, W, H);
 
-  const [logo, ...imgs] = await Promise.all([loadImg('/assets/logo-symbol.png'), ...data.artists.slice(0, 5).map((a) => loadImg(a.thumb)), ...data.tracks.slice(0, 5).map((t) => loadImg(t.thumb))]);
+  const [logo, ...imgs] = await Promise.all([loadImg('/assets/logo-symbol.png?v=2'), ...data.artists.slice(0, 5).map((a) => loadImg(a.thumb)), ...data.tracks.slice(0, 5).map((t) => loadImg(t.thumb))]);
   const aImgs = imgs.slice(0, Math.min(5, data.artists.length));
   const tImgs = imgs.slice(aImgs.length);
 

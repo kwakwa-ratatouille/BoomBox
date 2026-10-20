@@ -17,7 +17,7 @@ async function start() {
   const p = snap.data();
   document.title = `${p.name} · Boombox`;
   root.innerHTML = String(html`
-    <div class="pub-top"><img src="/assets/logo-symbol.png" alt="">Boombox</div>
+    <div class="pub-top"><img src="/assets/logo-symbol.png?v=2" alt="">Boombox</div>
     <div class="pub-head">
       ${p.photo ? html`<span class="avatar-img" style="background-image:url('${p.photo}')"></span>` : html`<span class="avatar-img" style="background:${p.color}">${(p.name || '?')[0].toUpperCase()}</span>`}
       <div><div style="font-size:14px;font-weight:700">Profil</div><h1>${p.name}</h1>

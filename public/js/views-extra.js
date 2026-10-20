@@ -354,7 +354,7 @@ function partyScreen(url) {
   ov.innerHTML = String(html`<div class="ps-px" aria-hidden="true">${raw(Array.from({ length: 64 }, (_, k) => `<i style="left:${(k * 37) % 100}%;top:${(k * 61) % 100}%;--s:${8 + ((k * 7) % 4) * 8}px;--d:${(((k * 61) % 100) / 100 * 5).toFixed(2)}s;--c:${['#ffd34d', '#b07cf7', '#3fd0ff', '#ff4fa3', '#2ef28b'][k % 5]}"></i>`).join(''))}</div>
     <div class="ps-video" aria-hidden="true"></div><div class="ps-shade" aria-hidden="true"></div>
     <button class="icon-btn ps-close" aria-label="Fermer">${icon('close')}</button>
-    <div class="ps-left"><img src="/assets/logo-symbol.png" alt="" style="width:80px"><h1>Ajoute tes sons !</h1><p>Scanne avec l'appareil photo de ton téléphone</p><div id="ps-qr"></div><p class="ps-code">Code ${sync.jam.code}</p>
+    <div class="ps-left"><img src="/assets/logo-symbol.png?v=2" alt="" style="width:80px"><h1>Ajoute tes sons !</h1><p>Scanne avec l'appareil photo de ton téléphone</p><div id="ps-qr"></div><p class="ps-code">Code ${sync.jam.code}</p>
       <div class="ps-btns"><button class="btn ghost" id="ps-exit">Quitter l'écran géant</button>${sync.isJamHost() ? html`<button class="btn ghost ps-end" id="ps-end">Terminer la party</button>` : ''}</div></div>
     <div class="ps-right"><div class="ps-now"></div><div class="ps-lyrics"></div><div class="ps-queue"></div></div>`);
   ov.querySelector('.ps-close').onclick = close;

@@ -33,7 +33,7 @@ jobs:
       - name: Projet iOS + icônes
         run: |
           npx cap add ios
-          npx --yes @capacitor/assets@3.0.5 generate --ios --assetPath resources --iconBackgroundColor '#b07cf7' --splashBackgroundColor '#131019' --splashBackgroundColorDark '#131019' || echo "icônes : on garde celles par défaut"
+          npx --yes @capacitor/assets@3.0.5 generate --ios --assetPath resources --iconBackgroundColor '#131019' --splashBackgroundColor '#131019' --splashBackgroundColorDark '#131019' || echo "icônes : on garde celles par défaut"
       - name: Réglages iOS (lecture en arrière-plan, lien boombox://, version)
         run: |
           PLIST=ios/App/App/Info.plist
@@ -112,7 +112,7 @@ jobs:
       - name: Projet Android + icônes
         run: |
           npx cap add android
-          npx --yes @capacitor/assets@3.0.5 generate --android --assetPath resources --iconBackgroundColor '#b07cf7' --splashBackgroundColor '#131019' || echo "icônes par défaut"
+          npx --yes @capacitor/assets@3.0.5 generate --android --assetPath resources --iconBackgroundColor '#131019' --splashBackgroundColor '#131019' || echo "icônes par défaut"
       - name: Lien boombox:// et version
         run: |
           M=android/app/src/main/AndroidManifest.xml

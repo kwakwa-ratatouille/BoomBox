@@ -27,7 +27,7 @@ async function start() {
 }
 
 function askName() {
-  root.innerHTML = String(html`<div class="party-head"><img class="logo-img" src="/assets/logo-symbol.png" alt="Boombox"><h1>Boombox · Party</h1><span class="code">${code}</span></div>
+  root.innerHTML = String(html`<div class="party-head"><img class="logo-img" src="/assets/logo-symbol.png?v=2" alt="Boombox"><h1>Boombox · Party</h1><span class="code">${code}</span></div>
     <div class="box"><h2>Comment tu t'appelles ?</h2><p class="muted" style="margin-top:0">Ton prénom s'affichera à côté des sons que tu ajoutes.</p>
     <form id="nf" class="row-flex"><input class="input" id="nn" maxlength="24" placeholder="Prénom" style="flex:1" autofocus><button class="btn primary">Entrer</button></form></div>`);
   root.querySelector('#nf').onsubmit = (e) => {
@@ -81,7 +81,7 @@ function render() {
 function build() {
   built = true;
   root.innerHTML = String(html`
-    <div class="party-head"><img class="logo-img" src="/assets/logo-symbol.png" alt="Boombox"><h1>Party de ${room.hostName}</h1><span class="code">${code}</span></div>
+    <div class="party-head"><img class="logo-img" src="/assets/logo-symbol.png?v=2" alt="Boombox"><h1>Party de ${room.hostName}</h1><span class="code">${code}</span></div>
     <div id="now"></div>
     <div class="box"><h2>Ajouter un son</h2>
       <div class="search-box" style="margin-bottom:10px;max-width:none">${icon('search')}<input id="q" placeholder="Chercher un titre ou un artiste" autocomplete="off"></div>

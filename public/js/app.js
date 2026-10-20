@@ -1425,7 +1425,7 @@ function notifyReleases(list = []) {
   const first = fresh[0];
   const n = new Notification(fresh.length === 1 ? `Nouveau : ${first.title}` : `${fresh.length} nouvelles sorties`, {
     body: fresh.length === 1 ? `${first.artist?.name || ''} · ${first.kind || 'Sortie'}` : `${artists.slice(0, 3).join(', ')}${artists.length > 3 ? '…' : ''}`,
-    icon: first.thumb || '/assets/logo-symbol.png',
+    icon: first.thumb || '/assets/logo-symbol.png?v=2',
     tag: 'boombox-releases',
   });
   n.onclick = () => (window.focus(), (location.hash = '#/releases'), n.close());
