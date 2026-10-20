@@ -1126,6 +1126,18 @@ export const player = {
 
   _setupMediaSession() {
     if (!('mediaSession' in navigator)) return;
+    // Indique à iOS / Android si ça joue : sans ça, la notification affichait parfois « pause » pendant la lecture
+    if (!this._msState) {
+      this._msState = true;
+      const upd = () => {
+        try {
+          navigator.mediaSession.playbackState = !this.track ? 'none' : this.paused ? 'paused' : 'playing';
+        } catch {}
+      };
+      bus.addEventListener('player:state', upd);
+      bus.addEventListener('player:track', upd);
+      setInterval(upd, 5000);
+    }
     const ms = navigator.mediaSession;
     const set = (a, f) => {
       try {

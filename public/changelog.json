@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Siri",
+    "items": [
+      "Commandes Siri via Raccourcis : lancer une playlist, un son (titre et/ou artiste), un artiste, une party.",
+      "Notification et écran verrouillé : l'état lecture / pause est maintenant toujours juste."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.2220",
     "title": "Interface plus claire",
     "items": [
