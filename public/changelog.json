@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Nouveau logo pixel art",
+    "items": [
+      "Nouveau logo Boombox en pixel art (icône de l'appli, logo, écran de lancement).",
+      "Le fond animé de l'appli est retiré.",
+      "Pixel art réservé aux moments festifs : cubes qui se retournent en fond du mode party, et décor pixel sur les images partagées (récap, stats)."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.1421",
     "title": "Profils Spotify",
     "items": [

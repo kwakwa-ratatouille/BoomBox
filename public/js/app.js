@@ -1840,21 +1840,3 @@ boot().catch((e) => {
   document.body.innerHTML = `<div style="padding:40px;font-family:sans-serif;color:#fff">Impossible de démarrer Boombox : ${esc(msg)}<br><br>Le serveur local est-il lancé ? (<code>npm start</code>)</div>`;
 });
 
-// Fond de l'appli : des petits cubes pixel qui se retournent tour à tour, en vague du haut vers le bas.
-// Discret (très transparent) et léger : quelques dizaines d'éléments, uniquement des transformations CSS.
-(function pixelBackground() {
-  const box = document.getElementById('px-bg');
-  if (!box || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const n = innerWidth < 700 ? 22 : 46;
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
-  const colors = ['#9b5cf0', '#d9c2ff', '#6f3fd1', '#ffd34d', '#3fd0ff'];
-  let h = '';
-  for (let i = 0; i < n; i++) {
-    const x = rnd() * 100;
-    const y = rnd() * 100;
-    const s = 8 + Math.round(rnd() * 3) * 6; // tailles « pixel » : 8, 14, 20, 26 px
-    h += `<i style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;width:${s}px;height:${s}px;background:${colors[Math.floor(rnd() * colors.length)]};--d:${(y / 100 * 6 + rnd() * 0.6).toFixed(2)}s;--o:${(0.05 + rnd() * 0.09).toFixed(2)}"></i>`;
-  }
-  box.innerHTML = h;
-})();

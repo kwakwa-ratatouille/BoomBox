@@ -4,7 +4,7 @@
 import { html, icon, plural, toast } from './ui.js';
 import { getStatsFull, createPlaylist, listeningYears } from './state.js';
 import { ctl } from './player.js';
-import { loadImg, shareStory } from './story.js';
+import { loadImg, shareStory, pixelDeco } from './story.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('fr-FR');
 
@@ -265,7 +265,8 @@ async function cardImage(c, format = 'story') {
   g.addColorStop(1, t.bg2 || t.bg);
   x.fillStyle = g;
   x.fillRect(0, 0, W, H);
-  drawShapes(x, t, W, H);  const wrap = (text, maxW, size, weight = 900) => {
+  drawShapes(x, t, W, H);
+  pixelDeco(x, W, H, String(c.kicker || '').length + (c.num || 0));  const wrap = (text, maxW, size, weight = 900) => {
     x.font = `${weight} ${size}px ${font}`;
     const out = [];
     for (const para of String(text).split('\n')) {

@@ -1853,5 +1853,9 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 #px-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; perspective: 800px; }
 #px-bg i { position: absolute; display: block; border-radius: 2px; opacity: var(--o); box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.25); animation: pxBg 6s var(--d) ease-in-out infinite; will-change: transform; }
 @keyframes pxBg { 0%, 80%, 100% { transform: rotateX(0); } 88% { transform: rotateX(180deg); filter: brightness(1.8); } 96% { transform: rotateX(360deg); } }
-#main > #view, #main > #topbar { position: relative; z-index: 1; }
-#main > #topbar { z-index: 5; position: absolute; }
+
+/* Logo pixel art : pixels nets (pas de flou à l'agrandissement) */
+.brand-logo, .sp-box, .px-crisp { image-rendering: pixelated; }
+/* Mode party : cubes pixel qui se retournent en vague (fond de l'écran géant) */
+.ps-px { position: absolute; inset: 0; z-index: 0; overflow: hidden; perspective: 900px; pointer-events: none; }
+.ps-px i { position: absolute; width: var(--s); height: var(--s); background: var(--c); opacity: 0.22; box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.3); animation: pxBg 5s var(--d) ease-in-out infinite; will-change: transform; }
