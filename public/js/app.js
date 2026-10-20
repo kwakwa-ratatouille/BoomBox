@@ -472,7 +472,8 @@ function setupSidebar() {
       { label: 'Concerts près de chez toi', icon: 'ticket', action: () => (location.hash = '#/concerts') },
       { label: sync.jam ? 'Mode party (en cours)' : 'Mode party', icon: 'users', action: () => (location.hash = '#/jam') },
       { label: 'Assistant IA', icon: 'sparkle', action: () => (location.hash = '#/ai') },
-      { label: 'Importer une playlist', icon: 'import', action: () => (location.hash = '#/import') },
+      // PC : déjà un bouton « Importer » à côté de la bibliothèque ; on le garde dans ce menu seulement sur téléphone
+      isMobile() && { label: 'Importer une playlist', icon: 'import', action: () => (location.hash = '#/import') },
       { label: `Corbeille${state.library.trash?.length ? ` (${state.library.trash.length})` : ''}`, icon: 'trash', action: () => (location.hash = '#/trash') },
       { sep: true },
       { label: 'Paramètres', icon: 'settings', action: () => (location.hash = '#/settings') },
