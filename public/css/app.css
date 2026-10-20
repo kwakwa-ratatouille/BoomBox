@@ -1862,3 +1862,6 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .ps-px { position: absolute; inset: 0; z-index: 0; overflow: hidden; perspective: 900px; pointer-events: none; }
 .ps-px i { position: absolute; width: var(--s); height: var(--s); background: var(--c); opacity: 0.22; box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.3); animation: pxBg 5s var(--d) ease-in-out infinite; will-change: transform; }
 img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
+/* Alignement logo + nom : la police pixel est dessinée haut dans sa ligne, on la recentre sur la boombox */
+.brand-word { position: relative; top: 4px; }
+@media (max-width: 768px) { .brand-word { top: 3px; } }
