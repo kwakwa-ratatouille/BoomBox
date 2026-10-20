@@ -276,28 +276,54 @@ export function playlistSubmenu(tracks) {
 
 export function trackMenu(track, x, y, { playlistId, index } = {}) {
   const artists = (track.artists || []).filter((a) => a.id);
+  const onPc = !window.Capacitor?.isNativePlatform?.() && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  // Menu court et clair : l'essentiel en haut, le reste rangé dans « Plus »
   contextMenu(x, y, [
-    { label: "Ajouter à la file d'attente", icon: 'addQueue', action: () => ctl.addToQueue(track) },
-    { label: 'Lire ensuite', icon: 'playNext', action: () => ctl.playNext(track) },
-    sync.jam && { label: 'Ajouter à la party', icon: 'users', action: () => sync.jamAdd(track) },
-    !track.local && !window.Capacitor?.isNativePlatform?.() && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && { label: 'Télécharger sur le PC', icon: 'import', action: () => import('./views-local.js').then((m) => m.downloadToPc([track])) },
-    { sep: true },
     { label: 'Ajouter à une playlist…', icon: 'plus', action: () => openPlaylistPicker(track, { x, y: y + 40 }) },
     { label: isLiked(track.id) ? 'Retirer des Titres likés' : 'Ajouter aux Titres likés', icon: isLiked(track.id) ? 'heartFill' : 'heart', action: () => toggleLike(track) },
+    { label: sync.jam ? 'Ajouter à la file de la party' : "Ajouter à la file d'attente", icon: 'addQueue', action: () => ctl.addToQueue(track) },
     playlistId && { label: 'Retirer de cette playlist', icon: 'trash', action: () => removeFromPlaylist(playlistId, track) },
     { sep: true },
-    { label: 'Envoyer à un ami…', icon: 'send', action: () => sendToFriend({ tracks: [track] }, { x, y }) },
-    { label: 'Lancer la radio du titre', icon: 'radio', action: () => ctl.playRadio(track) },
-    setting('banned', []).includes(track.id)
-      ? { label: 'Proposer à nouveau ce titre', icon: 'check', action: () => toggleBan(track) }
-      : { label: 'Ne plus proposer ce titre', icon: 'close', action: async () => { await toggleBan(track); if (player.track?.id === track.id && !player.remoteSender) player.next(); } },
+    !track.local && { label: 'Regarder le clip', icon: 'video', action: () => openClip(track) },
     artists.length === 1 && { label: "Aller à l'artiste", icon: 'person', action: () => (location.hash = `#/artist/${artists[0].id}`) },
     artists.length > 1 && { label: "Aller à l'artiste", icon: 'person', submenu: artists.map((a) => ({ label: a.name, action: () => (location.hash = `#/artist/${a.id}`) })) },
     track.album?.id && { label: "Aller à l'album", icon: 'library', action: () => (location.hash = `#/album/${track.album.id}`) },
-    { sep: true },
-    { label: 'Copier le lien YouTube', icon: 'link', action: () => navigator.clipboard?.writeText(`https://music.youtube.com/watch?v=${track.id}`).then(() => toast('Lien copié')) },
-    { label: 'Ouvrir sur YouTube', icon: 'video', action: () => window.open(`https://www.youtube.com/watch?v=${track.id}`, '_blank', 'noopener') },
+    { label: 'Envoyer à un ami…', icon: 'send', action: () => sendToFriend({ tracks: [track] }, { x, y }) },
+    { label: 'Plus', icon: 'more', submenu: () => [
+      { label: 'Lire ensuite', icon: 'playNext', action: () => ctl.playNext(track) },
+      { label: 'Lancer la radio du titre', icon: 'radio', action: () => ctl.playRadio(track) },
+      setting('banned', []).includes(track.id)
+        ? { label: 'Proposer à nouveau ce titre', icon: 'check', action: () => toggleBan(track) }
+        : { label: 'Ne plus proposer ce titre', icon: 'close', action: async () => { await toggleBan(track); if (player.track?.id === track.id && !player.remoteSender) player.next(); } },
+      onPc && !track.local && { label: 'Télécharger sur le PC', icon: 'import', action: () => import('./views-local.js').then((m) => m.downloadToPc([track])) },
+      !track.local && { label: 'Copier le lien YouTube', icon: 'link', action: () => navigator.clipboard?.writeText(`https://music.youtube.com/watch?v=${track.id}`).then(() => toast('Lien copié')) },
+    ] },
   ]);
+}
+
+// « Regarder le clip » (comme « Passer à la vidéo » sur Spotify) : le clip officiel du son en grand ;
+// la musique se met en pause pendant le clip et reprend à la fermeture
+export async function openClip(track) {
+  const ov = document.createElement('div');
+  ov.className = 'clip-ov';
+  ov.innerHTML = `<div class="clip-box"><div class="clip-head"><div class="ellipsis"><b>${esc(track.title)}</b><span>${esc((track.artists || []).map((a) => a.name).join(', '))}</span></div><button class="icon-btn" aria-label="Fermer">${icon('close')}</button></div><div class="clip-frame"><div class="loading"><div class="spinner"></div></div></div></div>`;
+  document.body.appendChild(ov);
+  const wasPlaying = !player.paused && !player.remoteSender;
+  if (wasPlaying) ctl.pause();
+  const close = () => {
+    ov.remove();
+    if (wasPlaying) ctl.play();
+  };
+  ov.querySelector('.clip-head button').onclick = close;
+  ov.addEventListener('click', (e) => e.target === ov && close());
+  // Clip officiel : recherche « titre artiste » parmi les vidéos ; sinon la version du son
+  let vid = track.video ? track.id : null;
+  if (!vid) {
+    const r = await api(`/api/search?q=${encodeURIComponent(`${track.title} ${track.artists?.[0]?.name || ''}`)}&type=video`).catch(() => null);
+    vid = r?.items?.[0]?.id || track.id;
+  }
+  if (!ov.isConnected) return;
+  ov.querySelector('.clip-frame').innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(vid)}?autoplay=1&playsinline=1&rel=0&modestbranding=1" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen title="Clip"></iframe>`;
 }
 
 // ---------- Cartes ----------

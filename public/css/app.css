@@ -1894,8 +1894,6 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .story-save { z-index: 2000 !important; background: rgba(0, 0, 0, 0.94) !important; }
 .ss-box img { height: min(70vh, 160vw); width: auto; }
 /* iPhone : plus de bande sombre en haut quand on tire la page vers le bas */
-.view { overscroll-behavior-y: none; }
-html, body { overscroll-behavior-y: none; }
 /* Assistant IA : la zone de saisie est assez haute pour l'exemple */
 .ai-input textarea { min-height: 56px; line-height: 1.35; }
 @media (max-width: 768px) { .ai-input textarea { font-size: 16px; padding: 14px 16px; } }
@@ -1922,3 +1920,37 @@ html, body { overscroll-behavior-y: none; }
   /* Mini-lecteur : le titre et l'artiste ne sont plus des liens (un appui ouvre le lecteur plein écran) */
   #playerbar .pb-track a, #playerbar .pb-text a { pointer-events: none; color: inherit; text-decoration: none; }
 }
+/* Mini-lecteur (téléphone) : plus haut comme Spotify, sans le cœur (le + fait déjà tout), + collé au bouton lecture */
+@media (max-width: 768px) {
+  #playerbar { height: 64px; padding: 0 6px 0 8px; }
+  .pb-track { gap: 10px; }
+  .pb-track .cover { width: 48px; height: 48px; border-radius: 6px; }
+  #pb-like { display: none; }
+  .pb-track .pb-add { margin-left: auto; padding: 8px 4px; }
+  .pb-controls { gap: 0; }
+  .pb-title { font-size: 14px; } .pb-artist { font-size: 13px; }
+}
+/* Plus de « Bonjour / Bonsoir » */
+.greeting { display: none; }
+
+/* Clip vidéo d'un son */
+.clip-ov { position: fixed; inset: 0; z-index: 650; background: rgba(0, 0, 0, 0.9); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom)); animation: fadeIn 0.2s; }
+.clip-box { width: min(1100px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.clip-head { display: flex; align-items: center; gap: 12px; color: #fff; }
+.clip-head > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.clip-head span { color: #bbb; font-size: 13px; }
+.clip-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; display: grid; place-items: center; }
+.clip-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* Paramètres en rubriques repliables */
+.set-group { border-radius: 12px; background: rgba(255, 255, 255, 0.04); margin-bottom: 10px; overflow: hidden; }
+.set-group > summary { list-style: none; cursor: pointer; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.set-group > summary::-webkit-details-marker { display: none; }
+.set-group > summary::after { content: '›'; font-size: 22px; color: var(--muted); transition: transform 0.2s; }
+.set-group[open] > summary::after { transform: rotate(90deg); }
+.set-group > summary span { display: flex; flex-direction: column; gap: 2px; }
+.set-group > summary b { font-size: 17px; }
+.set-group > summary small { color: var(--muted); font-size: 13px; }
+.set-group .set-body { padding: 0 18px 8px; }
+.set-group .settings-row:first-child { border-top: 0; }
+.set-sub { font-size: 14px; color: var(--muted); margin: 16px 0 4px; font-weight: 700; }

@@ -412,8 +412,6 @@ export async function settings(el) {
     <h2 style="font-size:20px;margin-top:32px">Appareils</h2>
     <div class="settings-row"><div><b>Boombox sur PC (Windows)</b><p>Installateur à donner à tes amis : Boombox s'installe en un clic (rien d'autre à installer), puis chacun lie son téléphone à son PC avec le QR code des paramètres.</p></div><a class="btn ghost" href="https://github.com/kwakwa-ratatouille/BoomBox/releases/latest/download/Boombox-Setup.exe" target="_blank" rel="noopener">Télécharger</a></div>
     <div class="settings-row"><div><b>Nom de cet appareil</b><p>Affiché dans la liste des appareils et dans les Jams.</p></div><input class="input" id="s-dname" value="${state.device.name}" maxlength="40"></div>
-    <div class="settings-row"><div><b>Ouvrir Boombox sur ton téléphone</b><p>Connecte ton téléphone au même Wi-Fi et ouvre l'une de ces adresses, puis « Ajouter à l'écran d'accueil » pour l'avoir comme une appli.</p>
-      ${st.lan.map((u) => html`<div style="margin-top:6px"><span class="code">${u}</span></div>`)}</div><div id="s-qr"></div></div>
 
         <div class="settings-row"><div style="flex:1"><b>Ajouter un appareil</b><p>Les deux QR codes font la même chose — relier un appareil à ta bibliothèque — : le premier ouvre l'appli Boombox installée, le second ouvre Boombox dans un navigateur (pour un appareil sans l'appli). Tes playlists, likes et artistes seront synchronisés en direct, même si ce PC est éteint.</p>
       <div class="qr-pair">
@@ -435,7 +433,8 @@ export async function settings(el) {
     <div class="settings-row"><div><b>${p.spotifyAuth ? `Connecté : ${p.spotifyAuth.name}` : 'Relier mon compte Spotify'}</b><p>Ce que tu likes et les playlists que tu crées dans Boombox sont aussi ajoutés sur ton Spotify (les sons absents de Spotify sont ignorés). Menu d'une playlist → « Copier sur mon Spotify » pour une playlist existante.</p></div>
       <div class="row-flex" style="gap:8px;flex:none">${p.spotifyAuth ? html`<button class="btn ghost" id="s-sp-likes">Envoyer tous mes likes</button><button class="btn ghost" id="s-sp-off">Déconnecter</button>` : html`<button class="btn primary" id="s-sp-on">Se connecter à Spotify</button>`}</div></div>
 
-    <h2 style="font-size:20px;margin-top:32px">Import Spotify</h2>
+    <h2 style="font-size:20px;margin-top:32px">Avancé</h2>
+    <h3 class="set-sub">Clé API Spotify (imports et Blend)</h3>
     <div class="settings-row" style="align-items:flex-start"><div><b>Clé API Spotify ${st.spotifyApi ? '✅' : ''}</b>
       <p>${st.spotifyApi ? 'Active : utilisée pour les profils Spotify (Blend) et en secours pour les imports.' : 'Facultatif, gratuit. Les playlists sont lues en entier même sans clé ; elle sert pour faire un Blend avec un profil Spotify.'}</p>
       <details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:13px">Comment obtenir une clé (2 min)</summary>
@@ -451,7 +450,7 @@ export async function settings(el) {
       </div></div>
 
 
-    <h2 style="font-size:20px;margin-top:32px">Données</h2>
+    <h3 class="set-sub">Sauvegarde</h3>
     <div class="settings-row"><div><b>Sauvegarder ma bibliothèque</b><p>Télécharge un fichier JSON avec playlists, likes, artistes suivis.</p></div><button class="btn ghost" id="s-export">Exporter</button></div>
     <div class="settings-row"><div><b>Restaurer une sauvegarde</b><p>Remplace la bibliothèque de ce profil.</p></div><label class="btn ghost" style="cursor:pointer">Importer<input type="file" accept=".json" id="s-restore" hidden></label></div>
 
@@ -466,6 +465,7 @@ export async function settings(el) {
   el.querySelector('#s-sp-likes')?.addEventListener('click', () => import('./spotify-sync.js').then((m) => m.pushAllLikes()));
   el.querySelector('#s-sharelikes')?.addEventListener('change', (e) => social.setShareLikes(e.target.checked).then(() => toast(e.target.checked ? 'Tes amis peuvent voir tes titres likés' : 'Tes titres likés sont privés')));
   el.querySelector('#s-pedit')?.addEventListener('click', () => editProfile().then(() => settings(el)));
+  groupSettings(el);
   el.querySelector('#s-engine').value = setting('engine', 'auto');
   el.querySelector('#s-engine').onchange = async (e) => {
     await saveSettings({ engine: e.target.value });
@@ -689,7 +689,7 @@ export async function settings(el) {
     saveSpotify(id, secret);
   };
   el.querySelector('#s-spdel')?.addEventListener('click', () => saveSpotify('', ''));
-  if (st.lan[0]) renderQr(el.querySelector('#s-qr'), st.lan[0]);
+
   cloud
     .inviteLink(st.lan[0] || location.origin)
     .then((link) => {
@@ -749,4 +749,43 @@ export async function lyricsPage(el) {
   };
   render();
   return { onTrack: render, cleanup: () => cleanup?.() };
+}
+
+// Paramètres rangés en rubriques repliables (une seule ouverte à la fois), avec une courte description
+const SET_INFO = {
+  Profil: 'Nom, couleur, code du profil',
+  Apparence: 'Photo, bannière, couleur de l’appli',
+  Amis: 'Partages, code ami, Discord',
+  Lecture: 'Fondu, mix, volume, moteur',
+  Appareils: 'Lier un téléphone ou un PC, appareils liés',
+  'Hors ligne': 'Téléchargements sur le téléphone',
+  'Mon compte Spotify': 'Copier tes likes et playlists sur Spotify',
+  Avancé: 'Clé API Spotify, sauvegarde',
+  'À propos': 'Version, diagnostic, raccourcis',
+};
+function groupSettings(el) {
+  const page = el.querySelector('.page');
+  if (!page) return;
+  const kids = [...page.children];
+  let cur = null;
+  const open = ls.get('boombox.settingsOpen', 'Profil');
+  for (const k of kids) {
+    if (k.tagName === 'H2') {
+      const title = k.textContent.trim();
+      cur = document.createElement('details');
+      cur.className = 'set-group';
+      cur.dataset.title = title;
+      if (title === open) cur.open = true;
+      cur.innerHTML = `<summary><span><b>${esc(title)}</b><small>${esc(SET_INFO[title] || '')}</small></span></summary><div class="set-body"></div>`;
+      page.insertBefore(cur, k);
+      k.remove();
+      continue;
+    }
+    if (cur && k.tagName !== 'H1') cur.querySelector('.set-body').appendChild(k);
+  }
+  page.querySelectorAll('.set-group').forEach((d) => d.addEventListener('toggle', () => {
+    if (!d.open) return;
+    ls.set('boombox.settingsOpen', d.dataset.title);
+    page.querySelectorAll('.set-group').forEach((o) => o !== d && (o.open = false));
+  }));
 }

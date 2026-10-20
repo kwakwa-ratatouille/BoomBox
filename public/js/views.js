@@ -196,7 +196,6 @@ export async function home(el, _p, ctx) {
   const greet = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
   const lib = state.library;
   el.innerHTML = String(html`<div class="home-bg"></div><div class="page" style="position:relative">
-    <h1 class="greeting">${greet}, ${state.profile.name}</h1>
     <div class="quick" id="quick"></div>
     <div id="home-sections">${loading}</div>
   </div>`);
@@ -630,7 +629,7 @@ export async function playlist(el, { id }, ctx) {
     el.querySelector('#dl-toggle')?.addEventListener('click', async () => (await offline.togglePlaylist(p.id), render()));
     el.querySelector('#pl-more').onclick = (e) => {
       const r = e.currentTarget.getBoundingClientRect();
-      playlistMenu(p, r.left, r.bottom);
+      playlistMenu(p, r.left, r.bottom, { full: true });
     };
     // Publique : visible sur mon profil, par mes amis et sur mon profil partagé ; privée : seulement moi
     el.querySelector('#pl-vis').onclick = () => import('./social.js').then(({ social }) => social.setVisibility(p, p.visibility === 'public' ? 'private' : 'public'));
@@ -733,50 +732,64 @@ function stepPlaylist(id, dir) {
   movePlaylist(id, dir < 0 ? { before: sib[j].id } : j + 1 < sib.length ? { before: sib[j + 1].id } : { edge: 'bottom' });
 }
 
-export function playlistMenu(p, x, y) {
-  contextMenu(x, y, [
-    { label: "Ajouter à la file d'attente", icon: 'addQueue', action: () => p.tracks.length && ctl.addToQueue(p.tracks) },
-    { label: 'Compléter avec l’IA', icon: 'sparkle', action: () => (location.hash = `#/ai?playlist=${p.id}`) },
-    { label: 'Modifier les informations', icon: 'edit', action: () => editPlaylist(p) },
-    { label: p.pinned ? 'Désépingler' : 'Épingler en haut de la bibliothèque', icon: 'pin', action: () => updatePlaylist(p.id, { pinned: !p.pinned }).then(() => toast(p.pinned ? 'Playlist désépinglée' : 'Playlist épinglée')) },
-    { label: 'Déplacer', icon: 'library', submenu: [
-      { label: 'Tout en haut', action: () => movePlaylist(p.id, { edge: 'top' }) },
-      { label: 'Monter d’un cran', action: () => stepPlaylist(p.id, -1) },
-      { label: 'Descendre d’un cran', action: () => stepPlaylist(p.id, 1) },
-      { label: 'Tout en bas', action: () => movePlaylist(p.id, { edge: 'bottom' }) },
-    ] },
-    { label: 'Déplacer vers un dossier', icon: 'folder', submenu: () => [
-      { label: 'Nouveau dossier', icon: 'plus', action: () => newFolder(p.id) },
-      ...(state.library.folders || []).map((f) => ({ label: f.name, icon: p.folderId === f.id ? 'check' : null, action: () => movePlaylistToFolder(p.id, f.id).then(() => toast(`Déplacée dans « ${f.name} »`)) })),
-      p.folderId && { sep: true },
-      p.folderId && { label: 'Retirer du dossier', icon: 'close', action: () => movePlaylistToFolder(p.id, null) },
-    ] },
-    !canSync(p) && { label: 'Mettre à jour depuis Spotify…', icon: 'sync', action: () => linkSource(p) },
-    canSync(p) && { label: p.sync ? `Synchronisée avec ${p.source.platform || 'la source'}` : `Synchroniser avec ${p.source.platform || 'la source'}`, icon: p.sync ? 'check' : 'sync', submenu: () => [
-      { label: p.sync ? 'Désactiver la synchronisation' : 'Activer : ajouter tout seul les nouveaux titres', icon: p.sync ? 'close' : 'check', action: () => setPlaylistSync(p, !p.sync) },
-      p.sync && { label: 'Mettre à jour maintenant', icon: 'sync', action: () => syncPlaylistNow(p).catch((e) => toast('Synchronisation impossible : ' + e.message)) },
-      { label: 'Changer le lien de la playlist', icon: 'edit', action: () => linkSource(p) },
-    ] },
-    { label: 'Chercher les doublons', icon: 'copy', action: () => findDuplicates(p) },
-    state.profile?.spotifyAuth && { label: p.spotifyId ? 'Synchronisée avec ton Spotify ✓' : 'Copier sur mon Spotify', icon: 'sync', action: () => import('./spotify-sync.js').then((m) => m.copyPlaylistToSpotify(p)) },
-    canUseLocal() && p.tracks.length && { label: 'Télécharger sur le PC (Musique\\Boombox)', icon: 'import', action: () => downloadToPc(p.tracks, p.name) },
-    { label: 'Dupliquer', icon: 'plus', action: async () => (await createPlaylist(`${p.name} (copie)`, p.tracks, p.description), toast('Playlist dupliquée')) },
-    { label: 'Ajouter à une autre playlist…', icon: 'library', action: () => openPlaylistPicker(p.tracks, { x, y: y + 300 }) },
-    ...playlistShareItems(p),
-    p.tracks.length && { label: 'Envoyer à un ami Boombox…', icon: 'send', action: () => sendToFriend({ playlist: p }, { x, y }) },
-    { label: 'Partager avec un code', icon: 'users', action: () => shareDialog(p) },
-    { label: 'Exporter (texte)', icon: 'import', action: () => exportText(p) },
-    { sep: true },
-    {
-      label: 'Supprimer',
-      icon: 'trash',
-      danger: true,
-      action: async () => {
-        await deletePlaylist(p.id);
-        if (location.hash.includes(p.id)) location.hash = '#/';
-        toast(`« ${p.name} » est dans la corbeille (30 jours)`, { action: 'Annuler', onAction: () => restorePlaylist(p.id), timeout: 6000 });
-      },
+// Menu d'une playlist. Court partout (clic droit, cartes) ; complet seulement depuis le bouton ⋯ de la page
+// de la playlist (doublons, synchro, export…). Plus de répétitions : chaque action n'apparaît qu'une fois.
+export function playlistMenu(p, x, y, { full = false } = {}) {
+  const del = {
+    label: 'Supprimer', icon: 'trash', danger: true,
+    action: async () => {
+      await deletePlaylist(p.id);
+      if (location.hash.includes(p.id)) location.hash = '#/';
+      toast(`« ${p.name} » est dans la corbeille (30 jours)`, { action: 'Annuler', onAction: () => restorePlaylist(p.id), timeout: 6000 });
     },
+  };
+  const visibility = { label: p.visibility === 'public' ? 'Rendre privée' : 'Rendre publique', icon: p.visibility === 'public' ? 'pin' : 'users', action: () => import('./social.js').then(({ social }) => social.setVisibility(p, p.visibility === 'public' ? 'private' : 'public')) };
+  const share = { label: 'Partager', icon: 'share', submenu: () => [
+    p.tracks.length && { label: 'Envoyer à un ami Boombox…', icon: 'send', action: () => sendToFriend({ playlist: p }, { x, y }) },
+    ...playlistShareItems(p).slice(1), // collaborateurs
+    { label: 'Partager avec un code', icon: 'users', action: () => shareDialog(p) },
+  ] };
+  const folder = { label: 'Ranger dans un dossier', icon: 'folder', submenu: () => [
+    { label: 'Nouveau dossier', icon: 'plus', action: () => newFolder(p.id) },
+    ...(state.library.folders || []).map((fo) => ({ label: fo.name, icon: p.folderId === fo.id ? 'check' : null, action: () => movePlaylistToFolder(p.id, fo.id).then(() => toast(`Rangée dans « ${fo.name} »`)) })),
+    p.folderId && { sep: true },
+    p.folderId && { label: 'Retirer du dossier', icon: 'close', action: () => movePlaylistToFolder(p.id, null) },
+  ] };
+  if (!full) {
+    return contextMenu(x, y, [
+      { label: "Ajouter à la file d'attente", icon: 'addQueue', action: () => p.tracks.length && ctl.addToQueue(p.tracks) },
+      { label: 'Modifier', icon: 'edit', action: () => editPlaylist(p) },
+      visibility,
+      share,
+      { label: p.pinned ? 'Désépingler' : 'Épingler en haut', icon: 'pin', action: () => updatePlaylist(p.id, { pinned: !p.pinned }).then(() => toast(p.pinned ? 'Playlist désépinglée' : 'Playlist épinglée')) },
+      folder,
+      { sep: true },
+      del,
+    ]);
+  }
+  contextMenu(x, y, [
+    { label: 'Modifier', icon: 'edit', action: () => editPlaylist(p) },
+    visibility,
+    share,
+    { label: 'Compléter avec l’IA', icon: 'sparkle', action: () => (location.hash = `#/ai?playlist=${p.id}`) },
+    { label: 'Chercher les doublons', icon: 'copy', action: () => findDuplicates(p) },
+    { sep: true },
+    canSync(p)
+      ? { label: p.sync ? `Synchronisée avec ${p.source.platform || 'la source'}` : `Synchroniser avec ${p.source.platform || 'la source'}`, icon: p.sync ? 'check' : 'sync', submenu: () => [
+        { label: p.sync ? 'Désactiver la synchronisation' : 'Activer : ajouter tout seul les nouveaux titres', icon: p.sync ? 'close' : 'check', action: () => setPlaylistSync(p, !p.sync) },
+        p.sync && { label: 'Mettre à jour maintenant', icon: 'sync', action: () => syncPlaylistNow(p).catch((e) => toast('Synchronisation impossible : ' + e.message)) },
+        { label: 'Changer le lien de la playlist', icon: 'edit', action: () => linkSource(p) },
+      ] }
+      : { label: 'Lier à une playlist Spotify…', icon: 'sync', action: () => linkSource(p) },
+    state.profile?.spotifyAuth && { label: p.spotifyId ? 'Copiée sur ton Spotify ✓' : 'Copier sur mon Spotify', icon: 'sync', action: () => import('./spotify-sync.js').then((m) => m.copyPlaylistToSpotify(p)) },
+    { label: 'Plus', icon: 'more', submenu: () => [
+      { label: 'Dupliquer', icon: 'plus', action: async () => (await createPlaylist(`${p.name} (copie)`, p.tracks, p.description), toast('Playlist dupliquée')) },
+      { label: 'Ajouter à une autre playlist…', icon: 'library', action: () => openPlaylistPicker(p.tracks, { x, y: y + 300 }) },
+      canUseLocal() && p.tracks.length && { label: 'Télécharger sur le PC', icon: 'import', action: () => downloadToPc(p.tracks, p.name) },
+      { label: 'Exporter (texte)', icon: 'import', action: () => exportText(p) },
+    ] },
+    { sep: true },
+    del,
   ]);
 }
 
