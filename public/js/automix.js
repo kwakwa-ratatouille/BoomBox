@@ -89,7 +89,8 @@ export const automix = {
     }
     const cached = await pending.get(key);
     pending.delete(key);
-    for (const [id, r] of Object.entries(cached || {})) if (r) mem.set(id, r);
+    // Anciennes analyses sans mesure LUFS : on les refait (normalisation bien plus juste)
+    for (const [id, r] of Object.entries(cached || {})) if (r && r.lufs != null) mem.set(id, r);
     const missing = ids.filter((id) => !mem.has(id));
     queue = urgent ? [...missing, ...queue.filter((x) => !missing.includes(x))] : [...queue, ...missing.filter((x) => !queue.includes(x))];
     pump();
@@ -198,11 +199,18 @@ export const automix = {
     let inStart = b.firstBeat;
     while (inStart < b.start - 0.01) inStart += bBar;
     // Égalisation des volumes (référence -16 dB)
-    const gainOf = (x) => Math.max(0.5, Math.min(1.8, Math.pow(10, (-16 - x.rmsDb) / 20)));
+    const gainOf = (x) => normGain(x);
     return { mixStart, mixLen, inStart, inAt, rate, tempoMatch, style, bassSwap: style === 'blend', gainIn: gainOf(b), gainOut: gainOf(a), beatOut: beat, firstBeatOut: a.firstBeat };
   },
   gain(id) {
     const x = mem.get(id);
-    return x ? Math.max(0.5, Math.min(1.8, Math.pow(10, (-16 - x.rmsDb) / 20))) : 1;
+    return x ? normGain(x) : 1;
   },
 };
+
+// Gain d'égalisation : tout ramené à -14 LUFS (le niveau de Spotify). Les sons très forts sont baissés, les sons
+// calmes un peu remontés (limité, pour ne pas faire saturer).
+function normGain(x) {
+  const level = x.lufs != null ? x.lufs : x.rmsDb + 3;
+  return Math.max(0.25, Math.min(1.6, Math.pow(10, (-14 - level) / 20)));
+}

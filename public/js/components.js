@@ -436,7 +436,7 @@ export function setupDelegation() {
     const info = rowInfo(e.target);
     if (!info) {
       // Clic droit sur la carte d'une de mes playlists (profil, accueil, bibliothèque…) : même menu que dans la liste
-      const pid = e.target.closest('.card[data-href^="#/playlist/"]')?.dataset.href.split('/')[2];
+      const pid = e.target.closest('.card[data-href^="#/playlist/"], .quick-item[data-href^="#/playlist/"]')?.dataset.href.split('/')[2];
       const p = pid && state.library.playlists.find((x) => x.id === pid);
       if (!p) return;
       e.preventDefault();

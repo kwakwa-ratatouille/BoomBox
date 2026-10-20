@@ -71,6 +71,7 @@ function analyze(x, sr) {
   let loud = 0;
   for (let i = 0; i < x.length; i += 8) loud += x[i] * x[i];
   const rmsDb = 10 * Math.log10(loud / (x.length / 8) + 1e-12);
+  const lufs = loudness(x, sr);
 
   // ---------- Tempo : autocorrélation de la fonction d'attaques (60 à 200 BPM) ----------
   const fps = sr / hop;
@@ -224,6 +225,7 @@ function analyze(x, sr) {
     camelot,
     keyStrength: Math.round(best.score * 100) / 100,
     rmsDb: Math.round(rmsDb * 10) / 10,
+    lufs: Math.round(lufs * 10) / 10,
     energy,
     start,
     end,
@@ -284,4 +286,39 @@ function fft(re, im) {
       }
     }
   }
+}
+
+// Volume perçu (LUFS, norme ITU BS.1770, celle de Spotify / YouTube) : filtre « K » qui imite l'oreille (moins
+// sensible aux basses, plus aux aigus), mesure par blocs de 400 ms, et on ignore les silences et passages très
+// calmes (double seuil). Bien plus juste qu'un simple volume moyen, que les basses et les intros faussaient.
+function biquad(x, b0, b1, b2, a1, a2) {
+  const y = new Float32Array(x.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const v = b0 * x[i] + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x[i]; y2 = y1; y1 = v; y[i] = v;
+  }
+  return y;
+}
+function loudness(x, sr) {
+  // Étage 1 : plateau haut +4 dB (vers 1,7 kHz)
+  let G = 3.99984385397, f0 = 1681.97445095, Q = 0.7071752369554193;
+  let K = Math.tan((Math.PI * f0) / sr), Vh = Math.pow(10, G / 20), Vb = Math.pow(Vh, 0.499666774155), a0 = 1 + K / Q + K * K;
+  let y = biquad(x, (Vh + (Vb * K) / Q + K * K) / a0, (2 * (K * K - Vh)) / a0, (Vh - (Vb * K) / Q + K * K) / a0, (2 * (K * K - 1)) / a0, (1 - K / Q + K * K) / a0);
+  // Étage 2 : passe-haut (vers 38 Hz)
+  f0 = 38.13547087613982; Q = 0.5003270373253953; K = Math.tan((Math.PI * f0) / sr); a0 = 1 + K / Q + K * K;
+  y = biquad(y, 1 / a0, -2 / a0, 1 / a0, (2 * (K * K - 1)) / a0, (1 - K / Q + K * K) / a0);
+  // Blocs de 400 ms qui se chevauchent à 75 %
+  const blk = Math.round(0.4 * sr), step = Math.round(0.1 * sr), z = [];
+  for (let i = 0; i + blk <= y.length; i += step) {
+    let e = 0;
+    for (let j = i; j < i + blk; j += 2) e += y[j] * y[j];
+    z.push(e / (blk / 2));
+  }
+  const L = (m) => -0.691 + 10 * Math.log10(m + 1e-12);
+  const abs = z.filter((m) => L(m) > -70);
+  if (!abs.length) return -70;
+  const rel = L(abs.reduce((a, b) => a + b, 0) / abs.length) - 10;
+  const g = abs.filter((m) => L(m) > rel);
+  return L(g.reduce((a, b) => a + b, 0) / (g.length || 1));
 }
