@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Nouvel écran de lancement",
+    "items": [
+      "Au lancement, la boombox saute en rythme et envoie des ondes à chaque atterrissage (animation légère, sans consommer de batterie)."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.1409",
     "title": "Ton top de l'année",
     "items": [

@@ -1791,3 +1791,23 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .yp-preview { aspect-ratio: 2 / 1; border-radius: 12px; background-size: cover; background-position: center; margin-bottom: 12px; }
 .w-yp { border: 0; background: linear-gradient(135deg, #f5c542, #b8790f); color: #1a1200; font-size: 15px; cursor: pointer; }
 .w-yp small { color: rgba(26, 18, 0, 0.75); }
+
+/* ===== Écran de lancement : la boombox saute en rythme et envoie des ondes ===== */
+/* Uniquement transform / opacity (animés par la carte graphique) : fluide et presque gratuit en ressources */
+.sp-stage { position: relative; width: 220px; height: 220px; display: grid; place-items: center; }
+.sp-box { position: relative; z-index: 2; width: 112px; height: auto; transform-origin: 50% 100%; animation: spBounce 0.9s cubic-bezier(0.3, 0, 0.3, 1) infinite; will-change: transform; filter: drop-shadow(0 10px 24px rgba(176, 124, 247, 0.45)); }
+.sp-shadow { position: absolute; z-index: 1; bottom: 46px; width: 84px; height: 14px; border-radius: 50%; background: rgba(0, 0, 0, 0.45); animation: spShadow 0.9s cubic-bezier(0.3, 0, 0.3, 1) infinite; will-change: transform, opacity; }
+.sp-ring { position: absolute; top: 50%; left: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 3px solid var(--accent, #b07cf7); opacity: 0; animation: spRing 2.7s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; will-change: transform, opacity; }
+.sp-ring:nth-child(2) { animation-delay: 0.9s; }
+.sp-ring:nth-child(3) { animation-delay: 1.8s; } /* une onde à chaque atterrissage */
+.sp-word { font-size: 26px; font-weight: 900; letter-spacing: -0.02em; color: #fff; opacity: 0; animation: spWord 0.6s 0.25s ease forwards; }
+@keyframes spBounce {
+  0%, 100% { transform: translateY(0) scale(1.08, 0.9); }   /* écrasée au sol (temps fort) */
+  12% { transform: translateY(0) scale(0.94, 1.08); }        /* détente */
+  45% { transform: translateY(-34px) scale(1, 1); }          /* en l'air */
+  80% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes spShadow { 0%, 100% { transform: scaleX(1); opacity: 0.55; } 45% { transform: scaleX(0.55); opacity: 0.2; } 80% { transform: scaleX(1); opacity: 0.5; } }
+@keyframes spRing { 0% { transform: scale(0.6); opacity: 0.7; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes spWord { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sp-box, .sp-shadow, .sp-ring { animation: none; } .sp-ring { display: none; } }
