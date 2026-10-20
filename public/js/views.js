@@ -381,6 +381,9 @@ export async function search(el, params, ctx) {
     });
     return;
   }
+  // Lien (ou identifiant) d'un profil Spotify collé dans la recherche : on ouvre directement le profil
+  const spUser = q.match(/(?:open\.spotify\.com\/(?:intl-\w+\/)?user\/|spotify:user:)([\w.-]+)/i);
+  if (spUser) return void (location.hash = );
   ls.set('boombox.recentSearches', [q, ...recents.filter((r) => r.toLowerCase() !== q.toLowerCase())].slice(0, 10));
 
   const tabs = [['all', 'Tout'], ['song', 'Titres'], ['artist', 'Artistes'], ['album', 'Albums'], ['playlist', 'Playlists'], ['video', 'Vidéos'], ['people', 'Profils Spotify'], ['lyrics', 'Paroles']];
@@ -396,7 +399,7 @@ export async function search(el, params, ctx) {
     const box = el.querySelector('#results');
     const users = await api(`/api/spotify/users?q=${encodeURIComponent(q)}`).catch(() => []);
     if (!ctx.alive()) return;
-    box.innerHTML = users.length ? String(spotifyUserCards(users)) : String(html`<div class="empty"><h2>Aucun profil Spotify « ${q} »</h2><p>Essaie avec le nom affiché sur son profil Spotify.</p></div>`);
+    box.innerHTML = users.length ? String(spotifyUserCards(users)) : String(html`<div class="empty"><h2>Aucun profil Spotify « ${q} »</h2><p>La recherche de Spotify ne trouve pas tous les profils (surtout les petits). Colle plutôt <b>le lien de son profil</b> ici : sur Spotify, ouvre le profil → <b>⋯</b> → <b>Partager</b> → <b>Copier le lien du profil</b>.</p></div>`);
     return;
   }
   if (type === 'lyrics') {
