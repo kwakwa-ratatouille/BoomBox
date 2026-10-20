@@ -434,7 +434,15 @@ export function setupDelegation() {
 
   document.addEventListener('contextmenu', (e) => {
     const info = rowInfo(e.target);
-    if (!info) return;
+    if (!info) {
+      // Clic droit sur la carte d'une de mes playlists (profil, accueil, bibliothèque…) : même menu que dans la liste
+      const pid = e.target.closest('.card[data-href^="#/playlist/"]')?.dataset.href.split('/')[2];
+      const p = pid && state.library.playlists.find((x) => x.id === pid);
+      if (!p) return;
+      e.preventDefault();
+      import('./views.js').then((v) => v.playlistMenu(p, e.clientX, e.clientY));
+      return;
+    }
     e.preventDefault();
     trackMenu(info.track, e.clientX, e.clientY, { playlistId: info.list.playlistId, index: info.i });
   });
