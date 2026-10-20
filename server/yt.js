@@ -397,8 +397,27 @@ export async function album(id) {
     if (!artists.length && h.strapline_text_one) artists = [{ name: txt(h.strapline_text_one), id: null }].filter((a) => a.name);
     const thumb = thumbOf(h) || thumbOf(al.background);
     const albumRef = { id, name: txt(h.title) };
-    const tracks = collectItems(al.contents)
-      .map((i) => normTrack(i, { artists, album: albumRef, thumb }))
+    const items = collectItems(al.contents);
+    let tracks = items.map((i) => normTrack(i, { artists, album: albumRef, thumb }));
+    // Titres « non disponibles » sur YouTube Music en France (droits) : avant, ils disparaissaient de l'album.
+    // On les remplace par leur version YouTube (clip ou audio mis en ligne), retrouvée par titre + artiste.
+    const missing = tracks.map((t, k) => (t ? null : k)).filter((k) => k != null);
+    if (missing.length) {
+      const who = artists[0]?.name || '';
+      const key = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+      const fill = async (k) => {
+        const i = items[k];
+        const title = txt(i.title);
+        if (!title) return;
+        try {
+          const r = await search(`${who} ${title}`, 'video');
+          const hit = (r.items || []).find((v) => key(v.title).includes(key(title)) && (!who || key(`${v.title} ${(v.artists || []).map((x) => x.name).join(' ')}`).includes(key(who).split(' ')[0])));
+          if (hit) tracks[k] = { ...hit, type: undefined, title, duration: i.duration?.seconds || hit.duration, artists, album: albumRef, thumb, fromYoutube: true };
+        } catch {}
+      };
+      for (let k = 0; k < missing.length; k += 4) await Promise.all(missing.slice(k, k + 4).map(fill));
+    }
+    tracks = tracks
       .filter(Boolean)
       .map((t) => ({ ...t, album: albumRef, thumb, artists: t.artists?.length && t.artists[0]?.name ? t.artists : artists }));
     // Toujours rien : artiste des titres eux-mêmes
