@@ -2,7 +2,7 @@
 // Publique : les amis l'écoutent et peuvent l'ajouter à leur bibliothèque (copie), rien de plus.
 // Collaborateur : il peut ajouter / retirer des sons et la renommer, comme le propriétaire.
 import { html, raw, icon, toast, modal, contextMenu, plural, promptText } from './ui.js';
-import { createPlaylist, isLiked, toggleLike, bus } from './state.js';
+import { createPlaylist, isLiked, toggleLike, bus, state } from './state.js';
 import { player, ctl } from './player.js';
 import { cover, playlistCover, openPlaylistPicker } from './components.js';
 import { db, doc, getDoc } from './cloud.js';
@@ -30,7 +30,7 @@ export async function userPage(el, params) {
   const draw = () => {
     const f = social.friend(code) || { code, name: d.name, photo: d.photo, color: d.color, share: !!d.share, activity: d.share ? d.activity : null };
     el.innerHTML = String(html`<div class="page">
-      ${d.banner ? html`<div class="user-banner" style="background-image:url('${d.banner}')"></div>` : ''}
+      ${d.banner && !state.safeMode ? html`<div class="user-banner" style="background-image:url('${d.banner}')"></div>` : ''}
       <div class="user-hero">${avatar(f, 'user-av')}<div style="min-width:0"><div class="muted" style="font-size:12px">PROFIL</div><h1 class="ellipsis">${f.name}</h1><div class="user-act">${activityLine(f)}</div>
         <div class="row-flex" style="gap:8px;margin-top:10px"><a class="btn white" href="#/friends?c=${code}">${icon('chat', 16)} Message</a>${!social.isAdded(code) && !f.sameSpace ? html`<button class="btn ghost" id="u-add">${icon('plus', 16)} Ajouter</button>` : ''}</div></div></div>
       <section class="section"><div class="section-head"><h2>Playlists publiques</h2></div>

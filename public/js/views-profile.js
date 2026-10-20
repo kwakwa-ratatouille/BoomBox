@@ -24,29 +24,84 @@ function squareImage(file, size = 320) {
   });
 }
 
-// Recadre l'image au format bannière 3:1 (JPEG ~100 Ko)
-function bannerImage(file, w = 1200, h = 400) {
+// Image choisie → réduite tout de suite (côté max 1600 px) : une photo de téléphone de 12 Mpx gardée en entier
+// faisait planter l'appli iPhone (mémoire)
+function loadSmall(file, max = 1600) {
   return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement('canvas');
-      c.width = w;
-      c.height = h;
-      const r = Math.min(img.width / w, img.height / h);
-      const sw = w * r;
-      const sh = h * r;
-      c.getContext('2d').drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, w, h);
-      resolve(c.toDataURL('image/jpeg', 0.72));
+      c.width = Math.round(img.width * r);
+      c.height = Math.round(img.height * r);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      img.src = '';
+      resolve(c);
     };
-    img.onerror = () => reject(new Error('Image illisible'));
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => (URL.revokeObjectURL(url), reject(new Error('Image illisible')));
+    img.src = url;
   });
+}
+
+// Recadrage de la bannière (format 3:1) : on fait glisser l'image dans le cadre et on zoome
+async function bannerCropper(box, file) {
+  const src = await loadSmall(file);
+  const W = 900;
+  const H = 300;
+  let x = 50;
+  let y = 50;
+  let zoom = 1;
+  const url = src.toDataURL('image/jpeg', 0.85);
+  box.innerHTML = `<div class="pe-crop"><div class="pe-banner pe-crop-area" style="background-image:url('${url}')"></div>
+    <div class="row-flex" style="gap:10px;margin-top:8px"><span class="muted" style="font-size:12px">Zoom</span><input type="range" class="range pe-zoom" min="1" max="3" step="0.01" value="1" style="flex:1"></div>
+    <p class="muted" style="font-size:12px;margin:4px 0 0">Fais glisser l'image pour choisir la partie visible.</p></div>`;
+  const area = box.querySelector('.pe-crop-area');
+  const apply = () => {
+    const base = Math.max(area.clientWidth / src.width, area.clientHeight / src.height) * zoom;
+    area.style.backgroundSize = `${src.width * base}px ${src.height * base}px`;
+    area.style.backgroundPosition = `${x}% ${y}%`;
+  };
+  requestAnimationFrame(apply);
+  let start = null;
+  area.addEventListener('pointerdown', (e) => {
+    start = { px: e.clientX, py: e.clientY, x, y };
+    area.setPointerCapture(e.pointerId);
+  });
+  area.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    const base = Math.max(area.clientWidth / src.width, area.clientHeight / src.height) * zoom;
+    const freeX = src.width * base - area.clientWidth;
+    const freeY = src.height * base - area.clientHeight;
+    // Glisser vers le bas montre le haut de l'image (comme une photo qu'on déplace)
+    if (freeX > 0) x = Math.max(0, Math.min(100, start.x - ((e.clientX - start.px) / freeX) * 100));
+    if (freeY > 0) y = Math.max(0, Math.min(100, start.y - ((e.clientY - start.py) / freeY) * 100));
+    apply();
+  });
+  area.addEventListener('pointerup', () => (start = null));
+  area.addEventListener('pointercancel', () => (start = null));
+  area.style.touchAction = 'none';
+  box.querySelector('.pe-zoom').oninput = (e) => ((zoom = Number(e.target.value)), apply());
+  return {
+    render() {
+      const c = document.createElement('canvas');
+      c.width = W;
+      c.height = H;
+      const s = Math.max(W / src.width, H / src.height) * zoom;
+      const dw = src.width * s;
+      const dh = src.height * s;
+      c.getContext('2d').drawImage(src, ((W - dw) * x) / 100, ((H - dh) * y) / 100, dw, dh);
+      return c.toDataURL('image/jpeg', 0.72);
+    },
+  };
 }
 
 export async function editProfile() {
   const p = state.profile;
   let photo = p.photo || null;
   let banner = p.banner || null;
+  let crop = null;
   const bannerPrev = (b) => (b ? `<div class="pe-banner" style="background-image:url('${b}')"></div>` : '<div class="pe-banner empty">Aucune bannière</div>');
   const v = await modal({
     title: 'Détails du profil',
@@ -58,7 +113,7 @@ export async function editProfile() {
       </div></div>
       <div class="pe-banner-box"><b>Bannière du profil</b><div id="pe-bprev">${raw(bannerPrev(banner))}</div>
         <div class="row-flex" style="gap:8px"><label class="btn ghost">Choisir une bannière<input type="file" accept="image/*" id="pe-bfile" hidden></label><button class="btn ghost" id="pe-brm" type="button">Retirer</button></div></div>`),
-    actions: [{ label: 'Annuler' }, { label: 'Enregistrer', primary: true, value: (w) => ({ name: w.querySelector('#pe-name').value.trim() || p.name, photo, banner }) }],
+    actions: [{ label: 'Annuler' }, { label: 'Enregistrer', primary: true, value: (w) => ({ name: w.querySelector('#pe-name').value.trim() || p.name, photo, banner: crop ? crop.render() : banner }) }],
     onMount: (w) => {
       w.querySelector('#pe-file').onchange = async (e) => {
         const f = e.target.files[0];
@@ -69,10 +124,13 @@ export async function editProfile() {
       w.querySelector('#pe-bfile').onchange = async (e) => {
         const f = e.target.files[0];
         if (!f) return;
-        banner = await bannerImage(f);
-        w.querySelector('#pe-bprev').innerHTML = bannerPrev(banner);
+        try {
+          crop = await bannerCropper(w.querySelector('#pe-bprev'), f);
+        } catch (err) {
+          toast(err.message);
+        }
       };
-      w.querySelector('#pe-brm').onclick = () => ((banner = null), (w.querySelector('#pe-bprev').innerHTML = bannerPrev(null)));
+      w.querySelector('#pe-brm').onclick = () => ((banner = null), (crop = null), (w.querySelector('#pe-bprev').innerHTML = bannerPrev(null)));
       w.querySelector('#pe-rm')?.addEventListener('click', () => {
         photo = null;
         w.querySelector('.pe-photo .avatar-img').outerHTML = String(avatarHtml({ ...p, photo: null }, 'xl'));
@@ -91,7 +149,7 @@ export async function profilePage(el, _p, ctx) {
     const p = state.profile;
     const lib = state.library;
     el.innerHTML = String(html`
-      <div class="hero profile-hero ${p.banner ? 'has-banner' : ''}" style="${p.banner ? `background-image:url('${p.banner}')` : ''}">
+      <div class="hero profile-hero ${p.banner && !state.safeMode ? 'has-banner' : ''}" style="${p.banner && !state.safeMode ? `background-image:url('${p.banner}')` : ''}">
         <button class="pe-photo" id="pf-photo" title="Choisir une photo">${avatarHtml(p, 'hero')}<span>${icon('edit')}Choisir une photo</span></button>
         <div class="hero-info"><span class="hero-type">Profil</span>
           <h1 class="editable" id="pf-name">${p.name}</h1>

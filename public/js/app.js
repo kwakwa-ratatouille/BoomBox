@@ -1452,6 +1452,9 @@ async function boot() {
   if (isNative) await handleLaunchLink();
   await ensureSpace();
   hideSplash();
+  // Le dernier démarrage n'a pas abouti (plantage) : mode prudent, sans bannière ni grosses images
+  state.safeMode = !!localStorage.getItem("boombox.booting");
+  localStorage.setItem("boombox.booting", "1");
   const profile = await pickProfile();
   setProfile(profile);
   renderAvatar();
@@ -1597,6 +1600,7 @@ async function boot() {
   updatePlayerTime();
   renderPanel();
   await route();
+  setTimeout(() => localStorage.removeItem("boombox.booting"), 4000); // démarrage réussi
 
   setTimeout(showWhatsNew, 1500);
   // Appli mobile : l'interface a bien démarré ; on cherche une version plus récente en ligne (sans réinstaller l'appli)

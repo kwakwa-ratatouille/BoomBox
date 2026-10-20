@@ -2,7 +2,7 @@
 // formes qui bougent, chiffres qui défilent. Chaque carte se partage en image : Story (9:16) ou post Insta (4:5).
 // Les cartes sont décrites par des données ; le même modèle sert à l'affichage animé et à l'image exportée.
 import { html, icon, plural, toast } from './ui.js';
-import { getStatsFull, createPlaylist } from './state.js';
+import { getStatsFull, createPlaylist, listeningYears } from './state.js';
 import { ctl } from './player.js';
 import { loadImg, shareStory } from './story.js';
 
@@ -96,7 +96,6 @@ export function wrappedRange(period, year) {
 
 function chooser(el) {
   const y = new Date().getFullYear();
-  const years = Array.from({ length: 6 }, (_, i) => y - i);
   el.innerHTML = String(html`<div class="page" style="max-width:820px"><h1>Ton récap en musique</h1><p class="muted">Choisis la période : un récap animé avec tes artistes, tes titres et tes chiffres, à partager en Story ou en post.</p>
     <div class="w-choose">
       <a class="w-pick" href="#/wrapped?period=day" style="background:${THEMES[0].bg};color:${THEMES[0].fg}"><b>Aujourd'hui</b><span>Ta journée</span></a>
@@ -104,8 +103,15 @@ function chooser(el) {
       <a class="w-pick" href="#/wrapped?period=month" style="background:${THEMES[4].bg};color:${THEMES[4].fg}"><b>Ce mois-ci</b><span>${new Date().toLocaleDateString('fr-FR', { month: 'long' })}</span></a>
     </div>
     <h2 style="margin:28px 0 12px">Par année</h2>
-    <div class="w-years">${years.map((yy) => (yearWrappedReady(yy) ? html`<a class="w-year" href="#/wrapped?year=${yy}">${yy}</a>` : html`<span class="w-year off" title="Disponible le 1er décembre">${yy}<small>le 1er déc.</small></span>`))}</div>
+    <div class="w-years" id="w-years"><span class="muted">…</span></div>
   </div>`);
+  // Seulement les années où tu as écouté (Boombox ou historique Spotify importé)
+  listeningYears().then((years) => {
+    const box = el.querySelector('#w-years');
+    if (!box) return;
+    box.innerHTML = String(html`${years.map((yy) => (yearWrappedReady(yy) ? html`<a class="w-year" href="#/wrapped?year=${yy}">${yy}</a>` : html`<span class="w-year off" title="Disponible le 1er décembre">${yy}<small>prêt le 1er déc.</small></span>`))}
+      ${years.length < 2 ? html`<a class="w-year w-import" href="#/import"><b>+ Années d'avant</b><small>Importe ton historique Spotify</small></a>` : ''}`);
+  });
 }
 
 // ---------- Les cartes (données) ----------
@@ -153,7 +159,7 @@ function cardHtml(c, i) {
   const lines = (txt) => String(txt).split('\n').map((l, k) => html`<span class="wr-line" style="--d:${0.15 + k * 0.12}s">${l}</span>`);
   let body;
   if (c.kind === 'intro') body = html`<img class="wr-logo wr-in" src="/assets/logo-symbol.png" alt=""><p class="wr-kicker wr-in" style="--d:.1s">${c.kicker}</p><h1 class="wr-huge">${lines(c.big)}</h1><p class="wr-sub wr-in" style="--d:.6s">${c.sub}</p>`;
-  else if (c.kind === 'number') body = html`<p class="wr-kicker wr-in">${c.kicker}</p><div class="wr-num wr-in" style="--d:.2s"><b data-count="${c.num}" data-plain="${c.plain ? 1 : 0}">0</b><span>${c.unit}</span></div><p class="wr-sub wr-in" style="--d:.5s">${c.sub}</p>${c.faces ? html`<div class="wr-faces wr-in" style="--d:.7s">${c.faces.map((f) => (f ? html`<img src="${f}" alt="" referrerpolicy="no-referrer">` : ''))}</div>` : ''}`;
+  else if (c.kind === 'number') body = html`<p class="wr-kicker wr-in">${c.kicker}</p><div class="wr-num wr-in ${String(c.unit).length <= 2 ? 'inline' : ''}" style="--d:.2s"><b data-count="${c.num}" data-plain="${c.plain ? 1 : 0}">0</b><span>${c.unit}</span></div><p class="wr-sub wr-in" style="--d:.5s">${c.sub}</p>${c.faces ? html`<div class="wr-faces wr-in" style="--d:.7s">${c.faces.map((f) => (f ? html`<img src="${f}" alt="" referrerpolicy="no-referrer">` : ''))}</div>` : ''}`;
   else if (c.kind === 'hero') body = html`<p class="wr-kicker wr-in">${c.kicker}</p><div class="wr-photo ${c.round ? 'round' : ''} wr-pop">${c.img ? html`<img src="${c.img}" alt="" referrerpolicy="no-referrer">` : ''}</div><h1 class="wr-big wr-in" style="--d:.45s">${c.big}</h1><p class="wr-sub wr-in" style="--d:.6s">${c.sub}</p>${c.play ? html`<button class="wr-btn wr-in" style="--d:.75s" data-wplay>${icon('play', 18)} Écouter</button>` : ''}`;
   else if (c.kind === 'list') body = html`<p class="wr-kicker wr-in">${c.kicker}</p><ol class="wr-list">${c.items.map((it, k) => html`<li class="wr-in" style="--d:${0.2 + k * 0.13}s"><span class="wr-rank">${k + 1}</span>${it.img ? html`<img class="${it.round ? 'round' : ''}" src="${it.img}" alt="" referrerpolicy="no-referrer">` : html`<i></i>`}<div><b>${it.title}</b><small>${it.sub}</small></div></li>`)}</ol>`;
   else if (c.kind === 'persona') body = html`<p class="wr-kicker wr-in">${c.kicker}</p><div class="wr-emoji wr-pop">${c.emoji}</div><h1 class="wr-big wr-in" style="--d:.4s">${c.big}</h1><p class="wr-sub wr-in" style="--d:.55s">${c.sub}</p>`;

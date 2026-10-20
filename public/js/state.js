@@ -39,7 +39,11 @@ function defaultDeviceName() {
   const ua = navigator.userAgent;
   if (/iphone/i.test(ua)) return 'iPhone';
   if (/ipad/i.test(ua)) return 'iPad';
-  if (/android/i.test(ua)) return 'Téléphone Android';
+  if (/android/i.test(ua)) {
+    // Modèle du téléphone quand Android le donne (ex. « SM-S918B », « Pixel 8 »)
+    const m = ua.match(/Android [\d.]+;\s*([^;)]+?)(?:\s+Build\/|\))/);
+    return m && m[1].trim().length > 2 ? m[1].trim() : 'Téléphone Android';
+  }
   if (/windows/i.test(ua)) return 'PC Windows';
   if (/mac/i.test(ua)) return 'Mac';
   return 'Navigateur';
@@ -128,6 +132,11 @@ export async function deleteProfile(id) {
 
 export function setProfile(p) {
   state.profile = p;
+  // Nom d'appareil pas encore choisi : modèle + prénom du profil (« iPhone de Matis »)
+  if (!localStorage.getItem('boombox.deviceName') && p?.name) {
+    state.device.name = `${defaultDeviceName()} de ${p.name}`.slice(0, 40);
+    ls.set('boombox.deviceName', state.device.name);
+  }
   ls.set('boombox.profile', p.id);
   emit('profile', p);
 }
@@ -267,7 +276,7 @@ export function subscribeLibrary() {
     onSnapshot(cloud.ref('profiles', state.profile.id), (d) => {
       if (!d.exists()) return;
       const data = d.data();
-      Object.assign(state.profile, { name: data.name, color: data.color, photo: data.photo || null, pin: data.pin || null, banner: data.banner || null, shareLikes: !!data.shareLikes });
+      Object.assign(state.profile, { name: data.name, color: data.color, photo: data.photo || null, pin: data.pin || null, banner: data.banner || null, shareLikes: data.shareLikes !== false });
       state.library.settings = data.settings || {};
       emit('settings', state.library.settings);
       emit('profile', state.profile);
@@ -671,6 +680,14 @@ export async function saveImported(entries) {
   }
   await batched(ops);
   importedCache = { pid: state.profile.id, entries };
+}
+
+// Années où il y a des écoutes (Boombox + historique Spotify importé), de la plus récente à la plus ancienne
+export async function listeningYears() {
+  const years = new Set([new Date().getFullYear()]);
+  for (const h of await loadHistory().catch(() => [])) if (h.playedAt) years.add(new Date(h.playedAt).getFullYear());
+  for (const e of await getImported().catch(() => [])) for (const k of Object.keys(e.b || {})) years.add(Number(k.slice(0, 4)));
+  return [...years].filter((y) => y > 2000).sort((a, b) => b - a);
 }
 
 // Fin (en ms) d'une période « AAAA-MM » ou « AAAA-MM-JJ »

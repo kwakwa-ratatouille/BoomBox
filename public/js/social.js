@@ -59,7 +59,7 @@ export const social = {
   async _ensureCard() {
     const p = state.profile;
     try {
-      await setDoc(peopleRef(p.socialCode), { space: cloud.spaceId, pid: p.id, name: p.name, photo: smallPhoto(p), color: p.color || '#b07cf7', banner: smallBanner(p), share: p.shareActivity !== false, likes: !!p.shareLikes, updatedAt: Date.now() }, { merge: true });
+      await setDoc(peopleRef(p.socialCode), { space: cloud.spaceId, pid: p.id, name: p.name, photo: smallPhoto(p), color: p.color || '#b07cf7', banner: smallBanner(p), share: p.shareActivity !== false, likes: p.shareLikes !== false, updatedAt: Date.now() }, { merge: true });
       this._cardOk = true;
       if (this._inboxBroken) this._watchInbox();
     } catch (e) {
@@ -183,6 +183,18 @@ export const social = {
   },
   _clearSys(code, test) {
     for (const m of this._sys) if (m.peer === code && test(m)) deleteDoc(doc(db, 'people', this.code, 'inbox', m.mid)).catch(() => {});
+  },
+  // Réactions emoji : un message est repéré par son heure d'envoi (identique dans les deux boîtes).
+  // Ma réaction part chez l'ami (message système) et une copie reste chez moi ; '' = réaction retirée
+  async react(code, at, emoji) {
+    const p = state.profile;
+    const base = { text: '', at: Date.now(), sys: true, react: emoji || '', target: at, fromName: p.name };
+    await addDoc(inboxCol(code), { ...base, peer: this.code, out: false, read: true });
+    await addDoc(inboxCol(this.code), { ...base, peer: code, out: true, read: true }).catch(() => {});
+  },
+  reactions(code, at) {
+    const last = (out) => this._sys.filter((m) => m.react != null && m.peer === code && m.target === at && !!m.out === out).sort((a, b) => b.at - a.at)[0]?.react || '';
+    return { mine: last(true), theirs: last(false) };
   },
   // « Vu » : le dernier moment où cet ami a lu mes messages
   seenAt(code) {
@@ -311,7 +323,7 @@ export const social = {
     for (const c of list) if (!before.has(c.code)) this.send(c.code, { text: `Je t'ai ajouté comme collaborateur de « ${p.name} » : tu peux la modifier comme moi.`, collab: { owner: this.code, id: p.id, name: p.name } }).catch(() => {});
   },
   get sharingLikes() {
-    return !!state.profile?.shareLikes;
+    return state.profile?.shareLikes !== false; // activé par défaut
   },
   async setShareLikes(on) {
     const p = state.profile;

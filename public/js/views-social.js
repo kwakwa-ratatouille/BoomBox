@@ -175,9 +175,9 @@ export async function friendsPage(el, params) {
         ${msgs.length ? msgs.map((m) => {
           const day = new Date(m.at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
           const sep = day !== lastDay ? ((lastDay = day), html`<div class="chat-day">${day}</div>`) : '';
-          return html`${sep}<div class="msg ${m.out ? 'out' : 'in'}" data-mid="${m.mid}">
+          return html`${sep}<div class="msg ${m.out ? 'out' : 'in'}" data-mid="${m.mid}" data-at="${m.at}">
             ${m.collab ? html`<a class="btn primary sm" style="margin-bottom:6px" href="#/shared/${m.out ? social.code : m.peer}/${m.collab.id}">${icon('library', 16)} Ouvrir « ${m.collab.name} »</a>` : ''}${m.playlist ? playlistCard(m) : ''}${m.tracks?.length ? tracksCard(m) : ''}${m.image || m.gif ? html`<img class="msg-img" src="${m.image || m.gif}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}${m.sticker ? html`<img class="msg-sticker" src="${m.sticker}" alt="">` : ''}${m.text ? html`<p class="msg-text">${m.text}</p>` : ''}
-            ${m === lastOut ? html`<span class="msg-state">${seen >= m.at ? 'Vu' : 'Remis'}</span>` : ''}<time>${new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</time></div>`;
+            ${m === lastOut ? html`<span class="msg-state">${seen >= m.at ? 'Vu' : 'Remis'}</span>` : ''}<time>${new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</time>${reactBadge(c, m.at)}</div>`;
         }) : html`<p class="muted chat-empty">Envoie un message, un son ou une playlist à ${who.name}.</p>`}
       </div>
       <form class="chat-form" id="chat-form">
@@ -198,6 +198,15 @@ export async function friendsPage(el, params) {
 
   function bindChat(root, c, f) {
     bindActivity(root);
+    // Réactions : double-clic / appui long sur un message → barre d'emojis
+    root.querySelectorAll('.msg[data-at]').forEach((el) => {
+      let t = null;
+      const open = () => reactBar(el, c, Number(el.dataset.at));
+      el.addEventListener('dblclick', open);
+      el.addEventListener('touchstart', () => (t = setTimeout(open, 450)), { passive: true });
+      ['touchend', 'touchmove', 'touchcancel'].forEach((ev) => el.addEventListener(ev, () => clearTimeout(t), { passive: true }));
+      el.addEventListener('contextmenu', (e) => (e.preventDefault(), open()));
+    });
     const box = root.querySelector('#chat-msgs');
     if (box) box.scrollTop = box.scrollHeight;
     social.markRead(c);
@@ -229,10 +238,6 @@ export async function friendsPage(el, params) {
         { label: 'Chercher un son…', icon: 'search', action: () => searchAndSend(send) },
         { label: 'Image ou GIF de ma galerie', icon: 'plus', action: () => pickImage().then((img) => img && send({ image: img })) },
         { label: 'Chercher un GIF', icon: 'search', action: () => gifPicker(send) },
-        { label: 'GIF par lien (Giphy / Tenor)', icon: 'plus', action: async () => {
-          const u = await promptText('Lien du GIF', { placeholder: 'https://media.giphy.com/…gif', label: 'Envoyer' });
-          if (u && /^https:\/\//.test(u.trim())) send({ gif: gifUrl(u.trim()) });
-        } },
         { label: 'Sticker', icon: 'heart', action: () => stickerPicker(send) },
         {
           label: 'Une de mes playlists',
@@ -464,4 +469,33 @@ async function gifPicker(send) {
       });
     },
   });
+}
+
+// ---------- Réactions emoji ----------
+const REACTS = ['❤️', '😂', '😮', '😢', '🔥', '👍'];
+function reactBadge(code, at) {
+  const r = social.reactions(code, at);
+  const list = [r.theirs, r.mine].filter(Boolean);
+  return list.length ? html`<span class="msg-react">${list.join('')}</span>` : '';
+}
+function reactBar(el, code, at) {
+  document.querySelector('.react-bar')?.remove();
+  const mine = social.reactions(code, at).mine;
+  const bar = document.createElement('div');
+  bar.className = 'react-bar';
+  bar.innerHTML = REACTS.map((e) => `<button class="${e === mine ? 'on' : ''}" data-e="${e}">${e}</button>`).join('');
+  document.body.appendChild(bar);
+  const r = el.getBoundingClientRect();
+  bar.style.top = Math.max(8, r.top - bar.offsetHeight - 6) + 'px';
+  bar.style.left = Math.max(8, Math.min(innerWidth - bar.offsetWidth - 8, r.left + r.width / 2 - bar.offsetWidth / 2)) + 'px';
+  navigator.vibrate?.(10);
+  const close = () => (bar.remove(), document.removeEventListener('pointerdown', away, true));
+  const away = (e) => !bar.contains(e.target) && close();
+  setTimeout(() => document.addEventListener('pointerdown', away, true), 0);
+  bar.onclick = (e) => {
+    const b = e.target.closest('[data-e]');
+    if (!b) return;
+    social.react(code, at, b.dataset.e === mine ? '' : b.dataset.e).catch((er) => toast(er.message));
+    close();
+  };
 }

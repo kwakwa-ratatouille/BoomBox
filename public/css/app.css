@@ -1652,3 +1652,24 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .gif-grid { columns: 3 110px; column-gap: 6px; max-height: 55vh; overflow-y: auto; margin-top: 10px; }
 .gif-it { display: block; width: 100%; margin-bottom: 6px; border-radius: 8px; overflow: hidden; break-inside: avoid; }
 .gif-it img { display: block; width: 100%; }
+
+/* Lecteur plein écran : rien ne se fait écraser par la section artiste en dessous (pochette et paroles gardent leur taille) */
+#fullplayer > * { flex-shrink: 0; }
+.fp-lyrics { min-height: 260px; }
+.pe-crop-area { cursor: grab; background-repeat: no-repeat; user-select: none; }
+.pe-crop-area:active { cursor: grabbing; }
+.msg { position: relative; -webkit-touch-callout: none; }
+.msg-react { position: absolute; bottom: -12px; right: 10px; background: var(--elev-2); border: 2px solid var(--bg, #121019); border-radius: 999px; padding: 1px 6px; font-size: 14px; line-height: 1.3; }
+.msg.in .msg-react { right: auto; left: 10px; }
+.msg:has(.msg-react) { margin-bottom: 16px; }
+.react-bar { position: fixed; z-index: 400; display: flex; gap: 2px; padding: 6px; border-radius: 999px; background: var(--elev); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); animation: menuIn 0.14s ease; }
+.react-bar button { font-size: 26px; width: 42px; height: 42px; border-radius: 50%; }
+.react-bar button.on { background: rgba(255, 255, 255, 0.15); }
+
+/* Récap : « 11 h » sur une ligne, pas de cadre violet de focus, animation de rayures plus légère */
+.wr-num.inline { flex-direction: row; align-items: baseline; gap: 0.15em; }
+.wr-num.inline span { font-size: min(13cqw, 64px); }
+.wr, .wr *, .wr-card { outline: none !important; -webkit-tap-highlight-color: transparent; }
+.set-stripes .wr-shapes i { filter: none !important; will-change: transform; }
+.wr-card { contain: paint; }
+.w-import { background: transparent; border: 2px dashed rgba(255, 255, 255, 0.25); font-size: 15px; text-align: center; }

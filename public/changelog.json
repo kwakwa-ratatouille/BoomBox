@@ -1,5 +1,19 @@
 [
   {
+    "version": "next",
+    "title": "Réactions et corrections",
+    "items": [
+      "Messages : réagis avec un emoji (appui long sur téléphone, double-clic sur PC).",
+      "Bannière : recadre-la directement dans l'appli (glisse l'image, zoom). Image allégée : plus de plantage sur iPhone.",
+      "Si l'appli n'a pas réussi à démarrer, elle redémarre en mode prudent (sans bannière).",
+      "Lecteur plein écran sur téléphone : la pochette et les paroles s'affichent de nouveau en entier.",
+      "Récap : seulement les années où tu as écouté (importe ton historique Spotify pour les années d'avant), « 11 h » bien affiché, animation plus fluide.",
+      "Partages avec les amis activés par défaut, et nom d'appareil automatique (modèle + prénom).",
+      "Le GIF par lien est retiré : utilise la recherche de GIF."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.1226",
     "title": "Nouveautés plus claires",
     "items": [
