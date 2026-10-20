@@ -1,5 +1,19 @@
 [
   {
+    "version": "next",
+    "title": "Amis et messages",
+    "items": [
+      "Android : notification de lecture avec précédent / lecture / suivant (nouvelle version de l'appli à installer).",
+      "Ajouter un ami envoie une demande : il l'accepte (ou la refuse) dans Amis, et vous vous voyez tout de suite.",
+      "Messages : « Remis » et « Vu » sous ton dernier message.",
+      "Messages : images et GIF de ta galerie, GIF par lien Giphy / Tenor, stickers (et tes propres stickers).",
+      "Activité de tes amis avec la pochette du son.",
+      "La fenêtre « Ajouter à une playlist » se ferme en touchant à côté.",
+      "Plus de fenêtres « localhost » : les confirmations s'affichent dans l'appli."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.0012",
     "title": "Paroles et artiste",
     "items": [

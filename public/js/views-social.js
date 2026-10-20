@@ -1,6 +1,6 @@
 // Écrans « Amis » : activité d'écoute des amis, conversations (messages, sons, playlists), envoi à un ami.
-import { html, raw, icon, toast, modal, contextMenu, confirmBox, plural, esc } from './ui.js';
-import { state, bus, createPlaylist, isLiked, toggleLike, api } from './state.js';
+import { html, raw, icon, toast, modal, contextMenu, confirmBox, plural, esc, promptText } from './ui.js';
+import { state, bus, createPlaylist, isLiked, toggleLike, api, updateProfile } from './state.js';
 
 // Abonnement qu'on peut retirer (quand on quitte la page ou ferme le panneau)
 const listen = (type, fn) => {
@@ -22,10 +22,10 @@ export function activityLine(f) {
   if (!f.share) return html`<span class="muted fa-off">Activité non partagée</span>`;
   if (!a?.track) return html`<span class="muted fa-off">Rien écouté récemment</span>`;
   const now = listeningNow(a);
-  return html`<button class="fa-track" data-play-act="${f.code}" title="Écouter ce son">
+  return html`<button class="fa-track" data-play-act="${f.code}" title="Écouter ce son">${a.track.thumb ? html`<img class="fa-cover" src="${a.track.thumb}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="fa-txt">
       <span class="t-title ellipsis">${a.track.title}</span><span class="muted ellipsis">${artists(a.track)}</span>
       ${a.context?.name ? html`<span class="muted ellipsis fa-ctx">${icon(a.context.type === 'playlist' ? 'library' : 'music', 12)} ${a.context.name}</span>` : ''}
-    </button><span class="fa-when ${now ? 'live' : ''}">${now ? html`<i class="eq"><b></b><b></b><b></b></i> En écoute` : ago(a.at)}</span>`;
+    </span></button><span class="fa-when ${now ? 'live' : ''}">${now ? html`<i class="eq"><b></b><b></b><b></b></i> En écoute` : ago(a.at)}</span>`;
 }
 
 // Ordre : en écoute d'abord, puis activité la plus récente
@@ -81,7 +81,7 @@ export async function addFriendDialog() {
   if (!v || v === 'Annuler') return;
   try {
     const name = await social.addFriend(v);
-    toast(`${name} ajouté à tes amis`);
+    toast(`Demande d’ami envoyée à ${name}`);
   } catch (e) {
     toast(/permission/i.test(e.code || e.message) ? 'Mets à jour les règles Firebase pour activer les amis' : e.message);
   }
@@ -116,7 +116,7 @@ export function sendToFriend(payload, at = null) {
 
 // ---------- Page Amis / conversation ----------
 export async function friendsPage(el, params) {
-  if (params.add) social.addFriend(params.add).then((n) => toast(`${n} ajouté à tes amis`)).catch((e) => toast(e.message));
+  if (params.add) social.addFriend(params.add).then((n) => toast(`Demande d’ami envoyée à ${n}`)).catch((e) => toast(e.message));
   const code = params.c || null;
 
   const draw = () => {
@@ -125,16 +125,19 @@ export async function friendsPage(el, params) {
     const lastMsg = (c) => social.inbox.find((m) => m.peer === c);
     const unreadOf = (c) => social.inbox.filter((m) => m.peer === c && !m.out && !m.read).length;
     // Personnes qui m'ont écrit sans être dans mes amis : la conversation apparaît quand même
-    const strangers = [...new Set(social.inbox.filter((m) => !m.out && !social.friend(m.peer)).map((m) => m.peer))];
+    const strangers = [...new Set(social.inbox.filter((m) => !m.out && !social.friend(m.peer)).map((m) => m.peer))].filter((c) => !social.requests().some((r) => r.peer === c));
     el.innerHTML = String(html`<div class="page friends-page ${code ? 'has-chat' : ''}">
       <aside class="fr-list">
         <div class="row-flex" style="justify-content:space-between;margin-bottom:10px"><h1 style="font-size:28px;margin:0">Amis</h1><button class="btn ghost" id="fr-add">${icon('plus', 18)} Ajouter</button></div>
+        ${social.requests().length ? html`<div class="fr-reqs"><div class="muted" style="font-size:12px;font-weight:700;margin:4px 0 6px">DEMANDES D'AMI</div>${social.requests().map((r) => html`<div class="fr-item fr-req"><div class="fa-av">${avatar({ name: r.fromName, photo: r.fromPhoto, color: r.fromColor })}</div>
+          <div class="fa-main"><b class="ellipsis">${r.fromName}</b><span class="muted">veut t'ajouter en ami</span></div>
+          <button class="btn primary sm" data-acc="${r.peer}">Accepter</button><button class="icon-btn" data-dec="${r.peer}" title="Refuser">${icon('close', 18)}</button></div>`)}</div>` : ''}
         ${list.map((x) => {
           const m = lastMsg(x.code);
           const n = unreadOf(x.code);
           return html`<a class="fr-item ${x.code === code ? 'active' : ''}" href="#/friends?c=${x.code}">
             <div class="fa-av">${avatar(x)}${listeningNow(x.activity) ? html`<i class="fa-dot"></i>` : ''}</div>
-            <div class="fa-main"><b class="ellipsis">${x.name}${x.sameSpace ? html` <span class="tag">profil</span>` : ''}</b>
+            <div class="fa-main"><b class="ellipsis">${x.name}${x.sameSpace ? html` <span class="tag">profil</span>` : ''}${social.isPending(x.code) ? html` <span class="tag">demande envoyée</span>` : ''}</b>
               <span class="muted ellipsis">${m ? `${m.out ? 'Toi : ' : ''}${preview(m)}` : x.activity?.track && x.share ? `${listeningNow(x.activity) ? '▶ ' : ''}${x.activity.track.title} · ${artists(x.activity.track)}` : 'Aucun message'}</span></div>
             ${n ? html`<span class="badge">${n}</span>` : ''}</a>`;
         })}
@@ -149,6 +152,8 @@ export async function friendsPage(el, params) {
       <section class="fr-chat">${code ? chatView(code, f) : html`<div class="empty"><h2>${icon('chat', 40)}</h2><p class="muted">Choisis un ami pour voir son activité et lui écrire.</p></div>`}</section>
     </div>`);
     el.querySelector('#fr-add').onclick = addFriendDialog;
+    el.querySelectorAll('[data-acc]').forEach((b) => (b.onclick = () => social.acceptRequest(b.dataset.acc).catch((e) => toast(e.message))));
+    el.querySelectorAll('[data-dec]').forEach((b) => (b.onclick = () => social.declineRequest(b.dataset.dec)));
     if (code) bindChat(el, code, f);
   };
 
@@ -158,6 +163,8 @@ export async function friendsPage(el, params) {
     const who = f || (incoming && { code: c, name: incoming.fromName, photo: incoming.fromPhoto, color: incoming.fromColor, share: false });
     if (!who) return html`<div class="empty"><p class="muted">Conversation introuvable.</p></div>`;
     let lastDay = '';
+    const seen = social.seenAt(c);
+    const lastOut = [...msgs].reverse().find((m) => m.out);
     return html`<header class="chat-head">
         <a class="icon-btn chat-back" href="#/friends" aria-label="Retour">${icon('back')}</a>
         <div class="fa-av">${avatar(who)}${listeningNow(who.activity) ? html`<i class="fa-dot"></i>` : ''}</div>
@@ -169,8 +176,8 @@ export async function friendsPage(el, params) {
           const day = new Date(m.at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
           const sep = day !== lastDay ? ((lastDay = day), html`<div class="chat-day">${day}</div>`) : '';
           return html`${sep}<div class="msg ${m.out ? 'out' : 'in'}" data-mid="${m.mid}">
-            ${m.collab ? html`<a class="btn primary sm" style="margin-bottom:6px" href="#/shared/${m.out ? social.code : m.peer}/${m.collab.id}">${icon('library', 16)} Ouvrir « ${m.collab.name} »</a>` : ''}${m.playlist ? playlistCard(m) : ''}${m.tracks?.length ? tracksCard(m) : ''}${m.text ? html`<p class="msg-text">${m.text}</p>` : ''}
-            <time>${new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</time></div>`;
+            ${m.collab ? html`<a class="btn primary sm" style="margin-bottom:6px" href="#/shared/${m.out ? social.code : m.peer}/${m.collab.id}">${icon('library', 16)} Ouvrir « ${m.collab.name} »</a>` : ''}${m.playlist ? playlistCard(m) : ''}${m.tracks?.length ? tracksCard(m) : ''}${m.image || m.gif ? html`<img class="msg-img" src="${m.image || m.gif}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}${m.sticker ? html`<img class="msg-sticker" src="${m.sticker}" alt="">` : ''}${m.text ? html`<p class="msg-text">${m.text}</p>` : ''}
+            ${m === lastOut ? html`<span class="msg-state">${seen >= m.at ? 'Vu' : 'Remis'}</span>` : ''}<time>${new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</time></div>`;
         }) : html`<p class="muted chat-empty">Envoie un message, un son ou une playlist à ${who.name}.</p>`}
       </div>
       <form class="chat-form" id="chat-form">
@@ -220,6 +227,12 @@ export async function friendsPage(el, params) {
       contextMenu(r.left, r.top - 200, [
         player.track && { label: `Le son en cours : ${player.track.title}`, icon: 'music', action: () => send({ tracks: [player.track] }) },
         { label: 'Chercher un son…', icon: 'search', action: () => searchAndSend(send) },
+        { label: 'Image ou GIF de ma galerie', icon: 'plus', action: () => pickImage().then((img) => img && send({ image: img })) },
+        { label: 'GIF (coller un lien Giphy / Tenor)', icon: 'plus', action: async () => {
+          const u = await promptText('Lien du GIF', { placeholder: 'https://media.giphy.com/…gif', label: 'Envoyer' });
+          if (u && /^https:\/\//.test(u.trim())) send({ gif: gifUrl(u.trim()) });
+        } },
+        { label: 'Sticker', icon: 'heart', action: () => stickerPicker(send) },
         {
           label: 'Une de mes playlists',
           icon: 'library',
@@ -235,7 +248,7 @@ export async function friendsPage(el, params) {
       contextMenu(r.right - 220, r.bottom + 6, [
         { label: 'Voir son profil et ses playlists', icon: 'person', action: () => (location.hash = `#/user/${c}`) },
         f?.activity?.track && { label: 'Écouter son dernier son', icon: 'play', action: () => ctl.playTrack(f.activity.track) },
-        !social.isAdded(c) && !f?.sameSpace && { label: 'Ajouter à mes amis', icon: 'plus', action: () => social.addFriend(c).then((n) => toast(`${n} ajouté à tes amis`)).catch((er) => toast(er.message)) },
+        !social.isAdded(c) && !f?.sameSpace && { label: 'Ajouter à mes amis', icon: 'plus', action: () => social.addFriend(c).then((n) => toast(`Demande d’ami envoyée à ${n}`)).catch((er) => toast(er.message)) },
         social.isAdded(c) && { label: 'Retirer de mes amis', icon: 'trash', danger: true, action: async () => (await confirmBox('Retirer cet ami ?', `${f?.name || 'Cette personne'} ne sera plus dans ta liste. Tu ne verras plus son activité.`, 'Retirer')) && social.removeFriend(c) },
       ]);
     };
@@ -315,4 +328,103 @@ export async function searchAndSend(send, title = 'Envoyer un son') {
     },
   });
   return q;
+}
+
+// ---------- Images, GIF et stickers dans les messages ----------
+// Image de la galerie : réduite (côté max 900 px) ; un GIF animé est gardé tel quel s'il est assez léger
+function pickImage(max = 900) {
+  return new Promise((resolve) => {
+    const inp = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*' });
+    inp.onchange = () => {
+      const file = inp.files[0];
+      if (!file) return resolve(null);
+      if (file.type === 'image/gif' && file.size < 600000) {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.readAsDataURL(file);
+        return;
+      }
+      if (file.type === 'image/gif') toast('GIF trop lourd : envoyé en image fixe');
+      const img = new Image();
+      img.onload = () => {
+        const r = Math.min(1, max / Math.max(img.width, img.height));
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(img.width * r);
+        cv.height = Math.round(img.height * r);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        resolve(cv.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => (toast('Image illisible'), resolve(null));
+      img.src = URL.createObjectURL(file);
+    };
+    inp.click();
+  });
+}
+// Lien de page Giphy → lien direct de l'image
+function gifUrl(u) {
+  const g = u.match(/giphy\.com\/gifs\/(?:.*-)?([A-Za-z0-9]+)$/);
+  return g ? `https://media.giphy.com/media/${g[1]}/giphy.gif` : u;
+}
+const STICKERS = ['😂', '🔥', '❤️', '😭', '🥳', '😎', '👀', '💀', '🙏', '🎶', '🎧', '💯', '🤯', '😍', '🫶', '👍'];
+const emojiSticker = (e) => {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 160;
+  const x = cv.getContext('2d');
+  x.font = '130px serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText(e, 80, 90);
+  return cv.toDataURL('image/png');
+};
+// Stickers : emojis géants + mes stickers perso (images ajoutées, gardées sur ce profil)
+async function stickerPicker(send) {
+  const mine = () => state.profile.stickers || [];
+  let close = null;
+  const draw = (w) => {
+    w.querySelector('.stk-grid').innerHTML = [
+      ...mine().map((src, i) => `<button class="stk" data-mine="${i}"><img src="${src}" alt=""></button>`),
+      ...STICKERS.map((e) => `<button class="stk" data-emo="${e}">${e}</button>`),
+    ].join('');
+  };
+  await modal({
+    title: 'Stickers',
+    body: '<div class="stk-grid"></div><label class="btn ghost" style="margin-top:12px;display:inline-block;cursor:pointer">+ Ajouter mon sticker (image)<input type="file" accept="image/*" id="stk-add" hidden></label><p class="muted" style="font-size:12px">Clic droit / appui long sur un de tes stickers pour le supprimer.</p>',
+    actions: [{ label: 'Fermer' }],
+    onMount: (w) => {
+      close = () => [...(w.closest('.modal') || w.parentElement).querySelectorAll('button')].find((b) => b.textContent.trim() === 'Fermer')?.click();
+      draw(w);
+      w.addEventListener('click', (e) => {
+        const b = e.target.closest('.stk');
+        if (!b) return;
+        send({ sticker: b.dataset.mine != null ? mine()[b.dataset.mine] : emojiSticker(b.dataset.emo) });
+        close?.();
+      });
+      w.addEventListener('contextmenu', async (e) => {
+        const b = e.target.closest('[data-mine]');
+        if (!b) return;
+        e.preventDefault();
+        const list = mine().filter((_, i) => i !== Number(b.dataset.mine));
+        state.profile.stickers = list;
+        await updateProfile(state.profile.id, { stickers: list });
+        draw(w);
+      });
+      w.querySelector('#stk-add').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const img = new Image();
+        img.onload = async () => {
+          const r = Math.min(1, 256 / Math.max(img.width, img.height));
+          const cv = document.createElement('canvas');
+          cv.width = Math.round(img.width * r);
+          cv.height = Math.round(img.height * r);
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          const list = [cv.toDataURL('image/png'), ...mine()].slice(0, 24);
+          state.profile.stickers = list;
+          await updateProfile(state.profile.id, { stickers: list });
+          draw(w);
+        };
+        img.src = URL.createObjectURL(file);
+      };
+    },
+  });
 }

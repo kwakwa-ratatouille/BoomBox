@@ -1,5 +1,5 @@
 // Point d'entrée : profils, routeur, barre latérale, barre de lecture, panneau de droite, lecteur mobile.
-import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural } from './ui.js';
+import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural, confirmBox } from './ui.js';
 import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
 import { cloud, parseInvite, getDoc } from './cloud.js';
 import { firebaseConfig } from './firebase-config.js';
@@ -1484,8 +1484,8 @@ async function boot() {
     offline.init();
     document.addEventListener('offline-progress', () => refreshTrackMarks(true));
     checkExpiry();
-    window.Capacitor.Plugins.App?.addListener('appUrlOpen', (e) => {
-      if (parseInvite(e.url) && confirm('Lier cet appareil à la bibliothèque de ce lien ?')) {
+    window.Capacitor.Plugins.App?.addListener('appUrlOpen', async (e) => {
+      if (parseInvite(e.url) && (await confirmBox('Lier cet appareil ?', 'Cet appareil affichera la bibliothèque de ce lien.', 'Lier'))) {
         location.hash = '#/join?' + e.url.split('?')[1];
         location.reload();
       }

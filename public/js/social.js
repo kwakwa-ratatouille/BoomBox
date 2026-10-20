@@ -143,12 +143,50 @@ export const social = {
     if (code === this.code) throw new Error("C'est ton propre code");
     const s = await getDoc(peopleRef(code));
     if (!s.exists()) throw new Error('Aucun profil Boombox avec ce code');
+    // Il m'avait déjà envoyé une demande : on l'accepte directement
+    if (this.requests().some((r) => r.peer === code)) return (await this.acceptRequest(code), s.data().name);
+    if (this.isAdded(code)) return s.data().name;
+    await this._setFriend(code, s.data().name, true);
+    await this._system(code, { request: true });
+    return s.data().name;
+  },
+  // Demandes d'ami reçues (pas encore acceptées ni refusées)
+  requests() {
+    const seen = new Set();
+    return this._sys.filter((m) => m.request && !m.out && !this.isAdded(m.peer) && !seen.has(m.peer) && seen.add(m.peer));
+  },
+  isPending(code) {
+    return (state.profile?.friends || []).some((f) => f.code === code && f.pending);
+  },
+  async acceptRequest(code) {
+    const r = this._sys.find((m) => m.request && m.peer === code);
+    await this._setFriend(code, r?.fromName || 'Ami', false);
+    await this._system(code, { accept: true });
+    this._clearSys(code, (m) => m.request);
+    toast(`${r?.fromName || 'Ton ami'} est maintenant dans tes amis`);
+  },
+  declineRequest(code) {
+    this._clearSys(code, (m) => m.request);
+  },
+  async _setFriend(code, name, pending) {
     const list = (state.profile.friends || []).filter((f) => f.code !== code);
-    list.push({ code, name: s.data().name, addedAt: Date.now() });
+    list.push({ code, name, addedAt: Date.now(), ...(pending ? { pending: true } : {}) });
     state.profile.friends = list;
     await updateProfile(state.profile.id, { friends: list });
     this.refreshFriends();
-    return s.data().name;
+  },
+  // Messages « système » (demande, acceptation, accusé de lecture) : écrits dans la boîte de l'autre, jamais affichés comme messages
+  async _system(code, extra) {
+    if (!this._cardOk) await this._ensureCard();
+    const p = state.profile;
+    await addDoc(inboxCol(code), { text: '', at: Date.now(), sys: true, ...extra, fromName: p.name, fromPhoto: smallPhoto(p), fromColor: p.color || '#b07cf7', peer: this.code, out: false, read: true });
+  },
+  _clearSys(code, test) {
+    for (const m of this._sys) if (m.peer === code && test(m)) deleteDoc(doc(db, 'people', this.code, 'inbox', m.mid)).catch(() => {});
+  },
+  // « Vu » : le dernier moment où cet ami a lu mes messages
+  seenAt(code) {
+    return this._sys.filter((m) => m.receipt && m.peer === code).reduce((a, m) => Math.max(a, m.readAt || 0), 0);
   },
   async removeFriend(code) {
     const list = (state.profile.friends || []).filter((f) => f.code !== code);
@@ -306,17 +344,25 @@ export const social = {
   },
 
   // ----- Messages -----
+  _sys: [],
   _watchInbox() {
     let first = true;
     this._inboxBroken = false;
     this._inboxOff?.();
     this._inboxOff = (onSnapshot(query(inboxCol(this.code), orderBy('at', 'desc'), limit(300)), (snap) => {
-      this.inbox = snap.docs.map((d) => ({ mid: d.id, ...d.data() }));
+      const all = snap.docs.map((d) => ({ mid: d.id, ...d.data() }));
+      this.inbox = all.filter((m) => !m.sys);
+      this._sys = all.filter((m) => m.sys);
+      this._handleSys();
       this.unread = this.inbox.filter((m) => !m.out && !m.read).length;
       if (!first) {
         for (const ch of snap.docChanges()) {
           const m = ch.doc.data();
-          if (ch.type !== 'added' || m.out || m.read || ch.doc.metadata.hasPendingWrites) continue;
+          if (ch.type === 'added' && m.sys && m.request && !this.isAdded(m.peer) && !ch.doc.metadata.hasPendingWrites) {
+            toast(`${m.fromName || 'Quelqu’un'} veut t'ajouter en ami`, { action: 'Voir', onAction: () => (location.hash = '#/friends'), timeout: 8000 });
+            continue;
+          }
+          if (ch.type !== 'added' || m.sys || m.out || m.read || ch.doc.metadata.hasPendingWrites) continue;
           // Pas de notification si la conversation est déjà ouverte à l'écran
           if (location.hash.includes(`friends?c=${m.peer}`)) continue;
           toast(`${m.fromName || 'Un ami'} : ${preview(m)}`, { action: 'Voir', onAction: () => (location.hash = `#/friends?c=${m.peer}`), timeout: 6000 });
@@ -339,6 +385,33 @@ export const social = {
     const b = writeBatch(db);
     unread.forEach((m) => b.update(doc(db, 'people', this.code, 'inbox', m.mid), { read: true }));
     await b.commit().catch(() => {});
+    this._system(code, { receipt: true, readAt: Date.now() }).catch(() => {});
+  },
+  // Acceptations reçues → l'ami n'est plus « en attente » ; ancien accusés de lecture nettoyés (on garde le dernier)
+  _handleSys() {
+    const list = state.profile?.friends || [];
+    let changed = false;
+    for (const m of this._sys) {
+      if (m.accept && list.some((f) => f.code === m.peer && f.pending)) {
+        list.forEach((f) => f.code === m.peer && delete f.pending);
+        changed = true;
+        this._clearSys(m.peer, (x) => x.accept);
+        toast(`${m.fromName || 'Ton ami'} a accepté ta demande d'ami`);
+      }
+      // Demande reçue de quelqu'un que j'ai moi-même demandé : on devient amis tout de suite
+      if (m.request && list.some((f) => f.code === m.peer && f.pending)) {
+        list.forEach((f) => f.code === m.peer && delete f.pending);
+        changed = true;
+        this._system(m.peer, { accept: true }).catch(() => {});
+        this._clearSys(m.peer, (x) => x.request);
+      }
+    }
+    if (changed) updateProfile(state.profile.id, { friends: list }).then(() => this.refreshFriends()).catch(() => {});
+    const latest = new Map();
+    for (const m of this._sys.filter((x) => x.receipt).sort((a, b) => b.readAt - a.readAt)) {
+      if (latest.has(m.peer)) deleteDoc(doc(db, 'people', this.code, 'inbox', m.mid)).catch(() => {});
+      else latest.set(m.peer, m);
+    }
   },
   // msg : { text } | { tracks: [...] } | { playlist: {...} } (+ text facultatif)
   async send(code, msg) {
@@ -351,9 +424,12 @@ export const social = {
       const pl = msg.playlist;
       body.playlist = { name: String(pl.name || 'Playlist').slice(0, 100), description: String(pl.description || '').slice(0, 300), tracks: (pl.tracks || []).slice(0, 500).map(slim).filter(Boolean), cover: pl.cover && pl.cover.length < 60000 ? pl.cover : null };
     }
+    if (msg.image) body.image = String(msg.image).slice(0, 900000);
+    if (msg.gif) body.gif = String(msg.gif).slice(0, 500);
+    if (msg.sticker) body.sticker = String(msg.sticker).slice(0, 300000);
     if (msg.collab) body.collab = { owner: msg.collab.owner, id: msg.collab.id, name: String(msg.collab.name || '').slice(0, 100) };
-    if (!body.text && !body.tracks && !body.playlist) return;
-    const type = body.playlist ? 'playlist' : body.tracks ? 'tracks' : 'text';
+    if (!body.text && !body.tracks && !body.playlist && !body.image && !body.gif && !body.sticker) return;
+    const type = body.playlist ? 'playlist' : body.tracks ? 'tracks' : body.image || body.gif || body.sticker ? 'image' : 'text';
     const from = { fromName: p.name, fromPhoto: smallPhoto(p), fromColor: p.color || '#b07cf7' };
     // Chez l'ami (peer = moi), puis ma copie (peer = lui) pour retrouver la conversation
     await addDoc(inboxCol(code), { ...body, ...from, type, peer: this.code, out: false, read: false });
@@ -363,6 +439,8 @@ export const social = {
 
 export function preview(m) {
   if (m.playlist) return `🎵 Playlist « ${m.playlist.name} »${m.text ? ` · ${m.text}` : ''}`;
+  if (m.gif || m.image) return `🖼️ ${m.gif ? 'GIF' : 'Image'}${m.text ? ` · ${m.text}` : ''}`;
+  if (m.sticker) return '🙂 Sticker';
   if (m.tracks?.length) return `🎶 ${m.tracks.length > 1 ? `${m.tracks.length} sons` : `« ${m.tracks[0].title} »`}${m.text ? ` · ${m.text}` : ''}`;
   return m.text || '';
 }

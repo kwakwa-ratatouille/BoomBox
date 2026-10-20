@@ -1,7 +1,7 @@
 // Code à 4 chiffres d'un profil Boombox. Demandé quand on choisit un profil sur un appareil (pas à chaque
 // ouverture : le profil choisi reste) et quand on change de profil.
 // Réinitialisation cachée : taper six fois « 4 » d'affilée sur le clavier du code.
-import { html, icon, toast } from './ui.js';
+import { html, icon, toast, confirmBox } from './ui.js';
 import { updateProfile } from './state.js';
 
 // Empreinte du code (le code lui-même n'est jamais enregistré). Simple et sans crypto.subtle, qui n'existe pas
@@ -58,7 +58,7 @@ export function pinPad(profile, { mode = 'check', title = null, cancelLabel = 'A
     const resetFlow = async () => {
       // Easter egg : six « 4 » d'affilée → réinitialisation du code de ce profil
       $('.pin-msg').textContent = '';
-      if (!confirm(`Réinitialiser le code de ${profile.name} ? Le profil s'ouvrira sans code ; tu pourras en choisir un nouveau dans les paramètres.`)) return (fours = 0);
+      if (!(await confirmBox(`Réinitialiser le code de ${profile.name} ?`, 'Le profil s’ouvrira sans code ; tu pourras en choisir un nouveau dans les paramètres.', 'Réinitialiser'))) return (fours = 0);
       await updateProfile(profile.id, { pin: null });
       profile.pin = null;
       toast('Code réinitialisé');

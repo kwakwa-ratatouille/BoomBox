@@ -1086,6 +1086,7 @@ export const player = {
   },
 
   _updateMediaSession() {
+    this._androidMedia();
     if (!('mediaSession' in navigator) || !this.track) return;
     const t = this.track;
     // iPhone : les boutons de la notification sont oubliés quand l'élément audio change (fondu, titre suivant) :
@@ -1097,6 +1098,28 @@ export const player = {
       album: t.album?.name || '',
       artwork: t.thumb ? [{ src: t.thumb, sizes: '544x544', type: 'image/jpeg' }] : [],
     });
+  },
+
+  // Android : notification de lecture native (la WebView n'en affiche pas), avec précédent / suivant
+  _androidMedia() {
+    const P = window.Capacitor?.getPlatform?.() === 'android' && window.Capacitor.Plugins?.BoomboxNative;
+    if (!P?.mediaUpdate) return;
+    if (!this._androidMediaReady) {
+      this._androidMediaReady = true;
+      P.addListener('mediaAction', (e) => {
+        if (e.action === 'next') ctl.next();
+        else if (e.action === 'prev') ctl.prev();
+        else if (e.action === 'play') ctl.play();
+        else if (e.action === 'pause') ctl.pause();
+        else if (e.action === 'seek') ctl.seek(e.time);
+      });
+      // Lecture / pause : la notification suit (au plus une mise à jour par 300 ms)
+      let tm = null;
+      bus.addEventListener('player:state', () => (clearTimeout(tm), (tm = setTimeout(() => this._androidMedia(), 300))));
+    }
+    const t = this.track;
+    if (!t) return P.mediaStop?.().catch(() => {});
+    P.mediaUpdate({ title: t.title || '', artist: artistNames(t), artwork: t.thumb || null, playing: !this.paused, position: this.time() || 0, duration: this.shownDuration?.() || this.duration() || 0 }).catch(() => {});
   },
 
   _setupMediaSession() {

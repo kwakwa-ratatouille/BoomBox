@@ -1632,3 +1632,20 @@ body:has(.party-screen) .modal-backdrop { z-index: 500; }
 .fp-artist .fa-head b { font-size: 18px; display: block; }
 .fp-artist .section { margin-top: 18px; }
 .fp-artist h3 { font-size: 18px; margin: 0 0 8px; }
+
+/* Fenêtre d'ajout à une playlist : appui à côté = fermer */
+.pp-backdrop { position: fixed; inset: 0; z-index: 259; background: rgba(0, 0, 0, 0.25); }
+
+/* Amis : pochette dans l'activité, demandes, images et stickers, vu / remis */
+.fa-track { display: flex; flex-direction: row; align-items: center; gap: 10px; text-align: left; }
+.fa-track .fa-txt { display: flex; flex-direction: column; min-width: 0; }
+.fa-cover { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; flex: none; }
+.fr-req { gap: 8px; }
+.fr-req .btn { flex: none; }
+.msg-img { display: block; max-width: min(260px, 70vw); max-height: 320px; border-radius: 12px; margin-bottom: 4px; }
+.msg-sticker { display: block; width: 120px; height: 120px; object-fit: contain; }
+.msg-state { font-size: 11px; opacity: 0.7; margin-right: 6px; }
+.stk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; max-height: 50vh; overflow: auto; }
+.stk { font-size: 40px; aspect-ratio: 1; border-radius: 10px; background: var(--elev-2); display: grid; place-items: center; }
+.stk img { width: 100%; height: 100%; object-fit: contain; }
+body:has(.pin-ov) .modal-backdrop { z-index: 1000; }

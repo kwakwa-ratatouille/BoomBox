@@ -1,5 +1,19 @@
 package app.boombox.nativeplugin;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.MediaMetadata;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
+import android.os.Build;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -12,6 +26,8 @@ import com.yausername.youtubedl_android.YoutubeDL;
 import com.yausername.youtubedl_android.YoutubeDLRequest;
 
 import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -92,5 +108,118 @@ public class BoomboxNativePlugin extends Plugin {
                 call.reject(e.getMessage() == null ? "erreur yt-dlp" : e.getMessage());
             }
         }).start();
+    }
+    // ---------- Notification de lecture (Android) : précédent / lecture-pause / suivant ----------
+    // La WebView d'Android n'affiche pas de notification média : on en crée une native, reliée à une MediaSession
+    // (écran de verrouillage, écouteurs Bluetooth, montre). Les appuis remontent au JavaScript (événement « mediaAction »).
+    private static final String CH = "boombox_playback";
+    private static final String ACT = "app.boombox.MEDIA";
+    private MediaSession session;
+    private BroadcastReceiver receiver;
+    private String artUrl = null;
+    private Bitmap art = null;
+
+    private void emit(String action) {
+        JSObject o = new JSObject();
+        o.put("action", action);
+        notifyListeners("mediaAction", o);
+    }
+
+    private void ensureSession() {
+        if (session != null) return;
+        Context ctx = getContext().getApplicationContext();
+        session = new MediaSession(ctx, "Boombox");
+        session.setCallback(new MediaSession.Callback() {
+            @Override public void onPlay() { emit("play"); }
+            @Override public void onPause() { emit("pause"); }
+            @Override public void onSkipToNext() { emit("next"); }
+            @Override public void onSkipToPrevious() { emit("prev"); }
+            @Override public void onSeekTo(long pos) {
+                JSObject o = new JSObject();
+                o.put("action", "seek");
+                o.put("time", pos / 1000.0);
+                notifyListeners("mediaAction", o);
+            }
+        });
+        session.setActive(true);
+        receiver = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) {
+                String a = i.getStringExtra("a");
+                if (a != null) emit(a);
+            }
+        };
+        if (Build.VERSION.SDK_INT >= 33) ctx.registerReceiver(receiver, new IntentFilter(ACT), Context.RECEIVER_NOT_EXPORTED);
+        else ctx.registerReceiver(receiver, new IntentFilter(ACT));
+        NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(new NotificationChannel(CH, "Lecture", NotificationManager.IMPORTANCE_LOW));
+        if (Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED && getActivity() != null) {
+            getActivity().requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 4242);
+        }
+    }
+
+    private Notification.Action action(Context ctx, int icon, String title, String a, int code) {
+        Intent i = new Intent(ACT).setPackage(ctx.getPackageName()).putExtra("a", a);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, code, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        return new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(ctx, icon), title, pi).build();
+    }
+
+    @PluginMethod
+    public void mediaUpdate(PluginCall call) {
+        String title = call.getString("title", "");
+        String artist = call.getString("artist", "");
+        String url = call.getString("artwork", null);
+        boolean playing = Boolean.TRUE.equals(call.getBoolean("playing", false));
+        double pos = call.getDouble("position", 0.0);
+        double dur = call.getDouble("duration", 0.0);
+        new Thread(() -> {
+            try {
+                ensureSession();
+                if (url != null && !url.equals(artUrl)) {
+                    artUrl = url;
+                    art = null;
+                    try (InputStream in = new URL(url).openStream()) {
+                        art = BitmapFactory.decodeStream(in);
+                    } catch (Exception ignored) {
+                    }
+                }
+                Context ctx = getContext().getApplicationContext();
+                MediaMetadata.Builder md = new MediaMetadata.Builder()
+                    .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+                    .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
+                    .putLong(MediaMetadata.METADATA_KEY_DURATION, (long) (dur * 1000));
+                if (art != null) md.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art);
+                session.setMetadata(md.build());
+                session.setPlaybackState(new PlaybackState.Builder()
+                    .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_SEEK_TO)
+                    .setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, (long) (pos * 1000), playing ? 1f : 0f)
+                    .build());
+                Intent open = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
+                PendingIntent content = open == null ? null : PendingIntent.getActivity(ctx, 0, open, PendingIntent.FLAG_IMMUTABLE);
+                Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(ctx, CH) : new Notification.Builder(ctx);
+                b.setSmallIcon(ctx.getApplicationInfo().icon)
+                    .setContentTitle(title)
+                    .setContentText(artist)
+                    .setLargeIcon(art)
+                    .setContentIntent(content)
+                    .setOngoing(playing)
+                    .setShowWhen(false)
+                    .setVisibility(Notification.VISIBILITY_PUBLIC)
+                    .addAction(action(ctx, android.R.drawable.ic_media_previous, "Précédent", "prev", 1))
+                    .addAction(playing ? action(ctx, android.R.drawable.ic_media_pause, "Pause", "pause", 2) : action(ctx, android.R.drawable.ic_media_play, "Lecture", "play", 2))
+                    .addAction(action(ctx, android.R.drawable.ic_media_next, "Suivant", "next", 3))
+                    .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()).setShowActionsInCompactView(0, 1, 2));
+                ((NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE)).notify(4242, b.build());
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }).start();
+    }
+
+    @PluginMethod
+    public void mediaStop(PluginCall call) {
+        Context ctx = getContext().getApplicationContext();
+        ((NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(4242);
+        call.resolve();
     }
 }

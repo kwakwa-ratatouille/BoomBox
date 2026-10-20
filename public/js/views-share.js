@@ -44,7 +44,7 @@ export async function userPage(el, params) {
     el.querySelector('#u-lplay')?.addEventListener('click', () => ctl.playList(likes, 0, lctx));
     el.querySelectorAll('[data-li]').forEach((r) => (r.onclick = () => ctl.playList(likes, +r.dataset.li, lctx)));
     bindActivity(el);
-    el.querySelector('#u-add')?.addEventListener('click', () => social.addFriend(code).then((n) => (toast(`${n} ajouté à tes amis`), draw())).catch((e) => toast(e.message)));
+    el.querySelector('#u-add')?.addEventListener('click', () => social.addFriend(code).then((n) => (toast(`Demande d’ami envoyée à ${n}`), draw())).catch((e) => toast(e.message)));
   };
   draw();
   return { cleanup: listen('social', draw) };

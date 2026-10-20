@@ -149,6 +149,11 @@ export function openPlaylistPicker(tracks, at = null) {
     <button class="pp-row pp-new" data-pp="new"><span class="pp-cov">${icon('plus', 22)}</span><span class="pp-name">Nouvelle playlist</span></button>
     <div class="pp-list"></div>
     <div class="pp-foot"><button class="btn white" data-pp="close">OK</button></div>`);
+  // Fond (transparent) derrière la fenêtre : un appui à côté la ferme, sur téléphone comme sur PC
+  const bd = document.createElement('div');
+  bd.className = 'pp-backdrop';
+  bd.addEventListener('pointerdown', (e) => (e.preventDefault(), e.stopPropagation(), close()));
+  document.body.appendChild(bd);
   document.body.appendChild(el);
   const ids = arr.map((t) => t.id);
   let q = '';
@@ -241,6 +246,7 @@ export function openPlaylistPicker(tracks, at = null) {
     document.removeEventListener('pointerdown', onDown, true);
     document.removeEventListener('keydown', onKey);
     el.remove();
+    bd.remove();
     picker = null;
   }
   picker = { close };
