@@ -1916,3 +1916,9 @@ html, body { overscroll-behavior-y: none; }
   #fullplayer .progress { position: static; display: flex; justify-content: space-between; margin-top: 6px; }
   #fullplayer .progress span { display: block; min-width: 0; font-size: 12px; }
 }
+/* Haut de page : si l'iPhone fait « rebondir » la page, on voit la couleur de la page et pas une bande sombre */
+@media (max-width: 768px) {
+  .view { background: linear-gradient(var(--topbar-bg, var(--panel)), var(--panel) 360px) no-repeat; }
+  /* Mini-lecteur : le titre et l'artiste ne sont plus des liens (un appui ouvre le lecteur plein écran) */
+  #playerbar .pb-track a, #playerbar .pb-text a { pointer-events: none; color: inherit; text-decoration: none; }
+}
