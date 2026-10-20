@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Playlists privées",
+    "items": [
+      "Bouton « Privée / Publique » sur chaque playlist : une playlist privée n'apparaît ni sur ton profil, ni chez tes amis, ni sur ton profil partagé par lien."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.1357",
     "title": "Classement",
     "items": [

@@ -2,7 +2,7 @@
 // Chaque profil a un « code ami » et une fiche publique people/{code} : nom, photo, et — seulement si le partage
 // est activé dans les paramètres — le son en cours ou le dernier écouté. Les messages arrivent dans
 // people/{code}/inbox, lisible uniquement par les appareils du profil (voir firestore.rules).
-import { state, emit, on, updateProfile, cleanTrack, addToPlaylist, removeFromPlaylist, updatePlaylist, getStatsFull } from './state.js';
+import { state, emit, on, updateProfile, cleanTrack, addToPlaylist, removeFromPlaylist, updatePlaylist, getStatsFull, publishProfile } from './state.js';
 import { cloud, db, doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, where, orderBy, limit, writeBatch } from './cloud.js';
 import { player } from './player.js';
 import { toast } from './ui.js';
@@ -341,6 +341,8 @@ export const social = {
   },
   async setVisibility(p, visibility) {
     await updatePlaylist(p.id, { visibility });
+    // Profil partagé par lien : mis à jour tout de suite (une playlist repassée en privée en disparaît)
+    if (state.profile?.publicCode) publishProfile().catch(() => {});
     toast(visibility === 'public' ? `« ${p.name} » est publique : tes amis la voient sur ton profil` : `« ${p.name} » est privée`);
   },
   async setCollaborators(p, list) {

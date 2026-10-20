@@ -153,13 +153,13 @@ export async function profilePage(el, _p, ctx) {
         <button class="pe-photo" id="pf-photo" title="Choisir une photo">${avatarHtml(p, 'hero')}<span>${icon('edit')}Choisir une photo</span></button>
         <div class="hero-info"><span class="hero-type">Profil</span>
           <h1 class="editable" id="pf-name">${p.name}</h1>
-          <div class="hero-meta"><span>${plural(lib.playlists.length, 'playlist')}</span><span class="sep"></span><a class="link" href="#/following">${plural(lib.follows.length, 'abonnement')}</a><span class="sep"></span><a class="link" href="#/liked">${plural(lib.liked.length, 'titre liké')}</a></div>
+          <div class="hero-meta"><span>${plural(lib.playlists.filter((x) => x.visibility === 'public').length, 'playlist publique')}</span><span class="sep"></span><a class="link" href="#/following">${plural(lib.follows.length, 'abonnement')}</a><span class="sep"></span><a class="link" href="#/liked">${plural(lib.liked.length, 'titre liké')}</a></div>
         </div>
       </div>
       <div class="page-body">
         <div class="actions"><button class="outline-btn" id="pf-share">${icon('share', 16)} Partager mon profil</button><a class="outline-btn" href="#/wrapped">Mon récap</a><button class="act-btn" id="pf-edit" title="Modifier le profil">${icon('more')}</button></div>
         <div id="pf-tops"><div class="sk sk-title"></div><div class="sk-cards">${'<div class="sk sk-card"></div>'.repeat(5)}</div></div>
-        ${lib.playlists.length ? html`<section class="section"><div class="section-head"><h2>Playlists</h2><a href="#/library">Tout afficher</a></div><div class="cards row">${lib.playlists.map((pl) => card({ ...pl, type: 'local', coverHtml: playlistCover(pl) }, { sub: `${pl.visibility === 'public' ? 'Publique' : 'Privée'} · ${plural(pl.tracks.length, 'titre')}` }))}</div></section>` : ''}
+        ${lib.playlists.some((x) => x.visibility === 'public') ? html`<section class="section"><div class="section-head"><div><h2>Playlists publiques</h2><div class="muted">${plural(lib.playlists.filter((x) => x.visibility !== 'public').length, 'playlist privée')} masquée${lib.playlists.filter((x) => x.visibility !== 'public').length > 1 ? 's' : ''} (bouton « Privée / Publique » sur chaque playlist)</div></div><a href="#/library">Tout afficher</a></div><div class="cards row">${lib.playlists.filter((x) => x.visibility === 'public').map((pl) => card({ ...pl, type: 'local', coverHtml: playlistCover(pl) }, { sub: `${pl.visibility === 'public' ? 'Publique' : 'Privée'} · ${plural(pl.tracks.length, 'titre')}` }))}</div></section>` : ''}
         ${lib.follows.length ? html`<section class="section"><div class="section-head"><h2><a class="link" href="#/following">Abonnements</a></h2><a href="#/following">Tout afficher</a></div><div class="cards row">${lib.follows.map((f) => card({ ...f, type: 'artist' }))}</div></section>` : ''}
       </div>`);
     if (p.photo) dominantColor(p.photo).then((c) => c && el.querySelector('.profile-hero')?.style.setProperty('--hero', c));

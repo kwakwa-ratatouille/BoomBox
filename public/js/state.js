@@ -343,12 +343,13 @@ export async function publishProfile() {
     photo: p.photo || null,
     color: p.color || '#2ef28b',
     updatedAt: Date.now(),
-    counts: { playlists: state.library.playlists.length, follows: state.library.follows.length, liked: state.library.liked.length },
+    counts: { playlists: state.library.playlists.filter((pl) => pl.visibility === 'public').length, follows: state.library.follows.length, liked: state.library.liked.length },
     minutes: s?.minutes || 0,
     topArtists: (s?.topArtists || []).slice(0, 10).map((a) => ({ name: a.artist.name, thumb: a.thumb || null, count: a.count })),
     topTracks: (s?.topTracks || []).slice(0, 10).map((t) => ({ ...slim(t.track), count: t.count })),
     follows: state.library.follows.slice(0, 30).map((f) => ({ name: f.name, thumb: f.thumb || null })),
-    playlists: state.library.playlists.slice(0, 30).map((pl) => ({ name: pl.name, cover: pl.cover && pl.cover.length < 60000 ? pl.cover : null, thumbs: thumbs(pl), count: pl.tracks.length, tracks: pl.tracks.slice(0, 30).map(slim) })),
+    // Seulement les playlists publiques (les privées n'apparaissent jamais sur le profil partagé)
+    playlists: state.library.playlists.filter((pl) => pl.visibility === 'public').slice(0, 30).map((pl) => ({ name: pl.name, cover: pl.cover && pl.cover.length < 60000 ? pl.cover : null, thumbs: thumbs(pl), count: pl.tracks.length, tracks: pl.tracks.slice(0, 30).map(slim) })),
   });
   if (!p.publicCode) {
     await updateProfile(p.id, { publicCode: code, publicAt: Date.now() });

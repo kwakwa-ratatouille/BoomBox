@@ -610,6 +610,7 @@ export async function playlist(el, { id }, ctx) {
           <button class="big-play" data-playall>${playAllIcon(pctx)}</button>${shuffleBtn()}${mixBtn(p)}
           ${dlButton(offline.isPlaylistOffline(p.id), p.tracks)}
           <button class="act-btn" id="pl-more" title="Plus d'options">${icon('more')}</button>
+          <button class="vis-btn ${p.visibility === 'public' ? 'pub' : ''}" id="pl-vis" title="Qui peut voir cette playlist">${icon(p.visibility === 'public' ? 'users' : 'pin', 16)}${p.visibility === 'public' ? 'Publique' : 'Privée'}</button>
           <span class="spacer"></span>
           ${toolsHtml()}
         </div>
@@ -627,6 +628,8 @@ export async function playlist(el, { id }, ctx) {
       const r = e.currentTarget.getBoundingClientRect();
       playlistMenu(p, r.left, r.bottom);
     };
+    // Publique : visible sur mon profil, par mes amis et sur mon profil partagé ; privée : seulement moi
+    el.querySelector('#pl-vis').onclick = () => import('./social.js').then(({ social }) => social.setVisibility(p, p.visibility === 'public' ? 'private' : 'public'));
     el.querySelector('#pl-mix').onclick = (e) => mixMenu(e, () => state.library.playlists.find((x) => x.id === id)?.tracks || [], pctx, render, state.library.playlists.find((x) => x.id === id));
     el.querySelector('#pl-add').onclick = () => addTracksDialog(p.id);
     el.querySelector('#pl-sync')?.addEventListener('click', () => openSyncPanel(p));
