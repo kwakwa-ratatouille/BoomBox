@@ -1771,3 +1771,11 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .rk-v { font-weight: 700; font-size: 14px; white-space: nowrap; }
 .vis-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); font-size: 13px; font-weight: 700; color: var(--muted); }
 .vis-btn.pub { color: var(--accent); border-color: var(--accent); }
+
+/* Écran party : plus de barre colorée en bas — le flou est appliqué à chaque forme (et non au calque entier,
+   dont le bord rognait les couleurs), le fond couvre tout l'écran, plein écran compris */
+.ps-bg { inset: 0 !important; filter: none !important; overflow: hidden; opacity: 0.8; }
+.ps-bg i { filter: blur(80px); mix-blend-mode: normal; opacity: 0.7; }
+.party-screen:fullscreen { width: 100vw; height: 100vh; }
+.party-screen::backdrop { background: #0b0910; }
+.ps-shade { inset: -2px; background: radial-gradient(ellipse at 70% 45%, rgba(8, 6, 12, 0.25), rgba(8, 6, 12, 0.8) 75%), linear-gradient(90deg, rgba(8, 6, 12, 0.6), transparent 45%), linear-gradient(transparent 75%, rgba(8, 6, 12, 0.85)); }
