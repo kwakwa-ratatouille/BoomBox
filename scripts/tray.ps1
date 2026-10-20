@@ -31,6 +31,9 @@ function Stop-Server {
 }
 
 function Open-Boombox {
+  # Appli Chrome installée : même fenêtre que l'icône épinglée dans la barre des tâches
+  $pwa = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter 'Boombox.lnk' -ErrorAction SilentlyContinue | Where-Object { $_.DirectoryName -notmatch 'Startup|Démarrage' } | Select-Object -First 1
+  if ($pwa) { Start-Process $pwa.FullName; return }
   $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LocalAppData\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
   if ($chrome) { Start-Process $chrome "--app=$url" } else { Start-Process $url }
 }

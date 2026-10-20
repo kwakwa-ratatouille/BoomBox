@@ -14,6 +14,13 @@ rem « Boombox.cmd /serveur » : démarre seulement le serveur (lancement automa
 if /i "%~1"=="/serveur" exit /b 0
 
 set "URL=http://localhost:8787"
+rem Boombox installé comme appli Chrome (menu ⋮ → Installer) : on ouvre CETTE appli, pour que l'icône épinglée
+rem dans la barre des tâches soit la même fenêtre (sinon Windows la range avec Chrome)
+for /f "usebackq delims=" %%L in (`powershell -NoProfile -Command "Get-ChildItem \"$env:APPDATA\Microsoft\Windows\Start Menu\Programs\" -Recurse -Filter 'Boombox.lnk' -ErrorAction SilentlyContinue | Where-Object { $_.DirectoryName -notmatch 'Startup|Démarrage' } | Select-Object -First 1 -ExpandProperty FullName"`) do set "PWA=%%L"
+if defined PWA (
+  start "" "%PWA%"
+  exit /b 0
+)
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
   start "" "%ProgramFiles%\Google\Chrome\Application\chrome.exe" --app=%URL%
 ) else if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" (
