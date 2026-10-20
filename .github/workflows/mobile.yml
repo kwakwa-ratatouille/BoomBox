@@ -142,9 +142,49 @@ jobs:
           name: Boombox ${{ env.VERSION }}
           files: ${{ runner.temp }}/Boombox.apk
 
-  # Ménage : on ne garde que les 3 versions les plus récentes (et leurs étiquettes), une fois les deux appli publiées
+  # PC : installateur Windows (Boombox-Setup.exe) avec Node.js, yt-dlp et cloudflared inclus
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fichiers de l'appli
+        shell: pwsh
+        run: |
+          $d = "dist/win"
+          New-Item -ItemType Directory -Force "$d/node", "$d/bin", "$d/scripts", "$d/resources" | Out-Null
+          Copy-Item -Recurse server, public "$d/"
+          Copy-Item scripts/tray.ps1 "$d/scripts/"
+          Copy-Item resources/boombox.ico "$d/resources/"
+          Copy-Item Boombox.cmd, package.json, package-lock.json "$d/"
+          Copy-Item -Recurse mobile/plugins "$d/mobile/plugins"
+          Push-Location $d
+          npm ci --omit=dev --ignore-scripts
+          Pop-Location
+          $nv = (node -v)
+          Invoke-WebRequest "https://nodejs.org/dist/$nv/win-x64/node.exe" -OutFile "$d/node/node.exe"
+          Invoke-WebRequest "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" -OutFile "$d/bin/yt-dlp.exe"
+          Invoke-WebRequest "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile "$d/bin/cloudflared.exe"
+      - name: Installateur
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          & $iscc "/DAppVersion=$env:VERSION" scripts/boombox.iss
+          if ($LASTEXITCODE) { exit 1 }
+          Copy-Item scripts/Output/Boombox-Setup.exe "$env:RUNNER_TEMP/Boombox-Setup.exe"
+      - name: Publication
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Boombox ${{ env.VERSION }}
+          files: ${{ runner.temp }}/Boombox-Setup.exe
+
+  # Ménage : on ne garde que les 3 versions les plus récentes (et leurs étiquettes), une fois les appli publiées
   cleanup:
-    needs: [ios, android]
+    needs: [ios, android, windows]
     runs-on: ubuntu-latest
     steps:
       - name: Suppression des anciennes versions

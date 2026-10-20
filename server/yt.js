@@ -363,6 +363,26 @@ export async function discography(id) {
   });
 }
 
+// Nouveaux albums et singles du moment (YouTube Music → Explorer), toute la liste
+export async function newReleases() {
+  return cached('newreleases', 3 * 60 * 60e3, async () => {
+    const yt = await getYt();
+    const e = await yt.music.getExplore();
+    const sec = (e.sections || []).find((s) => /nouv|new/i.test(txt(s.header?.title))) || e.sections?.[0];
+    if (!sec) return [];
+    let items = collectItems(sec.contents);
+    const ep = sec.header?.more_content?.endpoint || sec.header?.endpoint;
+    if (ep?.call) {
+      try {
+        const r = await ep.call(yt.actions, { client: 'YTMUSIC', parse: true });
+        const all = r.contents_memo?.get('MusicTwoRowItem') || [];
+        if (all.length) items = all;
+      } catch {}
+    }
+    return items.map(normAny).filter((n) => n && n.type === 'album');
+  });
+}
+
 export async function album(id) {
   return cached(`al:${id}`, 6 * 60 * 60e3, async () => {
     const yt = await getYt();

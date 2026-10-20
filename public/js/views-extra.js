@@ -401,6 +401,7 @@ export async function settings(el) {
       <select class="input" id="s-engine"><option value="auto">Automatique</option><option value="youtube">Lecteur YouTube</option><option value="audio" ${st.ytdlp ? '' : 'disabled'}>Audio direct (yt-dlp)</option></select></div>
 
     <h2 style="font-size:20px;margin-top:32px">Appareils</h2>
+    <div class="settings-row"><div><b>Boombox sur PC (Windows)</b><p>Installateur à donner à tes amis : Boombox s'installe en un clic (rien d'autre à installer), puis chacun lie son téléphone à son PC avec le QR code des paramètres.</p></div><a class="btn ghost" href="https://github.com/kwakwa-ratatouille/BoomBox/releases/latest/download/Boombox-Setup.exe" target="_blank" rel="noopener">Télécharger</a></div>
     <div class="settings-row"><div><b>Nom de cet appareil</b><p>Affiché dans la liste des appareils et dans les Jams.</p></div><input class="input" id="s-dname" value="${state.device.name}" maxlength="40"></div>
     <div class="settings-row"><div><b>Ouvrir Boombox sur ton téléphone</b><p>Connecte ton téléphone au même Wi-Fi et ouvre l'une de ces adresses, puis « Ajouter à l'écran d'accueil » pour l'avoir comme une appli.</p>
       ${st.lan.map((u) => html`<div style="margin-top:6px"><span class="code">${u}</span></div>`)}</div><div id="s-qr"></div></div>

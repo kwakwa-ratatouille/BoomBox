@@ -17,7 +17,10 @@ $script:quitting = $false
 function Start-Server {
   # Déjà lancé ailleurs (ancienne fenêtre) : on ne double pas
   if (Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction SilentlyContinue) { return }
-  $script:server = Start-Process -FilePath 'node' -ArgumentList 'server\index.js' -WorkingDirectory $root -WindowStyle Hidden -PassThru
+  # Version installée (setup Windows) : Node est fourni avec l'appli ; sinon celui du PC
+  $node = Join-Path $root 'node\node.exe'
+  if (-not (Test-Path $node)) { $node = 'node' }
+  $script:server = Start-Process -FilePath $node -ArgumentList 'server\index.js' -WorkingDirectory $root -WindowStyle Hidden -PassThru
 }
 
 function Stop-Server {

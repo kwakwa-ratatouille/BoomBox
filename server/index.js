@@ -64,6 +64,7 @@ app.post('/api/relay/config', (req, res) => {
 app.get('/api/search', wrap(async (req, res) => res.json(await yt.search(String(req.query.q || '').slice(0, 200), req.query.type || 'all'))));
 app.get('/api/suggest', wrap(async (req, res) => res.json(await yt.suggest(String(req.query.q || '').slice(0, 200)))));
 app.get('/api/artist/:id', wrap(async (req, res) => res.json(await yt.artist(req.params.id))));
+app.get('/api/new-releases', wrap(async (req, res) => res.json(await yt.newReleases())));
 app.get('/api/discography/:id', wrap(async (req, res) => res.json(await yt.discography(req.params.id))));
 app.get('/api/album/:id',wrap(async (req, res) => res.json(await yt.album(req.params.id))));
 app.get('/api/ytplaylist/:id', wrap(async (req, res) => res.json(await yt.ytPlaylist(req.params.id, 300))));

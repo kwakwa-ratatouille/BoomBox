@@ -294,6 +294,7 @@ export async function handle(path, { method = 'GET', body } = {}) {
   if ((m = p.match(/^\/api\/artist\/([\w-]+)$/))) return yt.artist(m[1]);
   if ((m = p.match(/^\/api\/album\/([\w-]+)$/))) return yt.album(m[1]);
   if ((m = p.match(/^\/api\/discography\/([\w-]+)$/))) return yt.discography(m[1]);
+  if (p === '/api/new-releases') return yt.newReleases();
   if ((m = p.match(/^\/api\/ytplaylist\/([\w-]+)$/))) return yt.ytPlaylist(m[1], 300);
   if ((m = p.match(/^\/api\/radio\/([\w-]+)$/))) return yt.radio(m[1]);
   if (p === '/api/lyrics') return findLyrics({ videoId: q.videoId || null, title: q.title, artist: q.artist, album: q.album, duration: q.duration });

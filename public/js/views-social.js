@@ -228,7 +228,8 @@ export async function friendsPage(el, params) {
         player.track && { label: `Le son en cours : ${player.track.title}`, icon: 'music', action: () => send({ tracks: [player.track] }) },
         { label: 'Chercher un son…', icon: 'search', action: () => searchAndSend(send) },
         { label: 'Image ou GIF de ma galerie', icon: 'plus', action: () => pickImage().then((img) => img && send({ image: img })) },
-        { label: 'GIF (coller un lien Giphy / Tenor)', icon: 'plus', action: async () => {
+        { label: 'Chercher un GIF', icon: 'search', action: () => gifPicker(send) },
+        { label: 'GIF par lien (Giphy / Tenor)', icon: 'plus', action: async () => {
           const u = await promptText('Lien du GIF', { placeholder: 'https://media.giphy.com/…gif', label: 'Envoyer' });
           if (u && /^https:\/\//.test(u.trim())) send({ gif: gifUrl(u.trim()) });
         } },
@@ -425,6 +426,42 @@ async function stickerPicker(send) {
         };
         img.src = URL.createObjectURL(file);
       };
+    },
+  });
+}
+
+// Recherche de GIF (GIPHY, via le mini-serveur Boombox qui garde la clé secrète)
+const GIF_API = 'https://boombox-ai.boombox-matis.workers.dev/gifs';
+async function gifPicker(send) {
+  let timer = null;
+  let closeIt = null;
+  const load = async (w, q) => {
+    const grid = w.querySelector('.gif-grid');
+    grid.innerHTML = '<p class="muted">Chargement…</p>';
+    try {
+      const token = await window.__bbIdToken?.().catch(() => null);
+      const r = await fetch(`${GIF_API}?q=${encodeURIComponent(q)}`, { headers: token ? { authorization: `Bearer ${token}` } : {} });
+      const list = await r.json();
+      if (!Array.isArray(list)) throw new Error(list.error || 'Recherche indisponible');
+      grid.innerHTML = list.length ? list.map((g) => `<button class="gif-it" data-url="${esc(g.url)}"><img src="${esc(g.preview)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`).join('') : '<p class="muted">Aucun GIF trouvé.</p>';
+    } catch (e) {
+      grid.innerHTML = `<p class="muted">${esc(e.message)}</p>`;
+    }
+  };
+  await modal({
+    title: 'GIF',
+    body: '<input class="input gif-q" placeholder="Rechercher un GIF (GIPHY)" autocomplete="off"><div class="gif-grid"></div><p class="muted" style="font-size:11px;margin:8px 0 0">Propulsé par GIPHY</p>',
+    actions: [{ label: 'Fermer' }],
+    onMount: (w) => {
+      closeIt = () => [...(w.closest('.modal') || w.parentElement).querySelectorAll('button')].find((b) => b.textContent.trim() === 'Fermer')?.click();
+      load(w, '');
+      w.querySelector('.gif-q').oninput = (e) => (clearTimeout(timer), (timer = setTimeout(() => load(w, e.target.value.trim()), 350)));
+      w.addEventListener('click', (e) => {
+        const b = e.target.closest('.gif-it');
+        if (!b) return;
+        send({ gif: b.dataset.url });
+        closeIt?.();
+      });
     },
   });
 }

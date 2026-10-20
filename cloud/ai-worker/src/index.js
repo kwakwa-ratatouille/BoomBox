@@ -5,7 +5,7 @@
 // L'appli envoie la conversation, ce serveur renvoie la réponse de Gemini ; l'appli retrouve ensuite les sons.
 import { geminiRequest, parseGemini } from '../../../server/ai-prompt.js';
 
-const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'POST, OPTIONS' };
+const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...CORS } });
 
 // ---------- Vérification du jeton Firebase (RS256, clés publiques de Google) ----------
@@ -53,6 +53,20 @@ async function takeQuota(env, uid) {
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    // Recherche de GIF (GIPHY) pour les messages : clé GIPHY_KEY en secret Cloudflare, réservé aux applis Boombox
+    if (new URL(req.url).pathname === '/gifs') {
+      try {
+        await verifyFirebaseToken((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), env.FIREBASE_PROJECT);
+      } catch {
+        return json({ error: 'Accès réservé à l’appli Boombox' }, 401);
+      }
+      if (!env.GIPHY_KEY) return json({ error: 'Recherche de GIF pas encore configurée' }, 503);
+      const q = String(new URL(req.url).searchParams.get('q') || '').slice(0, 80);
+      const api = q ? `search?q=${encodeURIComponent(q)}&` : 'trending?';
+      const r = await fetch(`https://api.giphy.com/v1/gifs/${api}api_key=${env.GIPHY_KEY}&limit=30&rating=pg-13&lang=fr`, { cf: { cacheTtl: 600 } });
+      const j = await r.json().catch(() => ({}));
+      return json((j.data || []).map((g) => ({ id: g.id, preview: g.images?.fixed_width_small?.url || g.images?.fixed_width?.url, url: g.images?.downsized_medium?.url || g.images?.original?.url, w: Number(g.images?.fixed_width?.width) || 200, h: Number(g.images?.fixed_width?.height) || 200 })));
+    }
     if (req.method !== 'POST') return json({ ok: true, service: 'Boombox IA' });
     try {
       const uid = await verifyFirebaseToken((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), env.FIREBASE_PROJECT).catch(() => {

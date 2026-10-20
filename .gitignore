@@ -11,3 +11,5 @@ public/app-update/
 abonnements-spotify.txt
 *.log
 .firebase/
+/dist/
+/scripts/Output/

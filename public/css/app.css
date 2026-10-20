@@ -1649,3 +1649,6 @@ body:has(.party-screen) .modal-backdrop { z-index: 500; }
 .stk { font-size: 40px; aspect-ratio: 1; border-radius: 10px; background: var(--elev-2); display: grid; place-items: center; }
 .stk img { width: 100%; height: 100%; object-fit: contain; }
 body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
+.gif-grid { columns: 3 110px; column-gap: 6px; max-height: 55vh; overflow-y: auto; margin-top: 10px; }
+.gif-it { display: block; width: 100%; margin-bottom: 6px; border-radius: 8px; overflow: hidden; break-inside: avoid; }
+.gif-it img { display: block; width: 100%; }

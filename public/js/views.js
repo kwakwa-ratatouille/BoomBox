@@ -1082,16 +1082,34 @@ export async function releases(el, _p, ctx) {
     if (days < 7) return ` • il y a ${days} j`;
     return ` • ${new Date(r.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: days > 300 ? 'numeric' : undefined })}`;
   };
-  const fresh = data.releases.filter((r) => r.isNew);
-  const year = new Date().getFullYear();
-  const recent = data.releases.filter((r) => !r.isNew && Number(r.year) >= year - 1);
-  const older = data.releases.filter((r) => !r.isNew && !(Number(r.year) >= year - 1));
-  const block = (title, list, isNew) =>
-    list.length ? html`<h3 style="margin:8px 0 12px;font-size:18px">${title}</h3><div class="cards" style="margin-bottom:24px">${list.map((r) => card(r, { sub: `${r.artist.name} • ${r.kind}${releaseWhen(r)}`, isNew }))}</div>` : '';
+  // Seulement les 2 derniers mois, de la plus récente à la plus ancienne, rangées par période
+  const DAY = 86400e3;
+  const ageOf = (r) => (r.date ? (Date.now() - Date.parse(r.date)) / DAY : null);
+  const recentList = data.releases
+    .filter((r) => {
+      const a = ageOf(r);
+      return a != null ? a <= 62 : r.isNew && Number(r.year) === new Date().getFullYear();
+    })
+    .sort((a, b) => (Date.parse(b.date || 0) || 0) - (Date.parse(a.date || 0) || 0));
+  const groups = [
+    ['Cette semaine', (a) => a < 7],
+    ['Ce mois-ci', (a) => a >= 7 && a < 31],
+    ['Le mois dernier', (a) => a >= 31],
+  ];
+  const block = (title, list) =>
+    list.length ? html`<h3 style="margin:8px 0 12px;font-size:18px">${title} <span class="muted" style="font-size:14px;font-weight:500">· ${plural(list.length, 'sortie')}</span></h3><div class="cards" style="margin-bottom:24px">${list.map((r) => card(r, { sub: `${r.artist.name} • ${r.kind}${releaseWhen(r)}`, isNew: r.isNew }))}</div>` : '';
+  const fresh = recentList.filter((r) => r.isNew).length;
   el.querySelector('#rel').innerHTML = String(html`
-    ${fresh.length ? block(`🔔 ${plural(fresh.length, 'nouvelle sortie')} depuis ta dernière visite`, fresh, true) : html`<p class="muted" style="margin-bottom:20px">Rien de nouveau depuis ta dernière visite.</p>`}
-    ${block(`Sorties ${year - 1}–${year}`, recent)}
-    ${block('Plus anciennes', older.slice(0, 30))}`);
+    <p class="muted" style="margin:0 0 16px">${fresh ? html`🔔 <b>${plural(fresh, 'nouvelle sortie')}</b> depuis ta dernière visite (marquées « nouveau »). ` : ''}Sorties des 2 derniers mois, de la plus récente à la plus ancienne.</p>
+    ${recentList.length ? groups.map(([t, test]) => block(t, recentList.filter((r) => test(ageOf(r) ?? 0)))) : html`<p class="muted">Aucune sortie de tes artistes ces 2 derniers mois.</p>`}
+    <section class="section" style="margin-top:24px"><div class="section-head"><h2>Nouvelles sorties à découvrir</h2><span class="muted">Artistes que tu ne suis pas</span></div><div id="rel-discover">${loading}</div></section>`);
+  api('/api/new-releases').then((list) => {
+    const box = el.querySelector('#rel-discover');
+    if (!box) return;
+    const followed = new Set(state.library.follows.map((f) => f.id));
+    const items = list.filter((r) => !(r.artists || []).some((a) => followed.has(a.id))).slice(0, 30);
+    box.innerHTML = items.length ? String(html`<div class="cards">${items.map((r) => card(r))}</div>`) : '<p class="muted">Rien à proposer pour l’instant.</p>';
+  }).catch(() => el.querySelector('#rel-discover') && (el.querySelector('#rel-discover').innerHTML = '<p class="muted">Indisponible pour le moment.</p>'));
   el.querySelector('#mark-seen').onclick = async () => {
     await setKnownReleases(data.current);
     toast('Marqué comme vu');
