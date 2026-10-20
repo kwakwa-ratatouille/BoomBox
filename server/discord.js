@@ -79,10 +79,16 @@ export async function setPresence(p) {
       assets: {
         large_image: p.cover && /^https:\/\//.test(p.cover) ? p.cover : 'boombox',
         large_text: String(p.album || p.title).slice(0, 128),
-        small_image: 'boombox',
-        small_text: 'Boombox',
+        small_image: 'https://musikal-b72d1.web.app/assets/logo-symbol.png',
+        small_text: 'Boombox · ta musique, tes potes',
       },
-      ...(p.url ? { buttons: [{ label: 'Écouter sur Boombox', url: p.url }] } : {}),
+      // Dans la liste des membres : « Écoute CERTIFIÉ » plutôt que « Écoute Boombox »
+      status_display_type: 2,
+      // Boutons (visibles par les autres, pas sur son propre profil)
+      buttons: [
+        ...(p.url ? [{ label: '🎧 Écouter ce son', url: p.url }] : []),
+        { label: '🚀 Rejoindre Boombox', url: 'https://musikal-b72d1.web.app/' },
+      ],
     };
   }
   // Rien de nouveau (même son, même état, position cohérente) : on n'inonde pas Discord
