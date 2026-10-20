@@ -1822,3 +1822,11 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 #app.nav-compact .brand-link, #app.nav-mini .brand-link { display: none !important; }
 .pip-vol { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .pip-vol input { flex: 1; accent-color: var(--accent, #b07cf7); height: 4px; }
+
+/* Écran de lancement plus grand */
+.sp-stage { width: 320px; height: 300px; }
+.sp-box { width: 168px; }
+.sp-shadow { width: 124px; height: 18px; bottom: 62px; }
+.sp-ring { width: 180px; height: 180px; margin: -90px 0 0 -90px; border-width: 4px; }
+.sp-word { font-size: 46px; background: linear-gradient(90deg, #fff, #e2cffd 55%, var(--accent, #b07cf7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@media (max-width: 600px) { .sp-stage { width: 240px; height: 230px; } .sp-box { width: 128px; } .sp-shadow { bottom: 48px; width: 96px; } .sp-ring { width: 140px; height: 140px; margin: -70px 0 0 -70px; } .sp-word { font-size: 34px; } }
