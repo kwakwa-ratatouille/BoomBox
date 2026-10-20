@@ -130,7 +130,7 @@ jobs:
           cd android
           # En cas d'échec, les vraies erreurs remontent dans les annotations de GitHub (lisibles sans connexion)
           if ! ./gradlew assembleDebug --no-daemon --warning-mode none > "$RUNNER_TEMP/gradle.log" 2>&1; then
-            grep -E "error:|e: |What went wrong|> |FAILURE|requires|Could not" "$RUNNER_TEMP/gradle.log" | head -n 25 | while IFS= read -r l; do echo "::error::$l"; done
+            grep -E "error:|e: |What went wrong|FAILURE|requires|Could not|symbol|location:|^> [^T]" "$RUNNER_TEMP/gradle.log" | grep -v "> Task" | head -n 30 | while IFS= read -r l; do echo "::error::$l"; done
             tail -n 40 "$RUNNER_TEMP/gradle.log"
             exit 1
           fi
