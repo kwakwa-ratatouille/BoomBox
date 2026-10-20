@@ -45,24 +45,23 @@ function drawCover(ctx, img, x, y, size, round = false, r = 16) {
 // data : { kicker, title, stats: [[label, value]…], artists: [{ name, thumb }], tracks: [{ title, artist, thumb }], colors: [c1, c2] }
 // Décor pixel art : petits cubes dorés / colorés, certains « en train de se retourner » (vus par la tranche),
 // en vague du haut vers le bas, sur les bords de l'image (le centre reste lisible)
+// Décor pixel art discret : quelques petits cubes (certains « en train de se retourner », vus par la tranche)
+// uniquement dans les bandes du haut et du bas et dans les coins, pour ne jamais passer sur le texte
 export function pixelDeco(ctx, w, h, seed = 1) {
   let s = seed * 7919 + 13;
   const r = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
   const colors = ['#ffd34d', '#b07cf7', '#3fd0ff', '#ff4fa3', '#2ef28b', '#ffffff'];
-  const unit = Math.round(w / 54);
-  for (let k = 0; k < 70; k++) {
-    const edge = r() < 0.5;
-    const x = edge ? (r() < 0.5 ? r() * w * 0.16 : w - r() * w * 0.16) : r() * w;
-    const y = edge ? r() * h : (r() < 0.5 ? r() * h * 0.08 : h - r() * h * 0.08);
-    const size = unit * (1 + Math.floor(r() * 3));
-    const phase = (y / h + r() * 0.3) % 1; // position dans la vague : 0 = de face, 0.5 = sur la tranche
-    const squash = Math.abs(Math.cos(phase * Math.PI));
-    ctx.globalAlpha = 0.18 + r() * 0.35;
+  const unit = Math.round(w / 60);
+  for (let k = 0; k < 34; k++) {
+    const top = r() < 0.5;
+    const x = r() * w;
+    const y = top ? r() * h * 0.045 : h - unit * 3 - r() * h * 0.035;
+    const size = unit * (1 + Math.floor(r() * 2));
+    const phase = (x / w + r() * 0.3) % 1;
+    const hh = Math.max(2, size * Math.abs(Math.cos(phase * Math.PI)));
+    ctx.globalAlpha = 0.15 + r() * 0.25;
     ctx.fillStyle = colors[Math.floor(r() * colors.length)];
-    const hh = Math.max(2, size * squash);
     ctx.fillRect(Math.round(x), Math.round(y + (size - hh) / 2), size, Math.round(hh));
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(Math.round(x), Math.round(y + (size + hh) / 2 - Math.max(2, unit / 4)), size, Math.max(2, Math.round(unit / 4)));
   }
   ctx.globalAlpha = 1;
 }

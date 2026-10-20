@@ -477,12 +477,26 @@ export function setupDelegation() {
     sw.row.classList.add('swiping');
     sw.row.style.transform = `translateX(${sw.dx}px)`;
     sw.row.dataset.swipe = sw.dx > 70 ? 'queue' : sw.dx < -70 ? 'add' : sw.dx > 0 ? 'queue-hint' : 'add-hint';
+    // Fond révélé sous le titre (comme Spotify) : icône + action, qui s'allume quand on a glissé assez loin
+    if (!sw.bg) {
+      const r = sw.row.getBoundingClientRect();
+      sw.bg = document.createElement('div');
+      sw.bg.className = 'swipe-bg';
+      sw.bg.style.cssText = `top:${r.top}px;left:${r.left}px;width:${r.width}px;height:${r.height}px`;
+      sw.bg.innerHTML = `<span class="sb-q">${icon('addQueue', 22)}<b>File d'attente</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`;
+      document.body.appendChild(sw.bg);
+    }
+    sw.bg.dataset.dir = sw.dx > 0 ? 'right' : 'left';
+    sw.bg.classList.toggle('armed', Math.abs(sw.dx) > 70);
+    if (Math.abs(sw.dx) > 70 && !sw.buzzed) (sw.buzzed = true), navigator.vibrate?.(8);
+    if (Math.abs(sw.dx) <= 70) sw.buzzed = false;
   }, { passive: true });
   const endSwipe = () => {
     if (!sw) return;
     clearTimeout(sw.long);
-    const { row, dx, locked } = sw;
+    const { row, dx, locked, bg } = sw;
     sw = null;
+    if (bg) (bg.classList.add('out'), setTimeout(() => bg.remove(), 260));
     if (locked !== 'h') return;
     suppressClick = Date.now();
     row.style.transition = 'transform 0.22s ease';

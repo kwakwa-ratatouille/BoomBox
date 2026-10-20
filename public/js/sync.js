@@ -137,8 +137,22 @@ export const sync = {
       return;
     }
     if (player.track) {
-      const snap = { ...player.snapshot(), list: player.list.slice(0, 300), order: player.order.slice(0, 300), pos: player.pos, userQueue: player.userQueue };
+      const snap = { ...player.snapshot(), list: player.list.slice(0, 300), order: player.order.slice(0, 300), pos: player.pos, userQueue: player.userQueue, sentAt: Date.now() };
       this.sendCommand(deviceId, '__transfer', [snap]);
+      // Comme Spotify : cet appareil devient la télécommande (la musique continue là-bas, la barre avance ici).
+      // Si l'autre appareil ne prend pas la main (appli fermée, en veille…), la lecture reprend ici au lieu de rester en pause.
+      const wasPlaying = !snap.paused;
+      const trackId = snap.track.id;
+      const name = this.devices.find((d) => d.id === deviceId)?.name || "l'autre appareil";
+      clearTimeout(this._transferCheck);
+      this._transferCheck = setTimeout(() => {
+        const st = this.remote[deviceId];
+        const took = st?.track?.id === trackId && (st.ts || 0) >= snap.sentAt - 1000;
+        if (took || this.target !== deviceId) return;
+        this.control(null);
+        if (wasPlaying) player.play();
+        toast(`${name} n'a pas répondu (appli fermée ou en veille ?) : la musique continue ici`, { timeout: 7000 });
+      }, 7000);
     }
     this.control(deviceId);
   },
@@ -306,6 +320,7 @@ export const sync = {
     this.jam = room;
     // Invité qui écoute en même temps : le lecteur laisse l'hôte choisir l'enchaînement
     player.jamFollow = () => !!this.jam && !this.isJamHost() && this.listenAlong;
+    player.jamQueue = room ? (tracks) => tracks.forEach((t) => this.jamAdd(t)) : null;
     // Les titres déjà lancés n'apparaissent plus dans la file, même avant que Firebase confirme leur retrait
     if (room?.queue) room.queue = room.queue.filter((t) => !this._jamPlayed.has(t.qid));
     if (room && room.host === state.device.id) {
@@ -349,9 +364,13 @@ export const sync = {
       const s = args[0];
       if (this.target) this.control(null);
       Object.assign(player, { list: s.list, order: s.order, pos: s.pos, userQueue: s.userQueue || [], context: s.context, shuffle: s.shuffle, repeat: s.repeat });
-      player._load(s.track, { start: s.position, autoplay: !s.paused });
+      const lag = !s.paused && s.sentAt ? Math.min(10, Math.max(0, (Date.now() - s.sentAt) / 1000)) : 0;
+      player._load(s.track, { start: (s.position || 0) + lag, autoplay: !s.paused });
       emit('player:queue');
+      this.publish(true); // l'appareil d'origine voit tout de suite que la lecture est ici
       toast('Lecture transférée sur cet appareil');
+      // Lecture automatique bloquée (navigateur sans interaction récente) : un appui suffit
+      if (!s.paused) setTimeout(() => player.paused && toast('Appuie sur lecture pour continuer ici', { action: 'Lecture', timeout: 10000, onAction: () => player.play() }), 2500);
       return;
     }
     if (typeof player[action] === 'function' && !action.startsWith('_')) player[action](...args);

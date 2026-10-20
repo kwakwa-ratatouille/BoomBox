@@ -582,6 +582,8 @@ export const player = {
 
   addToQueue(tracks) {
     tracks = [].concat(tracks);
+    // En party : « Ajouter à la file d'attente » ajoute à la file de la party (celle que tout le monde voit)
+    if (this.jamQueue) return this.jamQueue(tracks);
     this.userQueue.push(...tracks.map((t) => ({ ...t, qid: Math.random().toString(36).slice(2) })));
     toast(tracks.length > 1 ? `${tracks.length} titres ajoutés à la file d'attente` : "Ajouté à la file d'attente");
     if (!this.track) this.next();

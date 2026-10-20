@@ -1889,3 +1889,30 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .lf-folders { max-width: 720px; }
 .lf-folder { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .lf-folder .code { flex: 1; min-width: 0; }
+
+/* Story à enregistrer : au-dessus du récap, image en grand */
+.story-save { z-index: 2000 !important; background: rgba(0, 0, 0, 0.94) !important; }
+.ss-box img { height: min(70vh, 160vw); width: auto; }
+/* iPhone : plus de bande sombre en haut quand on tire la page vers le bas */
+.view { overscroll-behavior-y: none; }
+html, body { overscroll-behavior-y: none; }
+/* Assistant IA : la zone de saisie est assez haute pour l'exemple */
+.ai-input textarea { min-height: 56px; line-height: 1.35; }
+@media (max-width: 768px) { .ai-input textarea { font-size: 16px; padding: 14px 16px; } }
+/* Party (téléphone) : carte « en cours » avec une petite pochette */
+.party-page .np-card > .cover { width: 72px; height: 72px; flex: none; }
+
+/* Glisser un titre (téléphone) : fond coloré avec l'action, qui grossit quand elle est « armée » */
+.swipe-bg { position: fixed; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border-radius: 6px; pointer-events: none; color: #fff; font-size: 13px; transition: background 0.15s, opacity 0.25s; background: #2a2533; }
+.swipe-bg span { display: flex; align-items: center; gap: 8px; opacity: 0.55; transform: scale(0.9); transition: transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1), opacity 0.15s; }
+.swipe-bg[data-dir="right"] .sb-a, .swipe-bg[data-dir="left"] .sb-q { display: none; }
+.swipe-bg[data-dir="left"] { justify-content: flex-end; }
+.swipe-bg.armed[data-dir="right"] { background: #1f9d55; }
+.swipe-bg.armed[data-dir="left"] { background: var(--accent, #b07cf7); }
+.swipe-bg.armed span { opacity: 1; transform: scale(1.12); }
+.swipe-bg.out { opacity: 0; }
+/* Lecteur plein écran (téléphone) : temps écoulé et temps restant sous la barre */
+@media (max-width: 768px) {
+  #fullplayer .progress { position: static; display: flex; justify-content: space-between; margin-top: 6px; }
+  #fullplayer .progress span { display: block; min-width: 0; font-size: 12px; }
+}

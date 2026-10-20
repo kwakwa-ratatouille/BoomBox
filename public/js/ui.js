@@ -187,13 +187,13 @@ export function modal({ title, body, actions = [], wide = false, onMount }) {
   });
 }
 
-export async function promptText(title, { value = '', placeholder = '', label = 'Enregistrer', multiline = false } = {}) {
+export async function promptText(title, { value = '', placeholder = '', label = 'Enregistrer', multiline = false, hint = '' } = {}) {
   const field = multiline
     ? `<textarea class="input" rows="4" placeholder="${esc(placeholder)}">${esc(value)}</textarea>`
     : `<input class="input" value="${esc(value)}" placeholder="${esc(placeholder)}" maxlength="100">`;
   return modal({
     title,
-    body: field,
+    body: (hint ? `<p class="muted" style="margin:0 0 10px;font-size:13px">${esc(hint)}</p>` : '') + field,
     actions: [
       { label: 'Annuler' },
       { label, primary: true, value: (w) => w.querySelector('input,textarea').value.trim() || false },

@@ -1,5 +1,19 @@
 [
   {
+    "version": "next",
+    "title": "Téléphone et profils",
+    "items": [
+      "Lecteur plein écran : temps écoulé et temps restant sous la barre.",
+      "Transférer la lecture (PC ↔ téléphone) : la musique continue sur l'autre appareil et la barre avance ici, comme Spotify ; si l'autre appareil ne répond pas, la musique reprend ici au lieu de rester en pause.",
+      "Mode party : « Ajouter à la file d'attente » ajoute à la file de la party.",
+      "Glisser un son à droite ou à gauche : fond coloré avec l'action (file d'attente / playlist), comme Spotify.",
+      "Supprimer un profil : marche à coup sûr (avec message), et les profils supprimés ne réapparaissent plus.",
+      "Ajouter un profil : « J'ai déjà un profil » pour retrouver ton profil d'un autre appareil avec son lien.",
+      "Plus de bande sombre en haut quand on tire la page ; zone de saisie de l'IA et carte de la party corrigées ; image de story au premier plan."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.2112",
     "title": "Mes fichiers et Spotify",
     "items": [

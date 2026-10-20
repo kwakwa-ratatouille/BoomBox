@@ -99,11 +99,15 @@ async function batched(ops) {
 }
 
 // ---------- Profils ----------
-export async function listProfiles() {
-  // Cache local d'abord (démarrage instantané) ; le serveur seulement s'il est vide (première ouverture)
-  let snap = await getDocsFromCache(cloud.col('profiles')).catch(() => null);
-  if (!snap || snap.empty) snap = await getDocs(cloud.col('profiles'));
-  else getDocs(cloud.col('profiles')).then((s) => (state.profiles = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0)))).catch(() => {});
+export async function listProfiles(fresh = false) {
+  // Cache local d'abord (démarrage instantané) ; le serveur seulement s'il est vide (première ouverture),
+  // ou quand on affiche la liste des profils (un profil supprimé ailleurs ne doit pas réapparaître)
+  const sort = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  let snap = fresh ? null : await getDocsFromCache(cloud.col('profiles')).catch(() => null);
+  if (fresh) snap = await Promise.race([getDocs(cloud.col('profiles')), new Promise((r) => setTimeout(r, 4000))]).catch(() => null);
+  if (!snap || snap.empty) snap = (await getDocsFromCache(cloud.col('profiles')).catch(() => null)) || (await getDocs(cloud.col('profiles')));
+  if (snap.empty && !fresh) snap = await getDocs(cloud.col('profiles'));
+  else if (!fresh) getDocs(cloud.col('profiles')).then((s2) => ((state.profiles = sort(s2)), emit('profiles'))).catch(() => {});
   state.profiles = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   return state.profiles;
 }

@@ -38,7 +38,7 @@ const $ = (s, r = document) => r.querySelector(s);
 // ======================= PROFILS =======================
 let firstProfileName = null; // prénom saisi à l'accueil (premier appareil)
 async function pickProfile(force = false) {
-  await listProfiles();
+  await listProfiles(force);
   const saved = ls.get('boombox.profile');
   const found = state.profiles.find((p) => p.id === saved);
   // Le profil déjà choisi sur cet appareil s'ouvre directement ; un autre profil protégé demande son code
@@ -71,6 +71,25 @@ async function pickProfile(force = false) {
         resolve(p);
       }));
       box.querySelector('[data-add]').onclick = async () => {
+        const choice = await modal({
+          title: 'Ajouter un profil',
+          body: '<p class="muted" style="margin-top:0">Crée un nouveau profil, ou retrouve ton profil Boombox qui existe déjà sur un autre appareil.</p>',
+          actions: [{ label: 'J’ai déjà un profil', value: () => 'link' }, { label: 'Nouveau profil', primary: true, value: () => 'new' }],
+        });
+        if (choice === 'link') {
+          const link = await promptText('Mon profil sur un autre appareil', {
+            label: 'Lier cet appareil',
+            placeholder: 'Colle le lien ici',
+            multiline: true,
+            hint: 'Sur l’appareil où tu as déjà ton profil : Paramètres → Appareils → « Copier le lien » (ou scanne son QR code avec l’appareil photo).',
+          });
+          const inv = link && parseInvite(link.trim());
+          if (!link) return;
+          if (!inv) return toast('Lien non reconnu : copie-le depuis Paramètres → Appareils sur ton autre appareil');
+          await cloud.joinSpace(inv.sid, inv.secret, state.device.name).then(() => (toast('Appareil lié : tes profils arrivent'), location.reload())).catch((e) => toast(e.message));
+          return;
+        }
+        if (choice !== 'new') return;
         const name = await promptText('Nouveau profil', { placeholder: 'Prénom', label: 'Créer' });
         if (!name) return;
         const np = await createProfile(name);
@@ -95,8 +114,13 @@ async function pickProfile(force = false) {
             });
             if (ok === 'mismatch') return toast('Nom incorrect : profil non supprimé');
             if (ok !== 'ok') return;
+            toast(`Suppression de « ${p.name} »…`, { timeout: 8000 });
             if (p.socialCode) await social.deleteCard(p.socialCode).catch(() => {});
-            await deleteProfile(p.id);
+            try {
+              await deleteProfile(p.id);
+            } catch (e) {
+              return toast(`Suppression impossible : ${e.message}`);
+            }
             state.profiles = state.profiles.filter((x) => x.id !== p.id);
             toast(`Profil « ${p.name} » supprimé`);
             // Profil de cet appareil supprimé : on repart de zéro (choix d'un autre profil, ou création)
@@ -110,6 +134,7 @@ async function pickProfile(force = false) {
       });
     };
     render();
+    on('profiles', () => !box.classList.contains('hidden') && render());
     box.classList.remove('hidden');
   });
 }
@@ -1019,7 +1044,7 @@ function updateFullPlayerTime(pos, d) {
   if (!fpOpen || !fpSeek) return;
   fpSeek.set(d ? pos / d : 0);
   $('#fp-cur').textContent = fmtTime(pos);
-  $('#fp-dur').textContent = fmtTime(d);
+  $('#fp-dur').textContent = d ? `-${fmtTime(Math.max(0, d - pos))}` : '0:00'; // temps restant (comme Spotify)
 }
 
 function setupPanelResize() {
