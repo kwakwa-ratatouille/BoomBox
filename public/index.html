@@ -17,11 +17,24 @@
   <link rel="preconnect" href="https://yt3.googleusercontent.com">
   <link rel="preconnect" href="https://i.ytimg.com">
   <link rel="preconnect" href="https://firestore.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Press+Start+2P&display=swap">
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-  <div id="splash"><div class="sp-stage"><i class="sp-ring"></i><i class="sp-ring"></i><i class="sp-ring"></i><i class="sp-shadow"></i><img class="sp-box" src="/assets/logo-symbol.png" alt="Boombox"></div><div class="sp-word">Boombox</div></div>
+  <div id="splash"><div class="px-logo" id="px-logo" aria-label="Boombox"></div><div class="px-word">BOOMBOX</div></div>
+  <script>
+    // Logo pixel art : chaque pixel est un petit cube qui se retourne, en vague du haut vers le bas
+    (function () {
+      var M = ['....LLLLLLLL....', '...L........L...', 'BBBBBBBBBBBBBBBB', 'BBDDDBBLLBBDDDBB', 'BDDLDDBBBBDDLDDB', 'BDLLLDBWWBDLLLDB', 'BDDLDDBBBBDDLDDB', 'BBDDDBBBBBBDDDBB', 'BBBBBBBBBBBBBBBB'];
+      var el = document.getElementById('px-logo'), h = '';
+      M.forEach(function (row, y) {
+        row.split('').forEach(function (c, x) {
+          h += c === '.' ? '<i class="px-o"></i>' : '<i class="px p' + c + '" style="--d:' + (y * 0.07 + x * 0.012).toFixed(3) + 's"></i>';
+        });
+      });
+      el.innerHTML = h;
+    })();
+  </script>
   <div id="app" class="hidden">
     <aside id="sidebar">
       <nav class="panel nav-main">

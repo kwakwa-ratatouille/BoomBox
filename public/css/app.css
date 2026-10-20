@@ -1830,3 +1830,21 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .sp-ring { width: 180px; height: 180px; margin: -90px 0 0 -90px; border-width: 4px; }
 .sp-word { font-size: 46px; background: linear-gradient(90deg, #fff, #e2cffd 55%, var(--accent, #b07cf7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @media (max-width: 600px) { .sp-stage { width: 240px; height: 230px; } .sp-box { width: 128px; } .sp-shadow { bottom: 48px; width: 96px; } .sp-ring { width: 140px; height: 140px; margin: -70px 0 0 -70px; } .sp-word { font-size: 34px; } }
+
+/* ===== Logo pixel art du lancement : des cubes qui se retournent, en vague verticale ===== */
+.px-logo { display: grid; grid-template-columns: repeat(16, var(--px, 14px)); gap: 2px; perspective: 600px; }
+.px-logo i { width: var(--px, 14px); height: var(--px, 14px); display: block; }
+.px { border-radius: 2px; transform-origin: 50% 50%; backface-visibility: visible; will-change: transform;
+  animation: pxIn 0.5s var(--d) cubic-bezier(0.2, 0.9, 0.3, 1.3) backwards, pxFlip 2.6s calc(var(--d) + 0.9s) ease-in-out infinite; }
+.pB { background: #9b5cf0; box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.25), inset 2px 2px 0 rgba(255, 255, 255, 0.15); }
+.pD { background: #2a1846; box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.35); }
+.pL { background: #d9c2ff; box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.15); }
+.pW { background: #ffd34d; box-shadow: 0 0 8px rgba(255, 211, 77, 0.7); }
+.px-word { margin-top: 26px; font-family: 'Press Start 2P', ui-monospace, monospace; font-size: 30px; letter-spacing: 0.08em; color: #fff; text-shadow: 3px 3px 0 #9b5cf0, 6px 6px 0 rgba(0, 0, 0, 0.35); opacity: 0; animation: spWord 0.5s 0.8s steps(4) forwards; }
+@keyframes pxIn { from { transform: rotateX(-90deg) translateY(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* Retournement d'un cube (rotation verticale), puis pause : la vague repart d'en haut */
+@keyframes pxFlip { 0%, 62%, 100% { transform: rotateX(0); filter: brightness(1); } 70% { transform: rotateX(90deg) scale(0.9); filter: brightness(1.6); } 78% { transform: rotateX(180deg); filter: brightness(1); } 86% { transform: rotateX(360deg); } }
+@media (max-width: 600px) { .px-logo { --px: 11px; } .px-word { font-size: 22px; } }
+@media (prefers-reduced-motion: reduce) { .px { animation: none; } }
+.px-logo { --px: 18px; }
+@media (max-width: 600px) { .px-logo { --px: 13px; } }
