@@ -1644,6 +1644,7 @@ async function boot() {
   renderPanel();
   await route();
   if (pendingVoice) setTimeout(() => import('./voice.js').then((m) => m.runVoiceLink(pendingVoice)), 600);
+  if (isNative) setupSiri();
   setTimeout(() => localStorage.removeItem("boombox.booting"), 4000); // démarrage réussi
 
   setTimeout(showWhatsNew, 1500);
@@ -1908,3 +1909,18 @@ boot().catch((e) => {
   setInterval(send, 30e3); // garde la barre de progression juste après une avance rapide
   addEventListener('beforeunload', () => navigator.sendBeacon?.('/api/discord/presence', new Blob(['{}'], { type: 'application/json' })));
 })();
+
+// ======================= SIRI (iPhone) =======================
+// « Dis Siri, lance Culture G sur Boombox » : Siri connaît les noms des playlists ; ses commandes arrivent ici
+function setupSiri() {
+  const P = window.Capacitor?.Plugins?.BoomboxNative;
+  if (!P?.takeVoiceCommand) return;
+  const run = (url) => url && import('./voice.js').then((m) => m.runVoiceLink(url));
+  const sendNames = debounce(() => P.setVoicePlaylists?.({ names: state.library.playlists.map((p) => p.name) }).catch(() => {}), 3000);
+  on('library', sendNames);
+  sendNames();
+  P.addListener?.('voice', (e) => run(e.url));
+  const take = () => P.takeVoiceCommand().then((r) => run(r?.url)).catch(() => {});
+  take();
+  window.Capacitor.Plugins.App?.addListener('appStateChange', (st) => st.isActive && setTimeout(take, 300));
+}

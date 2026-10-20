@@ -51,8 +51,19 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :NSLocalNetworkUsageDescription string 'Boombox lit ta musique par ton PC quand il est sur le même Wi-Fi.'" "$PLIST" || true
+          # Siri en français : les phrases des commandes sont en français
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDevelopmentRegion fr" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDevelopmentRegion string fr" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Boombox" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Boombox" "$PLIST"
           sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $VERSION;/g; s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = ${{ github.run_number }};/g" ios/App/App.xcodeproj/project.pbxproj
+      - name: Commandes Siri (App Intents)
+        run: |
+          cp mobile/ios-app/BoomboxIntents.swift ios/App/App/BoomboxIntents.swift
+          gem install xcodeproj --no-document --user-install >/dev/null 2>&1 || true
+          ruby -e 'Gem.paths = { "GEM_HOME" => Gem.user_dir, "GEM_PATH" => [Gem.user_dir, *Gem.path] }; require "xcodeproj"; p = Xcodeproj::Project.open("ios/App/App.xcodeproj"); t = p.targets.find { |x| x.name == "App" }; g = p.main_group["App"]; f = g.files.find { |x| x.path == "BoomboxIntents.swift" } || g.new_file("BoomboxIntents.swift"); t.add_file_references([f]) unless t.source_build_phase.files_references.include?(f); p.save'
+          # Au lancement de l'appli : Siri apprend les noms des playlists
+          sed -i '' 's/return true$/if #available(iOS 16.0, *) { BoomboxShortcutsRefresher.shared.start() }\
+        return true/' ios/App/App/AppDelegate.swift
+          grep -n "BoomboxShortcutsRefresher" ios/App/App/AppDelegate.swift || echo "AppDelegate non modifié"
       - name: Synchronisation Capacitor
         run: npx cap sync ios
       - name: Compilation (non signée)
