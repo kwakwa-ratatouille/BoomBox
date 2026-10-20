@@ -1673,3 +1673,36 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .set-stripes .wr-shapes i { filter: none !important; will-change: transform; }
 .wr-card { contain: paint; }
 .w-import { background: transparent; border: 2px dashed rgba(255, 255, 255, 0.25); font-size: 15px; text-align: center; }
+
+/* ===== Activité des amis (panneau de droite), façon Spotify ===== */
+.fc-list { display: flex; flex-direction: column; gap: 4px; }
+.fc { display: flex; align-items: flex-start; gap: 12px; padding: 10px; border-radius: 12px; cursor: pointer; transition: background 0.15s; }
+.fc:hover { background: rgba(255, 255, 255, 0.06); }
+.fc .fa-av .avatar-img { width: 44px; height: 44px; font-size: 17px; }
+.fc .fa-dot { width: 13px; height: 13px; border-color: var(--panel); }
+.fc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding-top: 1px; }
+.fc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.fc-top b { font-size: 14px; font-weight: 700; }
+.fc-when { flex: none; font-size: 11px; color: var(--muted); display: inline-flex; align-items: center; }
+.fc.live .fc-when { color: var(--accent); }
+.fc-when .eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 11px; }
+.fc-when .eq b { width: 2px; background: currentColor; animation: eqBar 0.9s ease-in-out infinite; }
+.fc-when .eq b:nth-child(2) { animation-delay: 0.2s; }
+.fc-when .eq b:nth-child(3) { animation-delay: 0.4s; }
+.fc-title { font-size: 13px; color: var(--text, #fff); }
+.fc-sub { font-size: 12px; color: var(--muted); }
+.fc-ctx { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; margin-top: 2px; opacity: 0.85; }
+.fc-ctx .ic { flex: none; }
+.fc-cover { all: unset; position: relative; flex: none; width: 48px; height: 48px; border-radius: 6px; overflow: hidden; cursor: pointer; background: var(--elev-2); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); margin-top: 2px; }
+.fc-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fc-cover span { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.45); color: #fff; opacity: 0; transition: opacity 0.15s; }
+.fc:hover .fc-cover span, .fc-cover:focus-visible span { opacity: 1; }
+@media (hover: none) { .fc-cover span { opacity: 0.85; background: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.55)); place-items: end; padding: 4px; } }
+.fc-foot { display: flex; gap: 8px; margin-top: 14px; padding: 0 4px; }
+.fc-foot .btn { display: inline-flex; align-items: center; gap: 6px; }
+.fc-foot .badge { position: static; margin-left: 2px; }
+/* Ligne d'activité compacte (en-tête de conversation) */
+.fa-track .fa-cover { width: 36px; height: 36px; }
+.fa-track .fa-txt .t-title { font-size: 13px; }
+.fa-track .fa-txt .muted { font-size: 12px; }
+.fa-track .fa-when { font-size: 12px; }

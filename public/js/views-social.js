@@ -22,10 +22,26 @@ export function activityLine(f) {
   if (!f.share) return html`<span class="muted fa-off">Activité non partagée</span>`;
   if (!a?.track) return html`<span class="muted fa-off">Rien écouté récemment</span>`;
   const now = listeningNow(a);
-  return html`<button class="fa-track" data-play-act="${f.code}" title="Écouter ce son">${a.track.thumb ? html`<img class="fa-cover" src="${a.track.thumb}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}<span class="fa-txt">
-      <span class="t-title ellipsis">${a.track.title}</span><span class="muted ellipsis">${artists(a.track)}</span>
-      ${a.context?.name ? html`<span class="muted ellipsis fa-ctx">${icon(a.context.type === 'playlist' ? 'library' : 'music', 12)} ${a.context.name}</span>` : ''}
-    </span></button><span class="fa-when ${now ? 'live' : ''}">${now ? html`<i class="eq"><b></b><b></b><b></b></i> En écoute` : ago(a.at)}</span>`;
+  return html`<button class="fa-track" data-play-act="${f.code}" title="Écouter ce son">${a.track.thumb ? html`<img class="fa-cover" src="${a.track.thumb}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<span class="fa-txt">
+      <span class="t-title ellipsis">${a.track.title}</span><span class="muted ellipsis">${artists(a.track)} · <span class="fa-when ${now ? 'live' : ''}">${now ? html`<i class="eq"><b></b><b></b><b></b></i> En écoute` : ago(a.at)}</span></span>
+    </span></button>`;
+}
+
+// Carte d'un ami dans le panneau « Activité des amis » (façon Spotify)
+function friendCard(f) {
+  const a = f.share ? f.activity : null;
+  const now = listeningNow(a);
+  return html`<div class="fc ${now ? 'live' : ''}" data-friend="${f.code}">
+    <div class="fa-av">${avatar(f)}${now ? html`<i class="fa-dot"></i>` : ''}</div>
+    <div class="fc-main">
+      <div class="fc-top"><b class="ellipsis">${f.name}</b>${a?.track ? html`<span class="fc-when">${now ? html`<i class="eq"><b></b><b></b><b></b></i>` : ago(a.at)}</span>` : ''}</div>
+      ${a?.track
+        ? html`<span class="fc-title ellipsis">${a.track.title}</span><span class="fc-sub ellipsis">${artists(a.track)}</span>
+          ${a.context?.name ? html`<span class="fc-ctx ellipsis">${icon(a.context.type === 'playlist' ? 'library' : 'music', 12)} ${a.context.name}</span>` : ''}`
+        : html`<span class="fc-sub">${f.share ? 'Rien écouté récemment' : 'Activité non partagée'}</span>`}
+    </div>
+    ${a?.track ? html`<button class="fc-cover" data-play-act="${f.code}" title="Écouter « ${a.track.title} »">${a.track.thumb ? html`<img src="${a.track.thumb}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}<span>${icon('play', 18)}</span></button>` : ''}
+  </div>`;
 }
 
 // Ordre : en écoute d'abord, puis activité la plus récente
@@ -47,13 +63,10 @@ export function friendsPanel(rp, closeBtn, onClose) {
     rp.innerHTML = String(html`<div class="rp-head"><h3>Activité des amis</h3><div class="rp-tabs"><button class="icon-btn" id="fp-add" title="Ajouter un ami">${icon('plus')}</button>${closeBtn}</div></div>
       <div class="rp-body">
         ${!social.sharing ? html`<div class="fa-note muted">Ton activité n'est pas partagée. <a href="#/settings">Activer dans les paramètres</a></div>` : ''}
-        ${list.length ? list.map((f) => html`<div class="fa-row" data-friend="${f.code}">
-            <div class="fa-av">${avatar(f)}${listeningNow(f.activity) ? html`<i class="fa-dot"></i>` : ''}</div>
-            <div class="fa-main"><b class="ellipsis">${f.name}</b>${activityLine(f)}</div>
-            <button class="icon-btn fa-msg" data-msg="${f.code}" title="Envoyer un message">${icon('chat', 18)}</button></div>`)
+        ${list.length ? html`<div class="fc-list">${list.map(friendCard)}</div>`
         : html`<div class="empty-mini"><p class="muted">Ajoute tes amis avec leur code ami pour voir ce qu'ils écoutent.</p>
             <p class="muted" style="font-size:12px">Ton code : <b class="code">${social.code || '…'}</b></p></div>`}
-        <a class="outline-btn" href="#/friends" style="display:inline-block;margin-top:14px">Messages${social.unread ? ` (${social.unread})` : ''}</a>
+        <div class="fc-foot"><a class="btn white" href="#/friends">${icon('chat', 16)} Messages${social.unread ? html` <span class="badge">${social.unread}</span>` : ''}</a>${social.requests().length ? html`<a class="btn ghost" href="#/friends">${plural(social.requests().length, 'demande')}</a>` : ''}</div>
       </div>`);
     bindActivity(rp);
     rp.querySelectorAll('[data-friend]').forEach((r) => (r.onclick = () => (location.hash = `#/friends?c=${r.dataset.friend}`)));

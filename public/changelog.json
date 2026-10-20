@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Activité des amis",
+    "items": [
+      "Panneau « Activité des amis » redessiné : photo, son, artiste et playlist bien alignés, pochette à droite pour écouter d'un appui, « En écoute » animé ou « il y a 3 h ».",
+      "En-tête des conversations plus compact."
+    ],
+    "date": "2026-10-20"
+  },
+  {
     "version": "2026.1020.1339",
     "title": "Réactions et corrections",
     "items": [
