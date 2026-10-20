@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1020.1632",
     "title": "Volume égalisé",
     "items": [
       "Normalisation du volume refaite : elle mesure maintenant le volume perçu (norme LUFS, comme Spotify), sans se faire piéger par les basses ou les intros calmes. Tous les sons sont ramenés au même niveau (les analyses se refont au fil des écoutes).",
