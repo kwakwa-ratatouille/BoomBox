@@ -178,9 +178,16 @@ function wireListActions(root, getTracks, context) {
   root.querySelector('[data-shuffle]')?.addEventListener('click', (e) => {
     const tracks = getTracks();
     if (!tracks.length) return;
-    if (!player.shuffle) ctl.toggleShuffle();
     const same = player.context && context && player.context.type === context.type && player.context.id === context.id;
-    if (!same) ctl.playList(tracks, Math.floor(Math.random() * tracks.length), context);
+    // Déjà en cours dans cette playlist : le bouton active / désactive l'aléatoire (comme dans le lecteur)
+    if (same && player.track) {
+      ctl.toggleShuffle();
+      e.currentTarget.classList.toggle('on', player.shuffle);
+      return;
+    }
+    // Sinon : lecture aléatoire de la playlist
+    if (!player.shuffle) ctl.toggleShuffle();
+    ctl.playList(tracks, Math.floor(Math.random() * tracks.length), context);
     e.currentTarget.classList.add('on');
   });
 }
