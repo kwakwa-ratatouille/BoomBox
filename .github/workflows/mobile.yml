@@ -61,8 +61,7 @@ jobs:
           gem install xcodeproj --no-document --user-install >/dev/null 2>&1 || true
           ruby -e 'Gem.paths = { "GEM_HOME" => Gem.user_dir, "GEM_PATH" => [Gem.user_dir, *Gem.path] }; require "xcodeproj"; p = Xcodeproj::Project.open("ios/App/App.xcodeproj"); t = p.targets.find { |x| x.name == "App" }; g = p.main_group["App"]; f = g.files.find { |x| x.path == "BoomboxIntents.swift" } || g.new_file("BoomboxIntents.swift"); t.add_file_references([f]) unless t.source_build_phase.files_references.include?(f); p.save'
           # Au lancement de l'appli : Siri apprend les noms des playlists
-          sed -i '' 's/return true$/if #available(iOS 16.0, *) { BoomboxShortcutsRefresher.shared.start() }\
-        return true/' ios/App/App/AppDelegate.swift
+          perl -0pi -e 's/return true\n/if #available(iOS 16.0, *) { BoomboxShortcutsRefresher.shared.start() }\n        return true\n/' ios/App/App/AppDelegate.swift
           grep -n "BoomboxShortcutsRefresher" ios/App/App/AppDelegate.swift || echo "AppDelegate non modifié"
       - name: Synchronisation Capacitor
         run: npx cap sync ios
