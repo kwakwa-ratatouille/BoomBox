@@ -1,3 +1,5 @@
+/* Typo pixel du logo (B, O, M, X) : tailles en multiples de 10px pour des pixels nets */
+@font-face { font-family: 'Boombox Pixel'; src: url('/assets/fonts/boombox-pixel.woff2') format('woff2'), url('/assets/fonts/boombox-pixel.ttf') format('truetype'); font-display: block; }
 :root {
   /* Direction artistique : nuit violette, accent mauve */
   --bg: #08060c;
@@ -1800,7 +1802,7 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .sp-ring { position: absolute; top: 50%; left: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 3px solid var(--accent, #b07cf7); opacity: 0; animation: spRing 2.7s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; will-change: transform, opacity; }
 .sp-ring:nth-child(2) { animation-delay: 0.9s; }
 .sp-ring:nth-child(3) { animation-delay: 1.8s; } /* une onde à chaque atterrissage */
-.sp-word { font-size: 26px; font-weight: 900; letter-spacing: -0.02em; color: #fff; opacity: 0; animation: spWord 0.6s 0.25s ease forwards; }
+.sp-word { font-family: 'Boombox Pixel', 'Press Start 2P', monospace; font-size: 30px; font-weight: 400; letter-spacing: 0; line-height: 1; color: #fff; opacity: 0; animation: spWord 0.6s 0.25s ease forwards; }
 @keyframes spBounce {
   0%, 100% { transform: translateY(0) scale(1.08, 0.9); }   /* écrasée au sol (temps fort) */
   12% { transform: translateY(0) scale(0.94, 1.08); }        /* détente */
@@ -1815,10 +1817,10 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 /* Logo de l'appli : symbole + nom bien lisible */
 .brand-link { display: flex !important; align-items: center; gap: 10px; padding: 10px 12px 8px !important; text-decoration: none; }
 .brand-logo { height: 40px !important; width: auto; margin: 0 !important; filter: drop-shadow(0 4px 14px rgba(176, 124, 247, 0.45)); }
-.brand-word { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; background: linear-gradient(90deg, #fff 0%, #e2cffd 55%, var(--accent, #b07cf7) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.brand-word { font-family: 'Boombox Pixel', 'Press Start 2P', monospace; font-size: 30px; font-weight: 400; letter-spacing: 0; line-height: 1; background: linear-gradient(90deg, #fff 0%, #e2cffd 55%, var(--accent, #b07cf7) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 #app.side-collapsed .brand-word { display: none; }
 #app.side-collapsed .brand-logo { content: none; height: 34px !important; }
-@media (max-width: 768px) { .brand-logo { height: 32px !important; } .brand-word { font-size: 24px; } }
+@media (max-width: 768px) { .brand-logo { height: 32px !important; } .brand-word { font-size: 20px; } }
 #app.nav-compact .brand-link, #app.nav-mini .brand-link { display: none !important; }
 .pip-vol { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .pip-vol input { flex: 1; accent-color: var(--accent, #b07cf7); height: 4px; }
@@ -1828,8 +1830,8 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .sp-box { width: 168px; }
 .sp-shadow { width: 124px; height: 18px; bottom: 62px; }
 .sp-ring { width: 180px; height: 180px; margin: -90px 0 0 -90px; border-width: 4px; }
-.sp-word { font-size: 46px; background: linear-gradient(90deg, #fff, #e2cffd 55%, var(--accent, #b07cf7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-@media (max-width: 600px) { .sp-stage { width: 240px; height: 230px; } .sp-box { width: 128px; } .sp-shadow { bottom: 48px; width: 96px; } .sp-ring { width: 140px; height: 140px; margin: -70px 0 0 -70px; } .sp-word { font-size: 34px; } }
+.sp-word { font-size: 50px; background: linear-gradient(90deg, #fff, #e2cffd 55%, var(--accent, #b07cf7)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@media (max-width: 600px) { .sp-stage { width: 240px; height: 230px; } .sp-box { width: 128px; } .sp-shadow { bottom: 48px; width: 96px; } .sp-ring { width: 140px; height: 140px; margin: -70px 0 0 -70px; } .sp-word { font-size: 30px; } }
 
 /* ===== Logo pixel art du lancement : des cubes qui se retournent, en vague verticale ===== */
 .px-logo { display: grid; grid-template-columns: repeat(16, var(--px, 14px)); gap: 2px; perspective: 600px; }
