@@ -383,7 +383,7 @@ export async function search(el, params, ctx) {
   }
   // Lien (ou identifiant) d'un profil Spotify collé dans la recherche : on ouvre directement le profil
   const spUser = q.match(/(?:open\.spotify\.com\/(?:intl-\w+\/)?user\/|spotify:user:)([\w.-]+)/i);
-  if (spUser) return void (location.hash = );
+  if (spUser) return void (location.hash = `#/spuser/${spUser[1]}`);
   ls.set('boombox.recentSearches', [q, ...recents.filter((r) => r.toLowerCase() !== q.toLowerCase())].slice(0, 10));
 
   const tabs = [['all', 'Tout'], ['song', 'Titres'], ['artist', 'Artistes'], ['album', 'Albums'], ['playlist', 'Playlists'], ['video', 'Vidéos'], ['people', 'Profils Spotify'], ['lyrics', 'Paroles']];
