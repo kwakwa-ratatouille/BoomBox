@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "SoundCloud",
+    "items": [
+      "Titres bloqués sur YouTube Music : Boombox prend d'abord le son officiel publié par l'artiste sur SoundCloud (ex. PNL – Hasta la vista), sinon la version YouTube.",
+      "Colle aussi un lien SoundCloud dans la recherche pour écouter, ajouter ou télécharger le son."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1002",
     "title": "Lien d'un son",
     "items": [

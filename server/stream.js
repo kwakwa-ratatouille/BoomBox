@@ -1,4 +1,5 @@
 import { isLocalId, localPath } from './localfiles.js';
+import { isScId, scUrl, setScBin } from './soundcloud.js';
 // Lecture audio directe via yt-dlp (optionnel). Permet la lecture écran éteint sur téléphone
 // et les contrôles sur l'écran de verrouillage. Sans yt-dlp, l'app utilise le lecteur YouTube intégré.
 import { execFile, execFileSync } from 'node:child_process';
@@ -31,6 +32,7 @@ function findYtDlp() {
 }
 
 export const ytDlpPath = findYtDlp();
+setScBin(ytDlpPath); // recherche SoundCloud des titres bloqués
 
 const urlCache = new Map(); // videoId -> { url, exp }
 const pending = new Map();
@@ -74,7 +76,7 @@ export function download(id) {
     // Téléchargé sous un nom temporaire, renommé seulement une fois complet
     const tmp = file + '.dl';
     fs.rmSync(tmp, { force: true });
-    execFile(ytDlpPath, ['--js-runtimes', 'node', '-f', 'bestaudio[ext=m4a]/bestaudio', '-o', tmp, '--no-part', '--no-playlist', '--no-warnings', '--quiet', `https://www.youtube.com/watch?v=${id}`], { timeout: 150e3, windowsHide: true }, (err) => {
+    execFile(ytDlpPath, ['--js-runtimes', 'node', '-f', 'bestaudio[ext=m4a]/bestaudio', '-o', tmp, '--no-part', '--no-playlist', '--no-warnings', '--quiet', isScId(id) ? scUrl(id) : `https://www.youtube.com/watch?v=${id}`], { timeout: 150e3, windowsHide: true }, (err) => {
       downloads.delete(id);
       if (err || !fs.existsSync(tmp) || !fs.statSync(tmp).size) {
         fs.rmSync(tmp, { force: true });
@@ -100,6 +102,14 @@ function pruneAudioCache() {
 export async function audioFileHandler(req, res) {
   const { id } = req.params;
   if (isLocalId(id)) return localPath(id) ? res.sendFile(localPath(id)) : res.status(404).end();
+  // Son SoundCloud : téléchargé une fois (quelques secondes) puis lu depuis le disque
+  if (isScId(id) && ytDlpPath) {
+    try {
+      return res.sendFile(await download(id), { headers: { 'content-type': 'audio/mp4' } });
+    } catch (e) {
+      return res.status(502).json({ error: e.message });
+    }
+  }
   if (!ytDlpPath) return res.status(501).json({ error: 'yt-dlp non installé' });
   if (!/^[\w-]{11}$/.test(id)) return res.status(400).end();
   try {

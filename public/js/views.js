@@ -393,7 +393,7 @@ export async function search(el, params, ctx) {
   if (spUser) return void (location.hash = `#/spuser/${spUser[1]}`);
   // Lien d'un son (YouTube, YouTube Music, Spotify, Deezer) collé dans la recherche : on retrouve le son,
   // avec de quoi l'écouter, l'ajouter à une playlist, le liker et le télécharger
-  if (/https?:\/\/\S*(youtu\.?be|spotify\.com\/(intl-\w+\/)?track|deezer\.com|deezer\.page|spotify\.link)/i.test(q)) return linkResult(el, q, ctx);
+  if (/https?:\/\/\S*(youtu\.?be|spotify\.com\/(intl-\w+\/)?track|deezer\.com|deezer\.page|spotify\.link|soundcloud\.com)/i.test(q)) return linkResult(el, q, ctx);
   ls.set('boombox.recentSearches', [q, ...recents.filter((r) => r.toLowerCase() !== q.toLowerCase())].slice(0, 10));
 
   const tabs = [['all', 'Tout'], ['song', 'Titres'], ['artist', 'Artistes'], ['album', 'Albums'], ['playlist', 'Playlists'], ['video', 'Vidéos'], ['people', 'Profils Spotify'], ['lyrics', 'Paroles']];

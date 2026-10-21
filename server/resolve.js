@@ -20,6 +20,7 @@ export async function resolveInput(input) {
     if (/spotify\.link|page\.link|link\.deezer|dzr\.page|youtu\.be/i.test(url) && !/youtu\.be\/[\w-]{11}/.test(url)) url = (await fetchText(url)).url;
     const u = new URL(url);
 
+    if (/soundcloud\.com$/.test(u.hostname)) return (await import('./soundcloud.js')).scResolve(url);
     if (/spotify\.com$/.test(u.hostname)) {
       const id = u.pathname.match(/track\/([A-Za-z0-9]+)/)?.[1];
       if (!id) throw new Error('Envoie un lien de titre Spotify (pas une playlist)');

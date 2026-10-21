@@ -1,3 +1,4 @@
+import { scFind } from './soundcloud.js';
 // Accès à YouTube / YouTube Music via youtubei.js (pas de clé API nécessaire).
 import { Innertube, Log } from 'youtubei.js';
 import fs from 'node:fs';
@@ -410,6 +411,13 @@ export async function album(id) {
         const title = txt(i.title);
         if (!title) return;
         try {
+          // 1) Le son officiel sur SoundCloud (publié par l'artiste) : la vraie version de l'album
+          const sc = await scFind(null, title, who, i.duration?.seconds || 0);
+          if (sc) {
+            tracks[k] = { id: sc.id, title, duration: i.duration?.seconds || sc.duration, artists, album: albumRef, thumb, fromSoundcloud: true };
+            return;
+          }
+          // 2) Sinon sa version YouTube (clip ou audio mis en ligne)
           const r = await search(`${who} ${title}`, 'video');
           const hit = (r.items || []).find((v) => key(v.title).includes(key(title)) && (!who || key(`${v.title} ${(v.artists || []).map((x) => x.name).join(' ')}`).includes(key(who).split(' ')[0])));
           if (hit) tracks[k] = { ...hit, type: undefined, title, duration: i.duration?.seconds || hit.duration, artists, album: albumRef, thumb, fromYoutube: true };
