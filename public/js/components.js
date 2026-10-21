@@ -603,6 +603,49 @@ export function setupDelegation() {
   document.addEventListener('touchend', endSwipe, { passive: true });
   document.addEventListener('touchcancel', endSwipe, { passive: true });
 
+  // PC : même geste au pavé tactile (glissement horizontal à deux doigts sur un son). La ligne suit le geste ;
+  // quand le geste s'arrête, l'action est validée si on a glissé assez loin.
+  let wsw = null;
+  document.addEventListener('wheel', (e) => {
+    const row = e.target.closest('.track, .q-item[data-qjump]');
+    if (!row || Math.abs(e.deltaX) <= Math.abs(e.deltaY) || e.ctrlKey) return;
+    e.preventDefault();
+    if (!wsw || wsw.row !== row) {
+      if (wsw) clearTimeout(wsw.t);
+      sw = null;
+      wsw = { row, dx: 0 };
+      row.classList.add('swiping');
+      const host = row.parentElement;
+      if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+      wsw.bg = document.createElement('div');
+      wsw.bg.className = 'swipe-bg';
+      wsw.bg.style.cssText = `top:${row.offsetTop}px;left:${row.offsetLeft}px;width:${row.offsetWidth}px;height:${row.offsetHeight}px`;
+      wsw.bg.innerHTML = `<span class="sb-q">${icon('addQueue', 22)}<b>File d'attente</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`;
+      row.before(wsw.bg);
+    }
+    // deltaX positif = doigts vers la gauche : la ligne part à gauche (ajout à une playlist)
+    wsw.dx = Math.max(-150, Math.min(150, wsw.dx - e.deltaX));
+    const v = Math.abs(wsw.dx) <= 70 ? wsw.dx : Math.sign(wsw.dx) * (70 + (Math.abs(wsw.dx) - 70) * 0.35);
+    row.style.transform = `translateX(${v}px)`;
+    wsw.bg.dataset.dir = wsw.dx > 0 ? 'right' : 'left';
+    wsw.bg.classList.toggle('armed', Math.abs(wsw.dx) > 70);
+    clearTimeout(wsw.t);
+    wsw.t = setTimeout(() => {
+      const { row: r, dx, bg } = wsw;
+      wsw = null;
+      bg.classList.add('out');
+      setTimeout(() => bg.remove(), 260);
+      r.style.transition = Math.abs(dx) > 70 ? 'transform 0.38s cubic-bezier(0.3, 1.45, 0.5, 1)' : 'transform 0.22s ease';
+      r.style.transform = '';
+      if (Math.abs(dx) > 70) (r.classList.add('swiped'), setTimeout(() => r.classList.remove('swiped'), 600));
+      setTimeout(() => ((r.style.transition = ''), r.classList.remove('swiping')), 400);
+      const track = Math.abs(dx) > 70 && swipeTrack(r);
+      if (!track) return;
+      if (dx > 0) ctl.addToQueue(track);
+      else openPlaylistPicker(track, { x: r.getBoundingClientRect().left + 200, y: r.getBoundingClientRect().top });
+    }, 180);
+  }, { passive: false });
+
   // Glisser-déposer : vers une playlist de la barre latérale, ou réordonner une playlist.
   let dragInfo = null;
   document.addEventListener('dragstart', (e) => {
