@@ -1954,3 +1954,10 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .set-group .set-body { padding: 0 18px 8px; }
 .set-group .settings-row:first-child { border-top: 0; }
 .set-sub { font-size: 14px; color: var(--muted); margin: 16px 0 4px; font-weight: 700; }
+
+/* Résultat d'un lien collé dans la recherche */
+.lr-card { display: flex; gap: 24px; align-items: flex-end; margin: 8px 0 24px; }
+.lr-card > .cover { width: 200px; height: 200px; flex: none; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5); }
+.lr-info { min-width: 0; }
+.lr-info h1 { font-size: clamp(24px, 4vw, 44px); margin: 4px 0; }
+@media (max-width: 640px) { .lr-card { flex-direction: column; align-items: flex-start; } .lr-card > .cover { width: 160px; height: 160px; } }

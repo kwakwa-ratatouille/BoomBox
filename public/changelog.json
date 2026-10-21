@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Lien d'un son",
+    "items": [
+      "Colle le lien d'un son (YouTube, YouTube Music, Spotify, Deezer) dans la recherche : écoute-le, ajoute-le à une playlist, like-le ou télécharge-le."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.0850",
     "title": "Correctifs iPhone",
     "items": [

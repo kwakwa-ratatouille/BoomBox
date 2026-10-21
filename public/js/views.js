@@ -391,6 +391,9 @@ export async function search(el, params, ctx) {
   // Lien (ou identifiant) d'un profil Spotify collé dans la recherche : on ouvre directement le profil
   const spUser = q.match(/(?:open\.spotify\.com\/(?:intl-\w+\/)?user\/|spotify:user:)([\w.-]+)/i);
   if (spUser) return void (location.hash = `#/spuser/${spUser[1]}`);
+  // Lien d'un son (YouTube, YouTube Music, Spotify, Deezer) collé dans la recherche : on retrouve le son,
+  // avec de quoi l'écouter, l'ajouter à une playlist, le liker et le télécharger
+  if (/https?:\/\/\S*(youtu\.?be|spotify\.com\/(intl-\w+\/)?track|deezer\.com|deezer\.page|spotify\.link)/i.test(q)) return linkResult(el, q, ctx);
   ls.set('boombox.recentSearches', [q, ...recents.filter((r) => r.toLowerCase() !== q.toLowerCase())].slice(0, 10));
 
   const tabs = [['all', 'Tout'], ['song', 'Titres'], ['artist', 'Artistes'], ['album', 'Albums'], ['playlist', 'Playlists'], ['video', 'Vidéos'], ['people', 'Profils Spotify'], ['lyrics', 'Paroles']];
@@ -481,6 +484,35 @@ export async function search(el, params, ctx) {
     if (!box || !users.length) return;
     box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Profils Spotify</h2><a href="#/search?q=${encodeURIComponent(q)}&type=people">Tout afficher</a></div>${spotifyUserCards(users.slice(0, 6))}</section>`);
   }).catch(() => {});
+}
+
+async function linkResult(el, q, ctx) {
+  el.innerHTML = String(html`<div class="page"><h1 style="margin-bottom:8px">Lien</h1><p class="muted">Recherche du son…</p></div>`);
+  let t;
+  try {
+    t = await api('/api/resolve', { method: 'POST', body: { input: q } });
+  } catch (e) {
+    el.innerHTML = String(html`<div class="page"><div class="empty"><h2>Son introuvable</h2><p class="muted">${e.message}</p></div></div>`);
+    return;
+  }
+  if (!ctx.alive()) return;
+  rememberTracks([t]);
+  const lctx = { type: 'search', name: 'Lien' };
+  el.innerHTML = String(html`<div class="page link-result">
+    <div class="lr-card">${cover(t, '', 300)}<div class="lr-info"><small class="muted">SON TROUVÉ</small><h1 class="ellipsis">${t.title}</h1><div class="muted">${artistLinks(t)}</div>
+      <div class="row-flex" style="gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn primary" id="lr-play">${icon('play', 16)} Écouter</button>
+        <button class="btn white" id="lr-add">${icon('plus', 16)} Ajouter à une playlist</button>
+        <button class="btn ghost" id="lr-like">${icon(isLiked(t.id) ? 'heartFill' : 'heart', 16)} ${isLiked(t.id) ? 'Liké' : 'Liker'}</button>
+        ${canUseLocal() ? html`<button class="btn ghost" id="lr-dl">${icon('import', 16)} Télécharger sur le PC</button>` : ''}
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:10px">Liké ou ajouté à une playlist téléchargée, il sera aussi disponible hors connexion sur ton téléphone.</p></div></div>
+    ${trackList([t], { context: lctx })}
+  </div>`);
+  el.querySelector('#lr-play').onclick = () => ctl.playList([t], 0, lctx);
+  el.querySelector('#lr-add').onclick = (e) => openPlaylistPicker(t, { x: e.clientX, y: e.clientY });
+  el.querySelector('#lr-like').onclick = async () => (await toggleLike(t), linkResult(el, q, ctx));
+  el.querySelector('#lr-dl')?.addEventListener('click', () => downloadToPc([t]));
 }
 
 // ======================= TITRES LIKÉS =======================
