@@ -257,7 +257,7 @@ export async function jam(el, params) {
         </div>
       </div>
       <div class="jam-members">${room.members.map((m) => html`<span class="jam-member">${m.id === room.host ? '👑 ' : ''}${m.name}</span>`)}</div>
-      ${host ? html`<label class="row-flex" style="margin-bottom:16px"><span class="switch"><input type="checkbox" id="jam-ctrl" ${room.everyoneControls ? 'checked' : ''}><span></span></span> Tout le monde peut mettre en pause / passer</label>` : html`<label class="row-flex" style="margin-bottom:16px"><span class="switch"><input type="checkbox" id="jam-along" ${sync.listenAlong ? 'checked' : ''}><span></span></span> Écouter aussi sur cet appareil (synchronisé)</label>`}
+      ${host ? html`<label class="row-flex" style="margin-bottom:16px"><span class="switch"><input type="checkbox" id="jam-ctrl" ${room.everyoneControls ? 'checked' : ''}><span></span></span> Tout le monde peut mettre en pause / passer</label>` : html`<label class="row-flex" style="margin-bottom:16px"><span class="switch"><input type="checkbox" id="jam-along" ${sync.listenAlong ? 'checked' : ''}><span></span></span> Écouter la party sur cet appareil, en même temps que l’hôte (à distance aussi)</label>`}
       ${st?.track ? html`<div class="np-card" style="display:flex;gap:16px;align-items:center">${cover(st.track)}<div style="flex:1;min-width:0"><div class="muted" style="font-size:12px">EN COURS</div><b class="ellipsis" style="display:block;font-size:18px">${st.track.title}</b><span class="muted">${artistLinks(st.track)}</span></div>
         ${host || room.everyoneControls ? html`<button class="play-btn" id="jam-toggle">${icon(st.paused ? 'play' : 'pause')}</button><button class="ctrl" id="jam-next">${icon('next')}</button>` : ''}</div>` : html`<p class="muted">Rien en cours. Ajoutez des sons : ${host ? 'la lecture démarre toute seule.' : "l'hôte les jouera."}</p>`}
       <div class="section-head" style="margin-top:24px"><h2>File de la party</h2><a href="#/search" class="outline-btn">+ Ajouter des sons</a></div>
@@ -404,7 +404,7 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Normaliser le volume</b><p>Tous les sons sont joués au même niveau sonore : fini les titres beaucoup plus forts ou plus faibles que les autres. ${isNative ? 'Sur téléphone, les sons trop forts sont baissés (sans effet sur iPhone, qui ne laisse pas une appli régler le volume).' : ''}</p></div><label class="switch"><input type="checkbox" id="s-normalize" ${setting('normalize', true) ? 'checked' : ''} ${st.ytdlp || isNative ? '' : 'disabled'}><span></span></label></div>
     ${isNative ? '' : html`<div class="settings-row"><div><b>Lancer Boombox au démarrage de Windows</b><p>Le serveur démarre tout seul avec le PC : ton téléphone peut lire et télécommander dès que le PC est allumé, et l'appli s'ouvre instantanément.</p><label class="row-flex" style="font-size:13px;gap:8px;margin-top:6px"><input type="checkbox" id="s-autostart-win"> Ouvrir aussi la fenêtre Boombox</label></div><label class="switch"><input type="checkbox" id="s-autostart"><span></span></label></div>`}
     ${isNative ? '' : html`<div class="settings-row"><div><b>Pré-télécharger mes titres likés</b><p>En arrière-plan, quand rien ne joue : tes likes démarrent instantanément et Boombox sollicite beaucoup moins YouTube. Utilise jusqu'à 4 Go sur ce PC.</p><p class="muted" id="s-pre-status" style="font-size:12px"></p></div><label class="switch"><input type="checkbox" id="s-predownload" ${setting('predownload', true) ? 'checked' : ''}><span></span></label></div>`}
-    ${isNative ? '' : html`<div class="settings-row"><div><b>Alertes nouvelles sorties</b><p>Une notification discrète quand un artiste que tu suis sort un son (regroupées, au plus une toutes les 6 heures).</p></div><label class="switch"><input type="checkbox" id="s-alerts" ${setting('releaseAlerts', true) && typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'checked' : ''}><span></span></label></div>`}
+    <div class="settings-row"><div><b>Notifications</b><p>Nouvelles sorties des artistes que tu suis (au plus une toutes les 6 heures) et rappels de tes concerts favoris (★), la veille et le jour même.</p></div><label class="switch"><input type="checkbox" id="s-alerts" ${setting('releaseAlerts', true) && (isNative || (typeof Notification !== 'undefined' && Notification.permission === 'granted')) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Titres masqués</b><p>${plural(setting('banned', []).length, 'titre')} que tu as choisi de ne plus entendre (menu ⋯ → « Ne plus proposer »).</p></div>${setting('banned', []).length ? html`<button class="btn ghost" id="s-unban">Tout réautoriser</button>` : ''}</div>
     <div class="settings-row"><div><b>Moteur de lecture</b><p>${st.ytdlp ? '✅ yt-dlp détecté : lecture audio directe disponible (écran éteint sur mobile, contrôles sur l’écran de verrouillage).' : 'Lecteur YouTube intégré. Installe yt-dlp pour l’audio direct (lecture écran éteint sur téléphone) — voir README.'}</p></div>
       <select class="input" id="s-engine"><option value="auto">Automatique</option><option value="youtube">Lecteur YouTube</option><option value="audio" ${st.ytdlp ? '' : 'disabled'}>Audio direct (yt-dlp)</option></select></div>
@@ -493,9 +493,9 @@ export async function settings(el) {
     settings(el);
   });
   el.querySelector('#s-alerts')?.addEventListener('change', async (e) => {
-    if (e.target.checked && Notification.permission !== 'granted') {
-      const p = await Notification.requestPermission();
-      if (p !== 'granted') {
+    if (e.target.checked) {
+      const ok = await (await import('./notify.js')).askNotifications();
+      if (!ok) {
         e.target.checked = false;
         return toast('Notifications refusées par le navigateur');
       }

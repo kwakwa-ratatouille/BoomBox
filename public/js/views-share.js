@@ -40,7 +40,7 @@ export async function userPage(el, params) {
         </div>
       </div>
       <div class="page-body">
-        <div class="actions"><a class="btn white" href="#/friends?c=${code}">${icon('chat', 16)} Message</a>${!social.isAdded(code) && !f.sameSpace ? html`<button class="outline-btn" id="u-add">${icon('plus', 16)} Ajouter en ami</button>` : social.isPending(code) ? html`<span class="muted">Demande envoyée</span>` : ''}</div>
+        <div class="actions"><a class="btn white" href="#/friends?c=${code}">${icon('chat', 16)} Message</a><button class="outline-btn" id="u-blend">Faire un Blend</button>${!social.isAdded(code) && !f.sameSpace ? html`<button class="outline-btn" id="u-add">${icon('plus', 16)} Ajouter en ami</button>` : social.isPending(code) ? html`<span class="muted">Demande envoyée</span>` : ''}</div>
         <div class="user-act" style="margin-bottom:16px">${activityLine(f)}</div>
       ${d.top?.tracks?.length ? html`<section class="section"><div class="section-head"><h2>Son top du moment</h2><span class="muted">30 derniers jours${d.top.minutes ? ` · ${Math.round(d.top.minutes).toLocaleString('fr-FR')} min d'écoute` : ''}</span></div>
         ${d.top.artists?.length ? html`<div class="cards row" style="margin-bottom:12px">${d.top.artists.map((a) => html`<a class="card" href="${a.id ? `#/artist/${a.id}` : `#/search?q=${encodeURIComponent(a.name)}`}">${cover({ thumb: a.thumb }, 'round')}<div class="card-title">${a.name}</div><div class="card-sub">${plural(a.count, 'écoute')}</div></a>`)}</div>` : ''}
@@ -56,6 +56,7 @@ export async function userPage(el, params) {
     el.querySelector('#u-lplay')?.addEventListener('click', () => ctl.playList(likes, startAt(likes), lctx));
     el.querySelectorAll('[data-li]').forEach((r) => (r.onclick = () => ctl.playList(likes, +r.dataset.li, lctx)));
     el.querySelectorAll('[data-top]').forEach((r) => (r.onclick = () => ctl.playList(d.top.tracks, +r.dataset.top, { type: 'shared', name: `Top de ${d.name}` })));
+    el.querySelector('#u-blend')?.addEventListener('click', () => import('./blend.js').then((m) => m.startBlend(code)));
     bindActivity(el);
     el.querySelector('#u-add')?.addEventListener('click', () => social.addFriend(code).then((n) => (toast(`Demande d’ami envoyée à ${n}`), draw())).catch((e) => toast(e.message)));
   };

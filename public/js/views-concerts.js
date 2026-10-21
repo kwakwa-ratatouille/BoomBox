@@ -1,7 +1,7 @@
 // Concerts près de chez toi : concerts à venir des artistes que tu suis (annoncés sur Spotify), triés par date,
 // filtrés selon la distance à ta position (position du navigateur, ou une ville que tu tapes).
-import { html, icon, plural, toast, debounce } from './ui.js';
-import { state, api, ls } from './state.js';
+import { html, icon, plural, toast, debounce, esc } from './ui.js';
+import { state, api, ls, setting, saveSettings } from './state.js';
 
 const RADII = [[50, '50 km'], [100, '100 km'], [250, '250 km'], [0, 'Partout']];
 
@@ -26,7 +26,8 @@ const fmtDate = (iso) => {
 export function concertCard(c, here) {
   const d = fmtDate(c.date);
   const dist = here && c.lat != null ? Math.round(km(here, c)) : null;
-  return html`<a class="concert" href="${c.url}" target="_blank" rel="noopener"><div class="concert-date"><b>${d.day}</b><span>${d.month}</span></div>
+  const fav = isFavConcert(c);
+  return html`<a class="concert" href="${c.url}" target="_blank" rel="noopener"><button class="concert-fav ${fav ? 'on' : ''}" data-fav-concert="${esc(JSON.stringify({ id: c.id, title: c.title, artist: c.artist, date: c.date, venue: c.venue, city: c.city, url: c.url }))}" title="${fav ? 'Retirer de mes concerts' : 'Ajouter à mes concerts (rappel la veille)'}">${fav ? '★' : '☆'}</button><div class="concert-date"><b>${d.day}</b><span>${d.month}</span></div>
     <div class="concert-info"><b class="ellipsis">${c.artist || c.title}${c.festival ? html` <span class="tag">FESTIVAL</span>` : ''}</b><span class="ellipsis">${c.venue}${c.city ? ` · ${c.city}` : ''}</span><span class="muted ellipsis">${d.full}${dist != null ? ` · à ${dist} km` : ''}</span></div>
     <span class="concert-go">${icon('forward', 18)}</span></a>`;
 }
@@ -53,6 +54,7 @@ export async function concerts(el, _p, ctx) {
     el.innerHTML = String(html`<div class="page" style="max-width:900px">
       <h1>Concerts près de chez toi</h1>
       <p class="muted">Les concerts à venir des ${plural(state.library.follows.length, 'artiste')} que tu suis, d'après Spotify.</p>
+      ${favConcerts().length ? html`<section class="section" style="margin-top:8px"><div class="section-head"><h2>★ Mes concerts</h2><span class="muted">rappel la veille et le jour même</span></div><div class="concert-list">${favConcerts().sort((x, y) => Date.parse(x.date) - Date.parse(y.date)).map((fc) => concertCard(fc, here))}</div></section>` : ''}
       <div class="geo-bar">
         <span class="geo-where">${icon('pin', 16)}${here ? here.label : 'Position non définie'}</span>
         <button class="outline-btn" id="geo-me">Utiliser ma position</button>
@@ -94,3 +96,24 @@ export async function concerts(el, _p, ctx) {
   load();
   return { onLibrary: () => {}, cleanup: () => clearTimeout(timer) };
 }
+
+// ---------- Mes concerts (favoris) : rappel la veille et le jour même ----------
+export const favConcerts = () => (setting('favConcerts', []) || []).filter((c) => Date.parse(c.date) > Date.now() - 86400e3);
+export const isFavConcert = (c) => favConcerts().some((f) => f.id === c.id);
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-fav-concert]');
+  if (!b) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const c = JSON.parse(b.dataset.favConcert);
+  const list = favConcerts();
+  const on = !list.some((f) => f.id === c.id);
+  await saveSettings({ favConcerts: on ? [...list, c] : list.filter((f) => f.id !== c.id) });
+  const n = await import('./notify.js');
+  if (on) {
+    await n.scheduleConcert(c);
+    toast(`Ajouté à tes concerts : rappel la veille et le jour même`);
+  } else n.cancelConcert(c);
+  b.classList.toggle('on', on);
+  b.textContent = on ? '★' : '☆';
+}, true);

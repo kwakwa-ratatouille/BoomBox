@@ -3,7 +3,8 @@
 // de ses playlists). Les titres que vous aimez tous les deux passent en premier, puis vos titres s'alternent.
 import { state, api, createPlaylist, getStatsFull } from './state.js';
 import { db, doc, getDoc } from './cloud.js';
-import { html, toast, promptText, plural } from './ui.js';
+import { html, toast, promptText, plural, modal, esc } from './ui.js';
+import { social } from './social.js';
 
 const key = (t) => `${String(t.title || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s*[([].*?[)\]]/g, '').replace(/[^\p{L}\p{N}]+/gu, '')}|${String(t.artists?.[0]?.name || '').toLowerCase().normalize('NFD').replace(/[^\p{L}\p{N}]+/gu, '')}`;
 const artistKey = (t) => String(t.artists?.[0]?.name || '').toLowerCase();
@@ -14,6 +15,16 @@ async function friendFromBoombox(code) {
   const p = snap.data();
   const tracks = [...(p.topTracks || []), ...(p.playlists || []).flatMap((pl) => pl.tracks || [])];
   return { name: p.name, tracks };
+}
+
+// Un ami Boombox (ajouté en ami) : son top du moment, ses titres likés s'il les partage, ses playlists publiques
+async function friendFromFriend(code) {
+  const card = await getDoc(doc(db, 'people', code));
+  if (!card.exists()) throw new Error('Ami introuvable');
+  const d = card.data();
+  const [likes, lists] = await Promise.all([social.friendLikes(code).catch(() => null), social.publicPlaylists(code).catch(() => [])]);
+  const tracks = [...(d.top?.tracks || []), ...(likes || []).slice(0, 400), ...lists.flatMap((pl) => pl.tracks || [])];
+  return { name: d.name || 'ton ami', tracks };
 }
 
 async function friendFromSpotify(url) {
@@ -28,7 +39,22 @@ async function friendFromSpotify(url) {
   return { name: j.owner || 'ton ami', tracks: j.tracks || [] };
 }
 
-export async function startBlend() {
+// Blend : choisis un ami Boombox (rien à configurer), ou colle un lien (profil partagé, Spotify)
+export async function startBlend(friendCode = null) {
+  if (!friendCode && social.friends.length) {
+    const pick = await modal({
+      title: 'Blend avec un ami',
+      body: `<p class="muted" style="margin-top:0">Une playlist qui mélange vos goûts : vos sons en commun d'abord, puis vos préférés en alternance.</p>
+        <div class="blend-friends">${social.friends.map((f) => `<button class="blend-f" data-code="${f.code}"><b>${esc(f.name)}</b><span class="muted">Ami Boombox</span></button>`).join('')}</div>`,
+      actions: [{ label: 'Annuler' }, { label: 'Avec un lien…', value: () => 'link' }],
+      onMount: (w) => w.querySelectorAll('[data-code]').forEach((b) => (b.onclick = () => {
+        friendCode = b.dataset.code;
+        [...(w.closest('.modal') || w.parentElement).querySelectorAll('button')].find((x) => x.textContent.trim() === 'Annuler')?.click();
+      })),
+    });
+    if (!friendCode && pick !== 'link') return;
+  }
+  if (friendCode) return makeBlend(() => friendFromFriend(friendCode));
   const input = await promptText('Blend avec un ami', {
     multiline: true,
     label: 'Créer le Blend',
@@ -37,10 +63,14 @@ export async function startBlend() {
   if (!input || input === 'Annuler') return;
   const text = input.trim();
   const bb = text.match(/[?&]c=([A-Z0-9]{6,12})/i) || (/^[A-Z0-9]{8}$/i.test(text) && [null, text]);
+  if (!bb && !/spotify\.com|spotify\.link/i.test(text)) return toast('Lien non reconnu : profil Boombox, profil ou playlist Spotify');
+  return makeBlend(() => (bb ? friendFromBoombox(bb[1].toUpperCase()) : friendFromSpotify(text)));
+}
+
+async function makeBlend(getFriend) {
   toast('Préparation du Blend…', { timeout: 8000 });
   try {
-    const friend = bb ? await friendFromBoombox(bb[1].toUpperCase()) : /spotify\.com|spotify\.link/i.test(text) ? await friendFromSpotify(text) : null;
-    if (!friend) return toast('Lien non reconnu : profil Boombox, profil ou playlist Spotify');
+    const friend = await getFriend();
     if (!friend.tracks.length) return toast('Pas assez de titres chez ton ami pour un Blend');
     // Mes goûts : mes titres les plus écoutés (3 mois), puis mes likes récents
     const stats = await getStatsFull(90, null, 60).catch(() => null);

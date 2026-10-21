@@ -1,5 +1,16 @@
 [
   {
+    "version": "next",
+    "title": "Amis, party et notifications",
+    "items": [
+      "Blend avec un ami Boombox : choisis-le dans la liste (ou bouton « Faire un Blend » sur son profil), sans Spotify.",
+      "Party à distance : en rejoignant une party, tu entends la musique de l'hôte sur ton appareil, synchronisée, même loin.",
+      "Concerts : ★ pour mettre un concert dans « Mes concerts », avec un rappel la veille et le jour même.",
+      "Notifications de nouvelles sorties aussi sur téléphone (nouvelle version de l'appli)."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1051",
     "title": "SoundCloud et hors ligne",
     "items": [

@@ -192,7 +192,10 @@ export const sync = {
     const snap = await getDoc(doc(db, 'jams', code)).catch(() => null);
     if (!snap?.exists() || snap.data().ended) return toast('Code de party introuvable');
     await updateDoc(doc(db, 'jams', code), { [`members.${state.device.id}`]: `${state.profile.name} · ${state.device.name}` });
+    // Party à distance : par défaut on entend la musique de l'hôte sur son propre appareil, synchronisée
+    this.listenAlong = true;
     this._subscribeJam(code);
+    toast('Tu écoutes la party en direct sur cet appareil (coupe-le dans la page Party)', { timeout: 6000 });
   },
 
   async jamLeave() {
@@ -356,7 +359,7 @@ export const sync = {
     }
     if (st.paused && !player.paused) player.pause();
     if (!st.paused && player.paused) player.play();
-    if (Math.abs(player.time() - pos) > 4) player.seek(pos);
+    if (Math.abs(player.time() - pos) > 2.5) player.seek(pos); // resynchronise dès 2,5 s d'écart
   },
 
   _command({ action, args = [] }) {

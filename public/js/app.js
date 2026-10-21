@@ -1446,18 +1446,18 @@ function setupKeys() {
 // Comme Spotify : une notification discrète quand un artiste suivi sort quelque chose. Jamais plus d'une toutes
 // les 6 heures (les sorties sont regroupées), et chaque sortie n'est annoncée qu'une fois.
 function notifyReleases(list = []) {
-  if (!setting('releaseAlerts', true) || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!setting('releaseAlerts', true)) return;
+  if (!isNative && (!('Notification' in window) || Notification.permission !== 'granted')) return;
   const seen = new Set(ls.get('boombox.notified', []));
   const fresh = list.filter((r) => r.isNew && !seen.has(r.id));
   if (!fresh.length || Date.now() - ls.get('boombox.notifiedAt', 0) < 6 * 3600e3) return;
   const artists = [...new Set(fresh.map((r) => r.artist?.name).filter(Boolean))];
   const first = fresh[0];
-  const n = new Notification(fresh.length === 1 ? `Nouveau : ${first.title}` : `${fresh.length} nouvelles sorties`, {
-    body: fresh.length === 1 ? `${first.artist?.name || ''} · ${first.kind || 'Sortie'}` : `${artists.slice(0, 3).join(', ')}${artists.length > 3 ? '…' : ''}`,
-    icon: first.thumb || '/assets/logo-symbol.png?v=2',
-    tag: 'boombox-releases',
-  });
-  n.onclick = () => (window.focus(), (location.hash = '#/releases'), n.close());
+  import('./notify.js').then((m) => m.notifyNow(
+    fresh.length === 1 ? `Nouveau : ${first.title}` : `${fresh.length} nouvelles sorties`,
+    fresh.length === 1 ? `${first.artist?.name || ''} · ${first.kind || 'Sortie'}` : `${artists.slice(0, 3).join(', ')}${artists.length > 3 ? '…' : ''}`,
+    { url: '#/releases', icon: first.thumb, tag: 'boombox-releases' },
+  ));
   ls.set('boombox.notified', [...seen, ...fresh.map((r) => r.id)].slice(-2000));
   ls.set('boombox.notifiedAt', Date.now());
 }
@@ -1662,6 +1662,13 @@ async function boot() {
   }
 
   // Badge des nouveautés (en arrière-plan)
+  // Notifications : toucher ouvre la bonne page ; rappels de concerts (PC) ; autorisation demandée une fois sur téléphone
+  import('./notify.js').then((m) => {
+    m.setupNotificationTaps();
+    m.checkDueReminders();
+    setInterval(m.checkDueReminders, 15 * 60e3);
+    if (isNative && !ls.get('boombox.notifAsked', false) && setting('releaseAlerts', true)) setTimeout(() => (ls.set('boombox.notifAsked', true), m.askNotifications()), 20e3);
+  }).catch(() => {});
   if (state.library.follows.length) {
     const checkReleases = () => V.fetchReleases().then((r) => (emit('releases', r.newCount), notifyReleases(r.releases))).catch(() => {});
     checkReleases();
