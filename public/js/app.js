@@ -1,4 +1,5 @@
 // Point d'entrée : profils, routeur, barre latérale, barre de lecture, panneau de droite, lecteur mobile.
+import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS } from './pixel-bg.js';
 import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural, confirmBox } from './ui.js';
 import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
 import { cloud, parseInvite, getDoc } from './cloud.js';
@@ -1812,6 +1813,7 @@ function onboarding() {
   const jamCode = (location.hash.match(/jam\?code=([A-Z0-9]{4,8})/i) || [])[1]?.toUpperCase() || '';
   return new Promise((resolve) => {
     const box = $('#profile-picker');
+    setTimeout(() => pixelBackdrop(box, PARTY_PALETTE, { accents: PARTY_ACCENTS, speed: 0.3 }));
     box.innerHTML = String(html`<div style="max-width:520px">
       <img src="/assets/onboarding.png" alt="" class="onboarding-art">
       <h1 style="margin-bottom:12px">Bienvenue sur Boombox</h1>

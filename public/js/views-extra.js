@@ -1,4 +1,5 @@
 // Pages annexes : import, Jam, paramètres, récap d'écoute, historique, paroles plein écran.
+import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS } from './pixel-bg.js';
 import { DA, setDA, ACCENTS, html, raw, icon, plural, toast, fmtAgo, artistLinks, dominantColor, confirmBox, esc, modal } from './ui.js';
 import { state, api, ls, getShare, createPlaylist, likeMany, addReport, saveSettings, setting, updateProfile, getHistory, getStats, exportLibrary, restoreLibrary } from './state.js';
 import { cloud } from './cloud.js';
@@ -370,6 +371,7 @@ function partyScreen(url) {
     if (await confirmBox('Terminer la party ?', 'La file commune sera fermée pour tout le monde.')) close(), sync.jamLeave();
   });
   renderQr(ov.querySelector('#ps-qr'), url, 260);
+  pixelBackdrop(ov, PARTY_PALETTE, { accents: PARTY_ACCENTS, cell: 12 }); // visible quand il n'y a pas de clip
   const off = onJam(draw);
   const onTrackChange = () => draw();
   bus.addEventListener('player:track', onTrackChange);

@@ -23,6 +23,7 @@ export function pixelBackdrop(host, palette, { accents = [], speed = 0.5, cell =
   cv.className = 'pxbg';
   cv.setAttribute('aria-hidden', 'true');
   host.classList.add('has-pxbg');
+  if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
   host.prepend(cv);
   const g = cv.getContext('2d');
   const cols = palette.map(rgb);
@@ -66,6 +67,8 @@ export function pixelBackdrop(host, palette, { accents = [], speed = 0.5, cell =
     timer = 0;
     if (stopped) return;
     if (!host.isConnected) return stop(); // écran quitté
+    if (!host.getClientRects().length) return (timer = setTimeout(loop, 1000)); // masqué : on attend sans dessiner
+    if (!w || cv.width !== Math.ceil(host.getBoundingClientRect().width / cell)) size();
     if (document.hidden) return; // repris par visibilitychange
     draw((performance.now() - t0) / 1000);
     timer = setTimeout(loop, 1000 / fps);
@@ -73,6 +76,9 @@ export function pixelBackdrop(host, palette, { accents = [], speed = 0.5, cell =
   const onVis = () => !document.hidden && !timer && !still && loop();
   const ro = new ResizeObserver(() => (size(), still && draw(0)));
   ro.observe(host);
+  // Contenu redessiné (innerHTML) : on remet le canvas derrière
+  const mo = new MutationObserver(() => !stopped && !cv.isConnected && (host.prepend(cv), host.classList.add('has-pxbg')));
+  mo.observe(host, { childList: true });
   size();
   draw(0);
   if (!still) {
@@ -83,6 +89,7 @@ export function pixelBackdrop(host, palette, { accents = [], speed = 0.5, cell =
     stopped = true;
     clearTimeout(timer);
     ro.disconnect();
+    mo.disconnect();
     document.removeEventListener('visibilitychange', onVis);
     cv.remove();
     host.classList.remove('has-pxbg');

@@ -1,6 +1,7 @@
 // « Ton récap » : statistiques d'écoute complètes (chiffres clés, évolution, habitudes, tops, découvertes).
 // Graphiques : une seule série (couleur d'accent), barres fines arrondies, info-bulle au survol,
 // et un tableau équivalent pour chaque graphique (accessibilité).
+import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS } from './pixel-bg.js';
 import { html, raw, icon, plural, esc } from './ui.js';
 import { getStatsFull } from './state.js';
 import { cover, card, trackList, rememberTracks } from './components.js';
@@ -68,7 +69,7 @@ export async function statsPage(el, params, ctx) {
   };
 
   el.innerHTML = String(html`<div class="page stats-page">
-    <div class="row-flex" style="justify-content:space-between"><h1 class="stats-title">Ton récap</h1><div class="row-flex">${s.plays ? html`<button class="btn ghost" id="st-share">${icon('share', 18)} Partager en Story</button>` : ''}<a class="btn wrapped-btn" href="#/wrapped">✨ Récap animé (jour, semaine, mois, année)</a></div></div>
+    <div class="row-flex stats-hero" style="justify-content:space-between"><h1 class="stats-title">Ton récap</h1><div class="row-flex">${s.plays ? html`<button class="btn ghost" id="st-share">${icon('share', 18)} Partager en Story</button>` : ''}<a class="btn wrapped-btn" href="#/wrapped">✨ Récap animé (jour, semaine, mois, année)</a></div></div>
     <div class="search-tabs">${PERIODS.map(([d, l]) => html`<a class="chip ${d === days ? 'active' : ''}" href="#/stats?days=${d}">${l}</a>`)}</div>
     ${!s.hasImported ? html`<p class="muted" style="margin-top:-8px">Astuce : importe ton historique Spotify (Importer une playlist → Données Spotify) pour inclure tes écoutes passées.</p>` : ''}
     ${!s.plays ? html`<div class="empty"><h2>Pas encore d'écoutes sur cette période</h2><p>Lance de la musique, ton récap se remplira tout seul.</p></div>` : html`
@@ -105,5 +106,6 @@ export async function statsPage(el, params, ctx) {
       <div class="cards row">${s.discoveries.map((a) => card({ type: 'artist', id: a.artist.id, name: a.artist.name, thumb: a.thumb }, { sub: plural(a.count, 'écoute'), href: a.artist.id ? `#/artist/${a.artist.id}` : '', play: a.artist.id ? `artist:${a.artist.id}` : '' }))}</div></section>` : ''}
     `}
   </div>`);
+  pixelBackdrop(el.querySelector('.stats-hero'), ['#131019', '#241D33', '#3A2A63', '#8A55D8'], { accents: ['#FFD34D'] });
   el.querySelector('#st-share')?.addEventListener('click', share);
 }

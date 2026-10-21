@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Correction party et fonds animés",
+    "items": [
+      "Correction : la page Party et le récap plantaient depuis la mise à jour précédente.",
+      "Fond animé pixel sur l’écran de bienvenue, en haut de « Ton récap » et sur l’écran géant de la soirée."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1435",
     "title": "Fonds pixel et corrections",
     "items": [

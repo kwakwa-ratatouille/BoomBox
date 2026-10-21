@@ -2014,9 +2014,10 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 
 /* Fonds animés pixel art (party, récap, en-tête Jam) : canvas derrière le contenu, haut assombri pour le texte */
 .has-pxbg { isolation: isolate; overflow: hidden; }
-.has-pxbg:not(.wr-card) { position: relative; }
 .pxbg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; image-rendering: pixelated; pointer-events: none; }
 .has-pxbg::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(10, 8, 14, 0.6), rgba(10, 8, 14, 0.2)); }
 .wr-card.has-pxbg::after { display: none; }
 .jam-hero.has-pxbg { padding: 20px; border-radius: 12px; margin-bottom: 16px; }
 .party-head.has-pxbg { padding: 16px; border-radius: 12px; }
+.stats-hero.has-pxbg { padding: 20px; border-radius: 12px; margin-bottom: 16px; }
+#profile-picker.has-pxbg > div:not(.pxbg) { background: rgba(19, 16, 25, 0.85); padding: 28px; border-radius: 16px; }

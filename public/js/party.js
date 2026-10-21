@@ -1,6 +1,7 @@
 // Page invité du mode soirée : sans compte, on rejoint la file de la soirée avec le code du QR code.
 // Les invités cherchent un titre (si la page est servie par le PC de la soirée) ou collent un lien
 // Spotify / Deezer / YouTube / Apple Music, que l'appli de l'hôte transforme en titre jouable.
+import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS } from './pixel-bg.js';
 import { initializeApp } from '../vendor/firebase/firebase-app.js';
 import { getAuth, signInAnonymously } from '../vendor/firebase/firebase-auth.js';
 import { getFirestore, doc, collection, onSnapshot, updateDoc, addDoc, deleteDoc, arrayUnion, query, where } from '../vendor/firebase/firebase-firestore.js';
