@@ -295,6 +295,12 @@ export async function handle(path, { method = 'GET', body } = {}) {
   if ((m = p.match(/^\/api\/album\/([\w-]+)$/))) return yt.album(m[1]);
   if ((m = p.match(/^\/api\/discography\/([\w-]+)$/))) return yt.discography(m[1]);
   if (p === '/api/new-releases') return yt.newReleases();
+  if (p === '/api/soundcloud/search') {
+    if (!relay) return [];
+    const r = await fetch(`${relay}/api/soundcloud/search?q=${encodeURIComponent(q.q || '')}${relayK ? `&k=${encodeURIComponent(relayK)}` : ''}`).catch(() => null);
+    const list = r?.ok ? await r.json().catch(() => []) : [];
+    return list.map((t) => ({ ...t, thumb: t.thumb }));
+  }
   if (p === '/api/spotify/users') return searchSpotifyUsers(String(q.q || ''));
   if ((m = p.match(/^\/api\/spotify\/user\/([\w.-]+)$/))) return spotifyUserProfile(m[1]);
   if ((m = p.match(/^\/api\/ytplaylist\/([\w-]+)$/))) return yt.ytPlaylist(m[1], 300);

@@ -457,6 +457,12 @@ export async function search(el, params, ctx) {
     if (type === 'song' || type === 'video') {
       const tracks = items.map(({ type: _t, ...t }) => t);
       out.innerHTML = String(trackList(tracks, { context: { type: 'search', name: `Recherche « ${q} »` }, album: type === 'song' }));
+      // Titres : aussi ceux de SoundCloud (sons bloqués sur YouTube Music, ex. PNL)
+      if (type === 'song') api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).then((list) => {
+        if (!ctx.alive() || !list.length) return;
+        rememberTracks(list);
+        out.insertAdjacentHTML('beforeend', String(html`<section class="section" style="margin-top:24px"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(list.slice(0, 8), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false })}</section>`));
+      }).catch(() => {});
     } else {
       rememberTracks(items);
       out.innerHTML = String(html`<div class="cards">${items.map((i) => card(i))}</div>`);

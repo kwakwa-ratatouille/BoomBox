@@ -1971,3 +1971,7 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .concert-fav { flex: none; width: 34px; height: 34px; border-radius: 50%; font-size: 20px; line-height: 1; color: var(--muted); display: grid; place-items: center; margin-right: 4px; }
 .concert-fav:hover { background: rgba(255, 255, 255, 0.08); }
 .concert-fav.on { color: #ffd34d; }
+
+/* Son masqué (« Ne plus proposer ») dans tes playlists : grisé */
+.track.banned { opacity: 0.4; }
+.track.banned .t-title { text-decoration: line-through; }

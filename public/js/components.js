@@ -50,6 +50,10 @@ export const likedCover = (cls = '') => html`<div class="cover liked ${cls}"><im
 // plays : affiche le nombre de lectures (pages d'artiste) à la place de l'album
 export function trackList(tracks, { context, album = true, added = false, playlistId = null, reorder = false, coverArt = true, numbered = true, plays = false } = {}) {
   if (plays) album = true;
+  // « Ne plus proposer » : le son disparaît partout, sauf dans tes playlists et tes likes où il reste visible (grisé)
+  const banned = new Set(setting('banned', []));
+  const mine = playlistId || context?.type === 'liked' || context?.type === 'playlist';
+  if (banned.size && !mine) tracks = tracks.filter((t) => !banned.has(t.id));
   const listId = registerList(tracks, context, { playlistId, reorder });
   const cls = `${album ? '' : 'no-album'} ${added ? '' : 'no-date'}`;
   const rows = tracks.map((t, i) => trackRow(t, i, listId, { album, added, playlistId, coverArt, numbered, plays }));
@@ -68,7 +72,7 @@ function trackRow(t, i, listId, o) {
   const playing = player.track?.id === t.id;
   const playIcon = raw(String(icon('play', 16)).replace('class="ic"', 'class="ic play-i"'));
   const dl = window.__bbOffline?.has(t.id);
-  return html`<div class="track ${playing ? 'playing' : ''} ${dl ? 'dl' : ''}" data-list="${listId}" data-i="${i}" data-id="${t.id}" draggable="true">
+  return html`<div class="track ${playing ? 'playing' : ''} ${dl ? 'dl' : ''} ${setting('banned', []).includes(t.id) ? 'banned' : ''}" data-list="${listId}" data-i="${i}" data-id="${t.id}" draggable="true">
     <div class="t-num"><span>${o.numbered ? i + 1 : ''}</span>${playIcon}<div class="eq"><i></i><i></i><i></i></div></div>
     <div class="t-main">
       ${o.coverArt ? cover(t, '', 96) : ''}

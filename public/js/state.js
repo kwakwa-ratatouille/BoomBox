@@ -596,6 +596,8 @@ export async function toggleBan(track) {
   const banned = setting('banned', []);
   const on = banned.includes(track.id);
   await saveSettings({ banned: on ? banned.filter((id) => id !== track.id) : [...banned, track.id].slice(-2000) });
+  toast(on ? `« ${track.title} » est de nouveau proposé` : `« ${track.title} » ne sera plus proposé (masqué des recherches et suggestions)`);
+  emit('library');
   toast(on ? `« ${track.title} » pourra de nouveau être proposé` : `« ${track.title} » ne sera plus proposé`);
   return !on;
 }

@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Corrections",
+    "items": [
+      "« Ne plus proposer ce titre » : le son disparaît des recherches, suggestions et pages artiste (il reste grisé dans tes playlists).",
+      "SoundCloud aussi dans l'onglet Titres de la recherche, et sur téléphone (via ton PC)."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1056",
     "title": "Amis, party et notifications",
     "items": [
