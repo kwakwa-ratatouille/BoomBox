@@ -648,7 +648,75 @@ export function setupDelegation() {
 
   // Glisser-déposer : vers une playlist de la barre latérale, ou réordonner une playlist.
   let dragInfo = null;
+  // Après un swipe dans la file d'attente, le relâchement ne doit pas sauter à ce son
+  window.addEventListener('click', (e) => {
+    if (Date.now() - suppressClick < 450 && e.target.closest('.q-item')) (e.stopPropagation(), e.preventDefault());
+  }, true);
+  // PC : clic-glisser horizontal sur un son = même swipe qu'au doigt (droite : file d'attente, gauche : playlist).
+  // Un glissement plutôt vertical garde le glisser-déposer (réordonner une playlist).
+  let md = null;
+  const msBg = (row) => {
+    const host = row.parentElement;
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    const bg = document.createElement('div');
+    bg.className = 'swipe-bg';
+    bg.style.cssText = `top:${row.offsetTop}px;left:${row.offsetLeft}px;width:${row.offsetWidth}px;height:${row.offsetHeight}px`;
+    bg.innerHTML = `<span class="sb-q">${icon('addQueue', 22)}<b>File d'attente</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`;
+    row.before(bg);
+    return bg;
+  };
+  const msStart = () => {
+    md.on = true;
+    md.row.classList.add('swiping');
+    md.bg = msBg(md.row);
+    document.body.style.userSelect = 'none';
+  };
+  document.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || e.target.closest('button, a, input, .mix-sep')) return;
+    const row = e.target.closest('.track, .q-item[data-qjump]');
+    md = row ? { row, x: e.clientX, y: e.clientY, dx: 0, on: false } : null;
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!md) return;
+    const dx = e.clientX - md.x;
+    const dy = e.clientY - md.y;
+    if (!md.on) {
+      if (Math.abs(dx) < 8) return;
+      if (Math.abs(dy) > Math.abs(dx)) return (md = null);
+      msStart();
+    }
+    md.dx = Math.max(-150, Math.min(150, dx));
+    const v = Math.abs(md.dx) <= 70 ? md.dx : Math.sign(md.dx) * (70 + (Math.abs(md.dx) - 70) * 0.35);
+    md.row.style.transform = `translateX(${v}px)`;
+    md.bg.dataset.dir = md.dx > 0 ? 'right' : 'left';
+    md.bg.classList.toggle('armed', Math.abs(md.dx) > 70);
+  });
+  document.addEventListener('mouseup', () => {
+    if (!md) return;
+    const { row, dx, on, bg } = md;
+    md = null;
+    if (!on) return;
+    document.body.style.userSelect = '';
+    suppressClick = Date.now(); // pas de lecture du son au relâchement
+    bg.classList.add('out');
+    setTimeout(() => bg.remove(), 260);
+    row.style.transition = Math.abs(dx) > 70 ? 'transform 0.38s cubic-bezier(0.3, 1.45, 0.5, 1)' : 'transform 0.22s ease';
+    row.style.transform = '';
+    if (Math.abs(dx) > 70) (row.classList.add('swiped'), setTimeout(() => row.classList.remove('swiped'), 600));
+    setTimeout(() => ((row.style.transition = ''), row.classList.remove('swiping')), 400);
+    const track = Math.abs(dx) > 70 && swipeTrack(row);
+    if (!track) return;
+    if (dx > 0) ctl.addToQueue(track);
+    else openPlaylistPicker(track, { x: row.getBoundingClientRect().left + 200, y: row.getBoundingClientRect().top });
+  });
+
   document.addEventListener('dragstart', (e) => {
+    // Glissement horizontal : c'est un swipe, pas un glisser-déposer
+    if (md && Math.abs(e.clientX - md.x) >= Math.abs(e.clientY - md.y)) {
+      e.preventDefault();
+      if (!md.on) msStart();
+      return;
+    }
     const info = rowInfo(e.target);
     if (!info) return;
     dragInfo = info;

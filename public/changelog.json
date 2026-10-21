@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Swipe à la souris",
+    "items": [
+      "PC : clique-glisse un son vers la droite pour la file d’attente, vers la gauche pour l’ajouter à une playlist (glisser vers le haut ou le bas réordonne toujours la playlist)."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.2148",
     "title": "Swipe sur PC",
     "items": [
