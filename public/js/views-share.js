@@ -3,7 +3,7 @@
 // Collaborateur : il peut ajouter / retirer des sons et la renommer, comme le propriétaire.
 import { html, raw, icon, toast, modal, contextMenu, plural, promptText } from './ui.js';
 import { createPlaylist, isLiked, toggleLike, bus, state } from './state.js';
-import { player, ctl } from './player.js';
+import { player, ctl, startAt } from './player.js';
 import { cover, playlistCover, openPlaylistPicker } from './components.js';
 import { db, doc, getDoc } from './cloud.js';
 import { social } from './social.js';
@@ -53,7 +53,7 @@ export async function userPage(el, params) {
         ${showLikes ? html`<div class="sp-list">${likes.map((t, i) => html`<div class="sp-row" data-li="${i}"><span class="muted sp-n">${i + 1}</span>${cover(t, '', 96)}<div class="t-text"><span class="t-title ellipsis">${t.title}</span><span class="t-artists muted ellipsis">${artists(t)}</span></div></div>`)}</div>` : ''}</section>` : ''}
       </div>`);
     el.querySelector('#u-likes')?.addEventListener('click', () => ((showLikes = !showLikes), draw()));
-    el.querySelector('#u-lplay')?.addEventListener('click', () => ctl.playList(likes, 0, lctx));
+    el.querySelector('#u-lplay')?.addEventListener('click', () => ctl.playList(likes, startAt(likes), lctx));
     el.querySelectorAll('[data-li]').forEach((r) => (r.onclick = () => ctl.playList(likes, +r.dataset.li, lctx)));
     el.querySelectorAll('[data-top]').forEach((r) => (r.onclick = () => ctl.playList(d.top.tracks, +r.dataset.top, { type: 'shared', name: `Top de ${d.name}` })));
     bindActivity(el);
@@ -82,7 +82,7 @@ export async function sharedPlaylistPage(el, params) {
       <div class="sp-list">${pl.tracks.map((t, i) => html`<div class="sp-row" data-i="${i}"><span class="muted sp-n">${i + 1}</span>${cover(t, '', 96)}<div class="t-text"><span class="t-title ellipsis">${t.title}</span><span class="t-artists muted ellipsis">${artists(t)}</span></div>
         <button class="icon-btn" data-more="${i}" title="Plus">${icon('more', 18)}</button>${edit ? html`<button class="icon-btn" data-rm="${i}" title="Retirer">${icon('close', 18)}</button>` : ''}</div>`)}</div>
     </div>`);
-    el.querySelector('#sp-play').onclick = () => ctl.playList(pl.tracks, 0, ctx);
+    el.querySelector('#sp-play').onclick = () => ctl.playList(pl.tracks, startAt(pl.tracks), ctx);
     el.querySelector('#sp-shuffle').onclick = () => {
       if (!player.shuffle) ctl.toggleShuffle();
       ctl.playList(pl.tracks, Math.floor(Math.random() * pl.tracks.length), ctx);

@@ -35,7 +35,7 @@ export async function localPage(el, _p, ctx) {
       ${all.length ? html`<div class="search-box" style="max-width:420px;margin:8px 0 16px"><input id="lf-q" placeholder="Rechercher dans mes fichiers" value="${q}" autocomplete="off"></div>` : ''}
       <div id="lf-list">${list.length ? trackList(list, { context: lctx, album: true }) : html`<div class="empty"><h2>${all.length ? 'Aucun résultat' : 'Aucune musique trouvée'}</h2><p class="muted">${all.length ? '' : 'Ajoute le dossier où sont tes .mp3 (par exemple Téléchargements ou une clé USB).'}</p></div>`}</div>
     </div>`);
-    el.querySelector('#lf-play')?.addEventListener('click', () => import('./player.js').then(({ ctl }) => ctl.playList(list, 0, lctx)));
+    el.querySelector('#lf-play')?.addEventListener('click', () => import('./player.js').then(({ ctl, startAt }) => ctl.playList(list, startAt(list), lctx)));
     el.querySelector('#lf-refresh').onclick = () => load(true);
     el.querySelector('#lf-q')?.addEventListener('input', (e) => {
       q = e.target.value;

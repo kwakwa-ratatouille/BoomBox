@@ -1,7 +1,7 @@
 // Composants réutilisables : pochettes, listes de titres, cartes, menus contextuels des titres.
 import { html, raw, esc, icon, fmtTime, fmtAgo, artistLinks, contextMenu, toast, promptText, isMobile, plural } from './ui.js';
 import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting } from './state.js';
-import { player, ctl } from './player.js';
+import { player, ctl, startAt } from './player.js';
 import { sync } from './sync.js';
 import { lastMixes } from './dailymix.js';
 import { sendToFriend } from './views-social.js';
@@ -386,28 +386,28 @@ export async function playKey(key) {
       const t = trackCards.get(id);
       if (t) return ctl.playRadio(t);
     }
-    if (kind === 'liked') return ctl.playList(state.library.liked, 0, { type: 'liked', name: 'Titres likés' });
+    if (kind === 'liked') return ctl.playList(state.library.liked, startAt(state.library.liked), { type: 'liked', name: 'Titres likés' });
     if (kind === 'daily') {
       const m = lastMixes.find((x) => x.id === id);
-      if (m) return ctl.playList(m.tracks, 0, { type: 'daily', id: m.id, name: m.name });
+      if (m) return ctl.playList(m.tracks, startAt(m.tracks), { type: 'daily', id: m.id, name: m.name });
     }
     if (kind === 'local') {
       const p = state.library.playlists.find((x) => x.id === id);
       if (!p?.tracks.length) return toast('Playlist vide');
-      return ctl.playList(p.tracks, 0, { type: 'playlist', id, name: p.name });
+      return ctl.playList(p.tracks, startAt(p.tracks), { type: 'playlist', id, name: p.name });
     }
     if (kind === 'album') {
       const a = await api(`/api/album/${id}`);
-      return ctl.playList(a.tracks, 0, { type: 'album', id, name: a.title });
+      return ctl.playList(a.tracks, startAt(a.tracks), { type: 'album', id, name: a.title });
     }
     if (kind === 'ytplaylist') {
       const p = await api(`/api/ytplaylist/${id}`);
-      return ctl.playList(p.tracks, 0, { type: 'ytplaylist', id, name: p.title });
+      return ctl.playList(p.tracks, startAt(p.tracks), { type: 'ytplaylist', id, name: p.title });
     }
     if (kind === 'artist') {
       const a = await api(`/api/artist/${id}`);
       if (!a.topTracks.length) return toast('Aucun titre trouvé');
-      return ctl.playList(a.topTracks, 0, { type: 'artist', id, name: a.name });
+      return ctl.playList(a.topTracks, startAt(a.topTracks), { type: 'artist', id, name: a.name });
     }
     if (kind === 'mix') {
       const t = trackCards.get(id);

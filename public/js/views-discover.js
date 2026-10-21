@@ -1,7 +1,7 @@
 // Découverte : nouveaux artistes et sons, par style ou « pour toi » (basé sur des artistes de référence).
 import { html, raw, icon, plural, toast, debounce, contextMenu } from './ui.js';
 import { state, api, ls, setting, saveSettings, getStats, toggleFollow, isFollowing } from './state.js';
-import { ctl } from './player.js';
+import { ctl, startAt } from './player.js';
 import { card, cover, trackList, playlistSubmenu, openPlaylistPicker } from './components.js';
 
 const STYLES = ['Pour toi', 'Rap français', 'Rap US', 'Pop', 'R&B', 'Afro', 'Électro', 'House', 'Rock', 'Indé', 'Drill', 'Reggaeton', 'K-pop', 'Lo-fi', 'Jazz', 'Variété française', 'Années 2000'];
@@ -66,7 +66,7 @@ export async function discoverPage(el, _p, ctx) {
     el.querySelector('#dc-shuffle').onclick = () => {
       if (!last?.tracks.length) return toast('Rien à lire pour le moment');
       const list = last.tracks.slice().sort(() => Math.random() - 0.5);
-      ctl.playList(list, 0, { type: 'discover', name: `Découverte · ${style}` });
+      ctl.playList(list, startAt(list), { type: 'discover', name: `Découverte · ${style}` });
     };
     el.querySelector('#dc-refresh').onclick = () => load();
     el.querySelector('#dc-addall').onclick = (e) => {

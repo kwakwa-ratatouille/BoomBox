@@ -1164,3 +1164,6 @@ for (const a of ACTIONS) {
     return player[a](...args);
   };
 }
+
+// Premier son quand on lance une liste entière : au hasard si l'aléatoire est activé (pas toujours le premier)
+export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Math.random() * list.length) : 0);

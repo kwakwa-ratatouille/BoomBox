@@ -173,7 +173,8 @@ function wireListActions(root, getTracks, context) {
     if (!tracks.length) return toast('Rien à lire');
     const same = player.context && context && player.context.type === context.type && player.context.id === context.id;
     if (same && player.track) return ctl.toggle();
-    ctl.playList(tracks, 0, context);
+    // Aléatoire activé : on commence par un son au hasard (pas toujours le premier de la playlist)
+    ctl.playList(tracks, player.shuffle ? Math.floor(Math.random() * tracks.length) : 0, context);
   });
   root.querySelector('[data-shuffle]')?.addEventListener('click', (e) => {
     const tracks = getTracks();

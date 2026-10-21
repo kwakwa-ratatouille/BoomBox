@@ -1,7 +1,7 @@
 // Assistant IA : crée des playlists sur mesure, complète une playlist existante, recommande des artistes.
 import { html, raw, icon, plural, toast, esc } from './ui.js';
 import { state, api, createPlaylist, addToPlaylist, getHistory, getImported, toggleFollow, isFollowing, likeAllPlaylistTracks, isLiked } from './state.js';
-import { ctl } from './player.js';
+import { ctl, startAt } from './player.js';
 import { trackList, cover } from './components.js';
 
 // La conversation reste en mémoire tant que l'appli est ouverte (on peut changer de page et revenir).
@@ -147,7 +147,7 @@ export async function aiPage(el, params) {
     el.querySelectorAll('[data-ai-play]').forEach((b) => {
       b.onclick = () => {
         const r = res(b, 'aiPlay');
-        ctl.playList(r.tracks, 0, { type: 'ai', name: r.playlistName || 'Proposition IA' });
+        ctl.playList(r.tracks, startAt(r.tracks), { type: 'ai', name: r.playlistName || 'Proposition IA' });
       };
     });
     el.querySelectorAll('[data-ai-queue]').forEach((b) => (b.onclick = () => ctl.addToQueue(res(b, 'aiQueue').tracks)));
