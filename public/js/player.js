@@ -489,6 +489,14 @@ export const player = {
         emit('player:state');
       },
       onPaused: () => {
+        // Téléphone, appli en arrière-plan : iOS met parfois le son en pause sans interruption (ouverture d'une
+        // autre appli). Si ce n'est ni une pause voulue ni une vraie interruption, on relance (2 essais max).
+        if (isNative && document.hidden && !this._interruptedAt && this.engine?.name === 'audio' && Date.now() - (this._userPauseAt || 0) > 2000 && (this._autoResumes || 0) < 2) {
+          this._autoResumes = (this._autoResumes || 0) + 1;
+          setTimeout(() => (this._autoResumes = 0), 30e3);
+          return void this.engine.play().catch?.(() => ((this.paused = true), emit('player:state')));
+        }
+        if (Date.now() - (this._userPauseAt || 0) > 2000) this._systemPauseAt = Date.now(); // pause imposée (pas par toi)
         this.paused = true;
         this.buffering = false;
         emit('player:state');
@@ -712,6 +720,7 @@ export const player = {
     emit('player:state');
   },
   pause() {
+    this._userPauseAt = Date.now(); // pause voulue (bouton, casque, commande) : jamais relancée toute seule
     this.engine.pause();
     this.paused = true;
     emit('player:state');
@@ -1190,6 +1199,39 @@ for (const a of ACTIONS) {
 
 // Premier son quand on lance une liste entière : au hasard si l'aléatoire est activé (pas toujours le premier)
 export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Math.random() * list.length) : 0);
+
+// iPhone : interruptions (vocal, appel, vidéo d'une autre appli). À la fin, reprise si iOS l'indique ou si
+// l'interruption a été courte (un vocal) ; retour sur l'appli : on relance un son coupé « en silence ».
+(function handleInterruptions() {
+  const P = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.BoomboxNative;
+  if (!P?.addListener) return;
+  let wasPlaying = false;
+  // Relance de la sortie audio : pause puis lecture, sans que l'interface voie une pause
+  const kick = () => {
+    const el = player.engine?.name === 'audio' ? player.engine.a : null;
+    if (!el || player.paused || !player.track) return;
+    player._userPauseAt = 0;
+    const silentRestart = !el.paused;
+    if (silentRestart) {
+      player._interruptedAt = Date.now(); // empêche la relance automatique de onPaused pendant le court arrêt
+      el.pause();
+    }
+    el.play().catch(() => {}).finally(() => (player._interruptedAt = 0));
+  };
+  P.addListener('audioInterruption', ({ phase, resume }) => {
+    if (phase === 'began') {
+      // Jouait juste avant (iOS peut avoir déjà mis le son en pause un instant avant de prévenir)
+      wasPlaying = (!player.paused || Date.now() - (player._systemPauseAt || 0) < 2500) && Date.now() - (player._userPauseAt || 0) > 1000;
+      player._interruptedAt = Date.now();
+      return;
+    }
+    const short = Date.now() - (player._interruptedAt || 0) < 90e3;
+    player._interruptedAt = 0;
+    if (wasPlaying && (resume || short)) setTimeout(() => (player.paused ? player.play() : kick()), 400);
+    wasPlaying = false;
+  });
+  P.addListener('audioActive', () => setTimeout(kick, 300));
+})();
 
 // Casque ou enceinte Bluetooth déconnecté → pause (comme Spotify), au lieu de continuer dans le haut-parleur
 (function pauseOnUnplug() {

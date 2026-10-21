@@ -2107,3 +2107,6 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .tl-more { height: 1px; }
 /* Défilement plus léger sur téléphone : lignes isolées du reste de la page */
 @media (max-width: 768px) { .track { contain: layout paint style; } }
+/* Swipe aussi sur les lignes de la file d'attente */
+.q-item.swiping { position: relative; z-index: 2; background: var(--panel); will-change: transform; }
+.q-item.swiped { animation: swipedFlash 0.6s ease; }

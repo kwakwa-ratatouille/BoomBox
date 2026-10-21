@@ -1,5 +1,16 @@
 [
   {
+    "version": "next",
+    "title": "Son sur iPhone",
+    "items": [
+      "iPhone : la musique reprend toute seule après un vocal ou une courte interruption.",
+      "iPhone : quand une autre appli coupait le son en silence (le temps avançait sans son), la lecture repart au retour sur l’appli.",
+      "iPhone : le son ne se met plus en pause tout seul en ouvrant une autre appli (sauf si toi tu mets pause).",
+      "Glisser aussi les sons de la file d’attente : à droite = file d’attente, à gauche = ajouter à une playlist."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.2133",
     "title": "Optimisations",
     "items": [

@@ -531,8 +531,10 @@ export function setupDelegation() {
   // Téléphone (comme Spotify) : glisser un titre vers la droite = l'ajouter à la file d'attente ;
   // vers la gauche = panneau « Ajouter à une playlist » ; appui long = menu du titre (panneau en bas).
   let sw = null;
+  // Son d'une ligne : liste de sons, ou ligne de la file d'attente (« Suivant dans la file », panneau File d'attente)
+  const swipeTrack = (row) => rowInfo(row)?.track || (row.dataset.qjump != null ? player.upcoming?.()[Number(row.dataset.qjump)] : null);
   document.addEventListener('touchstart', (e) => {
-    const row = e.target.closest('.track');
+    const row = e.target.closest('.track, .q-item[data-qjump]');
     if (!row || e.touches.length > 1) return;
     sw = { row, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, locked: null };
     sw.long = setTimeout(() => {
@@ -591,12 +593,12 @@ export function setupDelegation() {
       row.classList.remove('swiping');
       delete row.dataset.swipe;
     }, 400);
-    const info = rowInfo(row);
-    if (!info) return;
+    const track = swipeTrack(row);
+    if (!track) return;
     if (dx > 70) {
-      ctl.addToQueue(info.track);
+      ctl.addToQueue(track);
       navigator.vibrate?.(15);
-    } else if (dx < -70) openPlaylistPicker(info.track);
+    } else if (dx < -70) openPlaylistPicker(track);
   };
   document.addEventListener('touchend', endSwipe, { passive: true });
   document.addEventListener('touchcancel', endSwipe, { passive: true });
