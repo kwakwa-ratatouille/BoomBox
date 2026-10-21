@@ -30,7 +30,7 @@ export function cover(item, cls = '', px = 300) {
 }
 
 export function playlistCover(p, cls = '', px = 300) {
-  if (p.cover) return html`<div class="cover ${cls}"><img src="${p.cover}" alt=""></div>`;
+  if (p.cover) return html`<div class="cover ${cls}"><img src="${p.cover}" alt="" loading="lazy" decoding="async"></div>`;
   // Image par défaut : les pochettes des premiers titres en 2×2 (pochettes différentes, dans l'ordre de la playlist).
   // 2 ou 3 pochettes : on les répète en damier ; une seule : elle prend toute la place.
   const thumbs = [...new Set((p.tracks || []).map((t) => t.thumb).filter(Boolean))].slice(0, 4);
@@ -80,7 +80,7 @@ const MORE_ROWS = 150;
 const pendingRows = new Map();
 let moreWatched = false;
 // Quand la fin des titres affichés approche (moins de 2 écrans), on ajoute les suivants
-export function appendMoreRows() {
+function appendMoreRows() {
   for (const el of document.querySelectorAll('.tl-more')) {
     const p = pendingRows.get(el.dataset.more);
     if (!p) { el.remove(); continue; }

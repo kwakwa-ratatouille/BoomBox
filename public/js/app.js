@@ -5,9 +5,6 @@ import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistTo
 import { cloud, parseInvite, getDoc } from './cloud.js';
 import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
-import { spotifyUserPage } from './views-spotify.js';
-import { rankingPage } from './views-ranking.js';
-import { localPage } from './views-local.js';
 import { sync } from './sync.js';
 import { lists, card, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
 import { mountLyrics, openKaraoke } from './lyrics.js';
@@ -17,15 +14,20 @@ import { webUpdateBoot, webUpdateConfirm, webUpdateReady, checkWebUpdate, applyW
 import { startPlaylistSync } from './playlist-sync.js';
 import { openCarMode } from './car.js';
 import { startBlend } from './blend.js';
-import { reportsPage } from './views-reports.js';
 import * as V from './views.js';
+// Pages peu utilisées : chargées seulement à leur première ouverture (démarrage plus rapide, surtout sur téléphone)
+const lazyPage = (path, name) => (...args) => import(path).then((m) => m[name](...args));
+const spotifyUserPage = lazyPage('./views-spotify.js', 'spotifyUserPage');
+const rankingPage = lazyPage('./views-ranking.js', 'rankingPage');
+const localPage = lazyPage('./views-local.js', 'localPage');
+const reportsPage = lazyPage('./views-reports.js', 'reportsPage');
+const concerts = lazyPage('./views-concerts.js', 'concerts');
+const aiPage = lazyPage('./views-ai.js', 'aiPage');
+const statsPage = lazyPage('./views-stats.js', 'statsPage');
+const wrappedPage = lazyPage('./views-wrapped.js', 'wrappedPage');
 import * as X from './views-extra.js';
-import { concerts } from './views-concerts.js';
-import { aiPage } from './views-ai.js';
 import { profilePage, avatarHtml, followingPage } from './views-profile.js';
 import { discoverPage } from './views-discover.js';
-import { statsPage } from './views-stats.js';
-import { wrappedPage } from './views-wrapped.js';
 import { automix } from './automix.js';
 import { isNative, nativeInfo } from './native.js';
 import { offline } from './offline.js';
@@ -1529,7 +1531,8 @@ async function boot() {
   player.init();
   if (isNative) {
     offline.init();
-    document.addEventListener('offline-progress', () => refreshTrackMarks(true));
+    let marksTimer = 0;
+    document.addEventListener('offline-progress', () => marksTimer || (marksTimer = setTimeout(() => ((marksTimer = 0), refreshTrackMarks(true)), 1000)));
     checkExpiry();
     window.Capacitor.Plugins.App?.addListener('appUrlOpen', async (e) => {
       // Retour de la connexion Spotify
@@ -1614,7 +1617,7 @@ async function boot() {
       b.classList.toggle('hidden', !n);
     }
   });
-  setInterval(() => sync.target && updatePlayerTime(), 500);
+  setInterval(() => sync.target && !document.hidden && updatePlayerTime(), 500);
 
   // Panneau de droite redimensionnable (poignée sur le bord gauche), largeur mémorisée
   setupPanelResize();

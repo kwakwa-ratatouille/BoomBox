@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Optimisations",
+    "items": [
+      "Démarrage plus rapide : les pages peu utilisées (récap, concerts, IA, classement…) se chargent seulement quand on les ouvre.",
+      "Téléphone : moins de calculs pendant les téléchargements et quand l’appli est en arrière-plan (batterie).",
+      "Pochettes des playlists chargées au fur et à mesure."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.2114",
     "title": "Playlists plus fluides",
     "items": [
