@@ -230,11 +230,13 @@ export async function jam(el, params) {
       el.innerHTML = String(html`<div class="page party-page" style="max-width:820px">
         <div class="row-flex" style="gap:20px;margin-bottom:8px;flex-wrap:nowrap"><img src="/assets/cover-jam.png" alt="" class="jam-art"><div><h1 style="font-size:40px;margin:0">Mode party</h1><p class="muted" style="margin:4px 0 0">Une file commune : chacun ajoute ses sons, cet appareil les joue.</p></div></div>
         <div class="party-start">
-          <div class="np-card"><h4>${icon('play', 18)} Lancer une party</h4><p class="muted">Branche cet appareil sur l'enceinte. Tes invités scannent un QR code avec leur téléphone (sans compte ni appli) ; tes amis Boombox entrent le code.</p><button class="btn primary" id="jam-create">Lancer la party</button></div>
+          <div class="np-card"><h4>${icon('users', 18)} Écouter ensemble</h4><p class="muted">Chacun entend la même musique sur son téléphone, en même temps, même à distance. Tout le monde peut proposer des sons.</p><button class="btn primary" id="jam-together">Écouter ensemble</button></div>
+          <div class="np-card"><h4>${icon('play', 18)} Soirée (une seule enceinte)</h4><p class="muted">La musique sort de cet appareil, branché à l'enceinte (écran géant avec paroles et clip). Tes invités scannent un QR code pour ajouter leurs sons, sans appli.</p><button class="btn white" id="jam-create">Lancer la soirée</button></div>
           <div class="np-card"><h4>${icon('users', 18)} Rejoindre une party</h4><p class="muted">Un ami lance la party sur son appareil : entre son code pour ajouter tes sons depuis ton profil.</p><div class="row-flex"><input class="input" id="jam-code" placeholder="Code (ex : K7P2Q)" maxlength="5" style="max-width:180px;text-transform:uppercase;letter-spacing:.12em"><button class="btn white" id="jam-join">Rejoindre</button></div></div>
         </div>
       </div>`);
-      el.querySelector('#jam-create').onclick = () => sync.jamCreate();
+      el.querySelector('#jam-create').onclick = () => sync.jamCreate('soiree');
+      el.querySelector('#jam-together').onclick = () => sync.jamCreate('together');
       el.querySelector('#jam-join').onclick = () => sync.jamJoin(el.querySelector('#jam-code').value);
       el.querySelector('#jam-code').onkeydown = (e) => e.key === 'Enter' && sync.jamJoin(e.target.value);
       return;
@@ -256,6 +258,8 @@ export async function jam(el, params) {
           <div class="row-flex pi-actions"><button class="btn white" id="party-tv">${icon('fullscreen', 16)} Écran géant</button><button class="btn ghost" id="party-copy">${icon('copy', 16)} Copier le lien</button></div>` : ''}
         </div>
       </div>
+      <div class="row-flex jam-mode" style="gap:8px;margin:0 0 12px;flex-wrap:wrap"><span class="muted" style="font-size:13px">Mode :</span>
+        ${host ? html`<button class="chip ${room.mode === 'together' ? 'active' : ''}" data-mode="together">Écouter ensemble</button><button class="chip ${room.mode !== 'together' ? 'active' : ''}" data-mode="soiree">Soirée (une enceinte)</button>` : html`<span class="chip active">${room.mode === 'together' ? 'Écouter ensemble' : 'Soirée'}</span>`}</div>
       <div class="jam-members">${room.members.map((m) => html`<span class="jam-member">${m.id === room.host ? '👑 ' : ''}${m.name}</span>`)}</div>
       ${host ? html`<label class="row-flex" style="margin-bottom:16px"><span class="switch"><input type="checkbox" id="jam-ctrl" ${room.everyoneControls ? 'checked' : ''}><span></span></span> Tout le monde peut mettre en pause / passer</label>` : html`<label class="row-flex" style="margin-bottom:16px"><span class="switch"><input type="checkbox" id="jam-along" ${sync.listenAlong ? 'checked' : ''}><span></span></span> Écouter la party sur cet appareil, en même temps que l’hôte (à distance aussi)</label>`}
       ${st?.track ? html`<div class="np-card" style="display:flex;gap:16px;align-items:center">${cover(st.track)}<div style="flex:1;min-width:0"><div class="muted" style="font-size:12px">EN COURS</div><b class="ellipsis" style="display:block;font-size:18px">${st.track.title}</b><span class="muted">${artistLinks(st.track)}</span></div>
@@ -265,6 +269,7 @@ export async function jam(el, params) {
       ${room.queue.length ? html`<div>${room.queue.map((t) => html`<div class="q-item">${cover(t)}<div class="t-text" style="flex:1"><span class="t-title">${t.title}</span><span class="t-artists muted">${artistLinks(t)} · ajouté par ${t.addedBy}</span></div>${host ? html`<button class="q-x icon-btn" data-rm="${t.qid}" style="opacity:1">${icon('close')}</button>` : ''}</div>`)}</div>` : html`<p class="muted">La file est vide.</p>`}
     </div>`);
     el.querySelector('#jam-leave').onclick = () => sync.jamLeave();
+    el.querySelectorAll('[data-mode]').forEach((b) => (b.onclick = () => sync.jamSetMode(b.dataset.mode)));
     el.querySelector('#jam-ctrl')?.addEventListener('change', (e) => sync.jamSettings({ everyoneControls: e.target.checked }));
     el.querySelector('#jam-along')?.addEventListener('change', (e) => sync.setListenAlong(e.target.checked));
     el.querySelector('#jam-toggle')?.addEventListener('click', () => sync.jamCommand('toggle'));

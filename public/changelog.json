@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Party et SoundCloud",
+    "items": [
+      "Party : deux modes — « Écouter ensemble » (chacun entend la musique sur son téléphone, synchronisée, même à distance) ou « Soirée » (une seule enceinte, écran géant).",
+      "SoundCloud sans PC : la recherche et le téléchargement des sons SoundCloud marchent aussi PC éteint, pour tout le monde (le son est téléchargé directement chez SoundCloud).",
+      "Bouton lecture mieux centré."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1100",
     "title": "Corrections",
     "items": [

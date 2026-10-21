@@ -67,6 +67,22 @@ export default {
       const j = await r.json().catch(() => ({}));
       return json((j.data || []).map((g) => ({ id: g.id, preview: g.images?.fixed_width_small?.url || g.images?.fixed_width?.url, url: g.images?.downsized_medium?.url || g.images?.original?.url, w: Number(g.images?.fixed_width?.width) || 200, h: Number(g.images?.fixed_width?.height) || 200 })));
     }
+    // SoundCloud pour les téléphones (sans PC) : recherche, et lien du son pour le télécharger directement chez
+    // SoundCloud (le son ne passe pas par ce serveur : rien n'est stocké ici)
+    const path = new URL(req.url).pathname;
+    if (path === '/sc/search' || path === '/sc/stream') {
+      try {
+        await verifyFirebaseToken((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), env.FIREBASE_PROJECT);
+      } catch {
+        return json({ error: 'Accès réservé à l’appli Boombox' }, 401);
+      }
+      try {
+        const p = new URL(req.url).searchParams;
+        return json(path === '/sc/search' ? await scSearch(env, String(p.get('q') || '').slice(0, 100)) : await scStream(env, String(p.get('id') || '')));
+      } catch (e) {
+        return json({ error: e.message || 'SoundCloud indisponible' }, 502);
+      }
+    }
     if (req.method !== 'POST') return json({ ok: true, service: 'Boombox IA' });
     try {
       const uid = await verifyFirebaseToken((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), env.FIREBASE_PROJECT).catch(() => {
@@ -91,3 +107,54 @@ export default {
     }
   },
 };
+
+// ---------- SoundCloud ----------
+// Identifiant public du lecteur web de SoundCloud (lu dans ses scripts, gardé 12 h, renouvelé si refusé)
+const SC_UA = { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' };
+async function scClientId(env, fresh = false) {
+  if (!fresh) {
+    const c = await env.LIMITS.get('sc_cid');
+    if (c) return c;
+  }
+  const home = await (await fetch('https://soundcloud.com/', { headers: SC_UA })).text();
+  const scripts = [...home.matchAll(/<script crossorigin src="([^"]+\.js)"/g)].map((m) => m[1]).reverse();
+  for (const s of scripts) {
+    const t = await (await fetch(s, { headers: SC_UA })).text();
+    const m = t.match(/client_id\s*[:=]\s*"([a-zA-Z0-9]{32})"/);
+    if (m) {
+      await env.LIMITS.put('sc_cid', m[1], { expirationTtl: 12 * 3600 });
+      return m[1];
+    }
+  }
+  throw new Error('SoundCloud indisponible pour le moment');
+}
+async function scApi(env, url) {
+  for (let i = 0; i < 2; i++) {
+    const cid = await scClientId(env, i > 0);
+    const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}client_id=${cid}`, { headers: SC_UA });
+    if (r.status === 401 || r.status === 403) continue;
+    if (!r.ok) throw new Error(`SoundCloud ${r.status}`);
+    return r.json();
+  }
+  throw new Error('SoundCloud refuse la demande');
+}
+const scId = (n) => 'sc_' + Number(n).toString(36).padStart(8, '0');
+const scNum = (id) => parseInt(String(id).replace(/^sc_/, ''), 36);
+async function scSearch(env, q) {
+  if (!q) return [];
+  const r = await scApi(env, `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&limit=15`);
+  return (r.collection || []).filter((t) => t.streamable !== false).map((t) => ({
+    id: scId(t.id), title: t.title, artists: [{ name: t.user?.username || 'SoundCloud' }], album: null,
+    duration: Math.round((t.full_duration || t.duration || 0) / 1000), thumb: (t.artwork_url || t.user?.avatar_url || '').replace('-large', '-t500x500') || null, soundcloud: true,
+  }));
+}
+async function scStream(env, id) {
+  const num = scNum(id);
+  if (!num) throw new Error('Son SoundCloud invalide');
+  const t = await scApi(env, `https://api-v2.soundcloud.com/tracks/${num}`);
+  const list = t.media?.transcodings || [];
+  const pick = list.find((x) => x.format?.protocol === 'progressive') || list.find((x) => x.format?.protocol === 'hls' && /mp4/.test(x.format?.mime_type)) || list.find((x) => x.format?.protocol === 'hls');
+  if (!pick) throw new Error('Ce son n’est pas lisible sur SoundCloud');
+  const u = await scApi(env, `${pick.url}?track_authorization=${t.track_authorization || ''}`);
+  return { url: u.url, protocol: pick.format.protocol, mime: pick.format.mime_type, duration: Math.round((t.full_duration || 0) / 1000) };
+}

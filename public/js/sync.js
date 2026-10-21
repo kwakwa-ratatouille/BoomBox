@@ -171,11 +171,12 @@ export const sync = {
   },
 
   // ----- Jam -----
-  async jamCreate() {
+  async jamCreate(mode = 'soiree') {
     const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const code = Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => A[b % A.length]).join('');
     await setDoc(doc(db, 'jams', code), {
       host: state.device.id,
+      mode: mode === 'together' ? 'together' : 'soiree',
       hostName: state.profile.name,
       everyoneControls: true,
       members: { [state.device.id]: `${state.profile.name} · ${state.device.name}` },
@@ -192,10 +193,12 @@ export const sync = {
     const snap = await getDoc(doc(db, 'jams', code)).catch(() => null);
     if (!snap?.exists() || snap.data().ended) return toast('Code de party introuvable');
     await updateDoc(doc(db, 'jams', code), { [`members.${state.device.id}`]: `${state.profile.name} · ${state.device.name}` });
-    // Party à distance : par défaut on entend la musique de l'hôte sur son propre appareil, synchronisée
-    this.listenAlong = true;
+    // « Écouter ensemble » : on entend la musique de l'hôte sur son appareil, synchronisée ;
+    // « Soirée » : la musique sort chez l'hôte, on propose juste des sons
+    const together = snap.data().mode === 'together';
+    this.listenAlong = together;
     this._subscribeJam(code);
-    toast('Tu écoutes la party en direct sur cet appareil (coupe-le dans la page Party)', { timeout: 6000 });
+    toast(together ? 'Tu écoutes en même temps que les autres, sur cet appareil' : 'Party rejointe : ajoute tes sons, la musique sort chez l’hôte', { timeout: 6000 });
   },
 
   async jamLeave() {
@@ -209,6 +212,12 @@ export const sync = {
       ? await updateDoc(doc(db, 'jams', code), { ended: true }).then(() => true).catch(() => false)
       : await updateDoc(doc(db, 'jams', code), { [`members.${state.device.id}`]: deleteField() }).then(() => true).catch(() => false);
     toast(host ? (ok ? 'Party terminée' : 'Party terminée sur cet appareil (hors connexion : elle se fermera pour les autres au retour du réseau)') : 'Tu as quitté la party');
+  },
+
+  // L'hôte change de mode en cours de party
+  jamSetMode(mode) {
+    if (!this._jamCode || !this.isJamHost()) return;
+    updateDoc(doc(db, 'jams', this._jamCode), { mode }).catch(() => {});
   },
 
   jamAdd(track) {
@@ -320,6 +329,8 @@ export const sync = {
   _setJam(room) {
     const wasHost = this.isJamHost();
     const prevHead = this.jam?.queue?.[0]?.qid;
+    // L'hôte a changé de mode : les invités suivent (écouter ensemble = son sur chaque appareil)
+    if (room && this.jam && room.mode !== this.jam.mode && !this.isJamHost()) this.listenAlong = room.mode === 'together';
     this.jam = room;
     // Invité qui écoute en même temps : le lecteur laisse l'hôte choisir l'enchaînement
     player.jamFollow = () => !!this.jam && !this.isJamHost() && this.listenAlong;

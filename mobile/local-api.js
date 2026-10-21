@@ -168,6 +168,48 @@ async function ytdlpDownload(id, path) {
   return stat;
 }
 
+// ---------- SoundCloud sans PC (mini-serveur Boombox en ligne) ----------
+async function scWorker(path) {
+  const token = await globalThis.__bbIdToken?.().catch(() => null);
+  const r = await fetch(`${AI_WORKER}${path}`, { headers: token ? { authorization: `Bearer ${token}` } : {} });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || `serveur ${r.status}`);
+  return j;
+}
+const toB64 = (u8) => {
+  let out = '';
+  for (let i = 0; i < u8.length; i += 0x8000) out += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(out);
+};
+async function scDownload(id, path) {
+  const st = await scWorker(`/sc/stream?id=${id}`);
+  let parts = [];
+  if (st.protocol === 'progressive') {
+    parts = [new Uint8Array(await (await fetch(st.url)).arrayBuffer())];
+  } else {
+    // HLS : segment d'initialisation (EXT-X-MAP) + morceaux, mis bout à bout = un fichier audio complet
+    const list = await (await fetch(st.url)).text();
+    const base = st.url.replace(/[^/]*(\?.*)?$/, '');
+    const abs = (u) => (/^https?:/.test(u) ? u : base + u);
+    const urls = [];
+    const map = list.match(/#EXT-X-MAP:URI="([^"]+)"/);
+    if (map) urls.push(abs(map[1]));
+    for (const line of list.split('\n').map((l) => l.trim())) if (line && !line.startsWith('#')) urls.push(abs(line));
+    if (!urls.length) throw new Error('liste vide');
+    for (let k = 0; k < urls.length; k += 6) {
+      const got = await Promise.all(urls.slice(k, k + 6).map(async (u) => new Uint8Array(await (await fetch(u)).arrayBuffer())));
+      parts.push(...got);
+    }
+  }
+  const size = parts.reduce((n, p) => n + p.length, 0);
+  if (size < 30 * 1024) throw new Error('son vide');
+  const all = new Uint8Array(size);
+  let o = 0;
+  for (const p of parts) (all.set(p, o), (o += p.length));
+  await Filesystem.writeFile({ path, data: toB64(all), directory: Directory.Data, recursive: true });
+  return { size };
+}
+
 // Téléchargement vérifié : un fichier minuscule = page d'erreur de YouTube, pas un son
 async function fetchTo(path, url, headers = {}) {
   await Filesystem.downloadFile({ url, path, directory: Directory.Data, recursive: true, headers });
@@ -205,7 +247,16 @@ export function downloadAudio(id, { keep = false } = {}) {
     let lastErr = null;
     // 1. Par le PC (même Wi-Fi)
     if (relay) stat = await fetchTo(path, relayUrl(`/api/audio-file/${id}`)).catch((e) => ((lastErr = e), null));
-    // 2. Android : yt-dlp embarqué (fiable, mis à jour toutes les semaines)
+    // 2. SoundCloud (sans PC) : le mini-serveur donne le lien, le téléphone télécharge directement chez SoundCloud
+    if (!stat && /^sc_/.test(id)) stat = await scDownload(id, path).catch((e) => ((lastErr = new Error(`SoundCloud : ${e.message}`)), null));
+    if (/^sc_/.test(id)) {
+      if (!stat) throw lastErr || new Error('SoundCloud indisponible');
+      audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep };
+      saveIndex();
+      pruneCache();
+      return audioIndex[id];
+    }
+    // 3. Android : yt-dlp embarqué (fiable, mis à jour toutes les semaines)
     if (!stat && androidYtdlp()) stat = await ytdlpDownload(id, path).catch((e) => ((lastErr = new Error(`yt-dlp : ${e.message}`)), null));
     // 2. Directement chez YouTube, en changeant de client si l'un est refusé
     const tried = [];
@@ -296,7 +347,7 @@ export async function handle(path, { method = 'GET', body } = {}) {
   if ((m = p.match(/^\/api\/discography\/([\w-]+)$/))) return yt.discography(m[1]);
   if (p === '/api/new-releases') return yt.newReleases();
   if (p === '/api/soundcloud/search') {
-    if (!relay) return [];
+    if (!relay) return scWorker(`/sc/search?q=${encodeURIComponent(q.q || '')}`).catch(() => []);
     const r = await fetch(`${relay}/api/soundcloud/search?q=${encodeURIComponent(q.q || '')}${relayK ? `&k=${encodeURIComponent(relayK)}` : ''}`).catch(() => null);
     const list = r?.ok ? await r.json().catch(() => []) : [];
     return list.map((t) => ({ ...t, thumb: t.thumb }));
