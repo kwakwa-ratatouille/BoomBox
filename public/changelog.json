@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Correctifs iPhone",
+    "items": [
+      "Le son ne se coupe plus (ni ne se met en pause) quand on change d'appli, même avec le Mix activé.",
+      "Appli iPhone : correctif du plantage au démarrage (nouvelle version à installer dans SideStore)."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1020.2308",
     "title": "Albums complets",
     "items": [

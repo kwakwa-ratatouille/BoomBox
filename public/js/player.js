@@ -830,7 +830,7 @@ export const player = {
   setAutomix(on) {
     if (on) {
       if (this.engine.name !== 'audio') return toast('L’automix nécessite la lecture audio directe (yt-dlp)');
-      this.engines.audio.enableGraph();
+      if (!isNative) this.engines.audio.enableGraph(); // téléphone : pas de traitement Web Audio (iOS le coupe en arrière-plan → son muet)
       this._preparedFor = null;
       this._prepareAutomix();
     } else this._mixPlan = null;
@@ -864,7 +864,7 @@ export const player = {
   // titre en lecture aléatoire, puis calcul du plan de transition.
   _prepareAutomix() {
     if (!this._automixOn() || this.engine.name !== 'audio' || !this.track || this.remoteSender) return;
-    if (!this.engines.audio.graph) this.engines.audio.enableGraph();
+    if (!this.engines.audio.graph && !isNative) this.engines.audio.enableGraph();
     const cur = this.track.id;
     const smart = this._smartMix();
     const window = this.order.slice(this.pos + 1, this.pos + 1 + (smart ? 8 : 1)).map((i) => this.list[i]?.id);
