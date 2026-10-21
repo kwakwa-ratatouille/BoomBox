@@ -1,5 +1,5 @@
 // Pages annexes : import, Jam, paramètres, récap d'écoute, historique, paroles plein écran.
-import { ACCENTS, html, raw, icon, plural, toast, fmtAgo, artistLinks, dominantColor, confirmBox, esc, modal } from './ui.js';
+import { DA, setDA, ACCENTS, html, raw, icon, plural, toast, fmtAgo, artistLinks, dominantColor, confirmBox, esc, modal } from './ui.js';
 import { state, api, ls, getShare, createPlaylist, likeMany, addReport, saveSettings, setting, updateProfile, getHistory, getStats, exportLibrary, restoreLibrary } from './state.js';
 import { cloud } from './cloud.js';
 import { player, ctl } from './player.js';
@@ -393,6 +393,9 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Couleur de l'appli</b><p>Couleur d'accent des boutons et de la lecture, pour ce profil. « Auto » : la couleur suit la pochette du son en cours.</p></div>
       <div class="swatches">${Object.entries(ACCENTS).map(([n, c]) => html`<button class="swatch ${curAccent() === c ? 'on' : ''}" data-accent="${c}" title="${n}" style="background:${c}"></button>`)}<button class="swatch swatch-auto ${curAccent() === 'auto' ? 'on' : ''}" data-accent="auto" title="Auto (couleur de la pochette)">A</button></div></div>
 
+    <div class="settings-row"><div><b>Style de l'interface</b><p>« Boombox » : la nouvelle interface, icônes en pixel art. « DA Spotify » : l'ancienne, plus classique. Réglé pour cet appareil.</p></div>
+      <div class="row-flex" style="gap:8px;flex:none"><button class="chip ${DA() === 'pixel' ? 'active' : ''}" data-da="pixel">Boombox</button><button class="chip ${DA() === 'spotify' ? 'active' : ''}" data-da="spotify">DA Spotify</button></div></div>
+
     <h2 style="font-size:20px;margin-top:24px">Amis</h2>
     <div class="settings-row"><div><b>Partager mon activité d'écoute</b><p>Tes amis Boombox voient le son que tu écoutes en ce moment, ou le dernier écouté (« il y a 8 h »). Désactivé : ils ne voient rien.</p></div><label class="switch"><input type="checkbox" id="s-share" ${social.sharing ? 'checked' : ''}><span></span></label></div>
     ${isNative ? '' : html`<div class="settings-row"><div><b>Afficher ce que j'écoute sur Discord</b><p>« Écoute Boombox » sur ton profil Discord : titre, artiste, pochette et progression. Il faut l'appli Discord ouverte sur ce PC.</p></div><label class="switch"><input type="checkbox" id="s-discord" ${setting('discordPresence', true) ? 'checked' : ''}><span></span></label></div>`}
@@ -590,6 +593,7 @@ export async function settings(el) {
     });
     show(val);
   }
+  el.querySelectorAll('[data-da]').forEach((b) => (b.onclick = () => b.dataset.da !== DA() && setDA(b.dataset.da)));
   el.querySelectorAll('[data-accent]').forEach((b) => (b.onclick = async () => {
     await saveSettings({ accent: b.dataset.accent, accentChosen: true });
     el.querySelectorAll('.swatch').forEach((s) => s.classList.toggle('on', s === b));

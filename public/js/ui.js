@@ -1,3 +1,4 @@
+import { PIXEL } from './icons-pixel.js';
 // Petits utilitaires d'interface : échappement HTML, icônes, toasts, modales, menus contextuels.
 
 export const esc = (s) =>
@@ -95,8 +96,36 @@ const P = {
 // Couleurs d'accent proposées dans les Paramètres
 export const ACCENTS = { Mauve: '#b07cf7', Vert: '#2ef28b', Violet: '#8b5cf6', Rose: '#ff4d8d', Orange: '#ff9f2e', Bleu: '#3ea6ff', Jaune: '#f5d33f', Rouge: '#ff5a5a', Turquoise: '#2ee6c8' };
 
-export const icon = (name, size = 24) =>
-  raw(`<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[name] || ''}"/></svg>`);
+// Direction artistique, propre à l'appareil : « pixel » (nouvelle, par défaut) ou « spotify » (l'ancienne)
+let da = 'pixel';
+try { da = localStorage.getItem('bb-da') || 'pixel'; } catch {}
+export const DA = () => da;
+export function setDA(v) {
+  try { localStorage.setItem('bb-da', v); } catch {}
+  location.reload();
+}
+document.documentElement.classList.toggle('da-pixel', da === 'pixel');
+// Icônes écrites en dur dans la page : on retrouve leur nom par leur dessin et on met la version pixel
+if (da === 'pixel') {
+  const swap = () => {
+    const byPath = Object.fromEntries(Object.entries(P).map(([k, d]) => [d, k]));
+    document.querySelectorAll('svg.ic:not(.px) > path').forEach((p) => {
+      const d = p.getAttribute('d') || '';
+      const k = byPath[d] || (d.startsWith('M12 2a10 10 0 1 0 0 20') ? 'discover' : d.startsWith('M12 22c1.1') ? 'bell' : d.startsWith('M7 21H3v-8h4v8') ? 'leaderboard' : null);
+      if (!k || !PIXEL[k]) return;
+      p.setAttribute('d', PIXEL[k]);
+      p.parentNode.classList.add('px');
+      p.parentNode.setAttribute('shape-rendering', 'crispEdges');
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', swap);
+  else setTimeout(swap);
+}
+
+export const icon = (name, size = 24) => {
+  const px = da === 'pixel' && PIXEL[name];
+  return raw(`<svg class="ic${px ? ' px' : ''}" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${px ? ' shape-rendering="crispEdges"' : ''}><path d="${px || P[name] || ''}"/></svg>`);
+};
 
 export function fmtTime(sec) {
   sec = Math.max(0, Math.floor(sec || 0));
@@ -291,7 +320,7 @@ function buildMenu(items) {
     }
     const b = document.createElement('button');
     b.className = 'ctx-item' + (it.danger ? ' danger' : '');
-    b.innerHTML = `${it.icon ? icon(it.icon, 18) : withIcons ? '<i class="ic-space"></i>' : ''}<span>${esc(it.label)}</span>${it.submenu ? icon('forward', 18) : ''}`;
+    b.innerHTML = `${it.icon ? icon(it.icon, 18) : withIcons ? '<i class="ic-space"></i>' : ''}<span>${esc(it.label)}${it.hint ? `<small class="ctx-hint">${esc(it.hint)}</small>` : ''}</span>${it.submenu ? icon('forward', 18) : ''}`;
     if (it.submenu) {
       let sub = null;
       const openSub = () => {

@@ -46,14 +46,14 @@ function mixMenu(e, getTracks, pctx, rerender, pl = null) {
     rerender();
   };
   contextMenu(r.left, r.bottom + 6, [
-    pl && { label: pl.mixed ? 'Playlist mixée : afficher les transitions ✓' : 'Faire une playlist mixée (transitions entre les titres)', icon: pl.mixed ? 'check' : 'mixer', action: async () => {
+    pl && { label: pl.mixed ? 'Playlist mixée ✓' : 'Transformer en playlist mixée', hint: 'Enregistré dans cette playlist : les transitions s’affichent entre les titres, tu peux les régler une par une', icon: pl.mixed ? 'check' : 'mixer', action: async () => {
       await updatePlaylist(pl.id, { mixed: !pl.mixed });
       toast(pl.mixed ? 'Playlist normale' : 'Playlist mixée : les transitions s’affichent entre les titres et se jouent automatiquement');
     } },
     pl && { sep: true },
-    { label: 'Mixer les transitions', icon: on && !smart ? 'check' : 'mixer', action: () => start(false) },
-    { label: 'Mix intelligent (sons les plus compatibles)', icon: smart ? 'check' : 'automix', action: () => start(true) },
-    { label: `Transition : ${TRANSITION_NAMES[setting('mixStyle', 'auto')] || 'Auto'}`, icon: 'mixer', submenu: () => Object.entries(TRANSITION_NAMES).map(([k, label]) => ({ label, icon: setting('mixStyle', 'auto') === k ? 'check' : null, action: async () => {
+    { label: 'Mix en direct', hint: 'Tout ce que tu écoutes s’enchaîne sans blanc, comme un DJ', icon: on && !smart ? 'check' : 'mixer', action: () => start(false) },
+    { label: 'Mix intelligent', hint: 'Pareil, mais choisit à chaque fois le son qui va le mieux avec celui en cours', icon: smart ? 'check' : 'automix', action: () => start(true) },
+    { label: `Style de transition : ${TRANSITION_NAMES[setting('mixStyle', 'auto')] || 'Auto'}`, hint: 'Fondu, coupure, montée… Auto choisit le meilleur', icon: 'mixer', submenu: () => Object.entries(TRANSITION_NAMES).map(([k, label]) => ({ label, icon: setting('mixStyle', 'auto') === k ? 'check' : null, action: async () => {
       await saveSettings({ mixStyle: k });
       player._planNext?.();
       toast(k === 'auto' ? 'Transitions : Boombox choisit la meilleure à chaque fois' : k === 'none' ? 'Aucune transition : chaque son va jusqu’au bout' : `Transitions : ${label}`);

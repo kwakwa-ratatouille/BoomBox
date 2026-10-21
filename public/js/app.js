@@ -992,9 +992,9 @@ function renderFullPlayer() {
       renderFullPlayer();
     };
     contextMenu(e.clientX - 120, e.clientY - 260, [
-      { label: 'Mixer les transitions', icon: on && !smart ? 'check' : 'mixer', action: () => start(false) },
-      { label: 'Mix intelligent (sons compatibles)', icon: smart ? 'check' : 'automix', action: () => start(true) },
-      { label: `Transition : ${TRANSITION_NAMES[setting('mixStyle', 'auto')] || 'Auto'}`, icon: 'mixer', submenu: () => Object.entries(TRANSITION_NAMES).map(([k, label]) => ({ label, icon: setting('mixStyle', 'auto') === k ? 'check' : null, action: async () => (await saveSettings({ mixStyle: k }), player._planNext?.()) })) },
+    { label: 'Mix en direct', hint: 'Tout ce que tu écoutes s’enchaîne sans blanc, comme un DJ', icon: on && !smart ? 'check' : 'mixer', action: () => start(false) },
+      { label: 'Mix intelligent', hint: 'Pareil, mais choisit à chaque fois le son qui va le mieux avec celui en cours', icon: smart ? 'check' : 'automix', action: () => start(true) },
+      { label: `Style de transition : ${TRANSITION_NAMES[setting('mixStyle', 'auto')] || 'Auto'}`, hint: 'Fondu, coupure, montée… Auto choisit le meilleur', icon: 'mixer', submenu: () => Object.entries(TRANSITION_NAMES).map(([k, label]) => ({ label, icon: setting('mixStyle', 'auto') === k ? 'check' : null, action: async () => (await saveSettings({ mixStyle: k }), player._planNext?.()) })) },
       on && { sep: true },
       on && { label: 'Arrêter le mix', icon: 'close', action: async () => (await saveSettings({ automix: false, mixSmart: false }), player.setAutomix(false), renderFullPlayer()) },
     ]);

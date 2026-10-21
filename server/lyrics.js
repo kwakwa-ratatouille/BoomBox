@@ -60,6 +60,38 @@ async function fromLyricsOvh({ title, artist }) {
   return d?.lyrics ? { plain: d.lyrics.replace(/\r/g, '').trim(), source: 'lyrics.ovh' } : null;
 }
 
+// Vidéos YouTube mal nommées (« Damso Amnésie » posté par « Chaîne repost ») : recherche libre sur lrclib avec le
+// titre de la vidéo (et la chaîne si elle ressemble à un artiste), en gardant le résultat de durée proche
+const CHANNEL = /repost|cha[iî]ne|channel|topic|records|music|officiel|official|lyrics|tv\b|vevo/i;
+async function fromLrclibFree(q, rawTitle, rawArtist) {
+  const text = `${String(rawTitle || '').replace(/\s*[([].*?[)\]]/g, ' ')} ${CHANNEL.test(rawArtist || '') ? '' : rawArtist || ''}`.replace(/[-–|:]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!text) return null;
+  const list = (await getJson(`https://lrclib.net/api/search?q=${encodeURIComponent(text)}`)) || [];
+  const tw = new Set(norm(text).length ? text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter((w) => w.length > 1) : []);
+  const ok = list.filter((d) => {
+    if (q.duration && d.duration && Math.abs(d.duration - q.duration) > 12) return false;
+    const words = `${d.trackName} ${d.artistName}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter((w) => w.length > 1);
+    return words.length && words.filter((w) => tw.has(w)).length >= Math.min(2, words.length);
+  });
+  const d = ok.find((x) => x.syncedLyrics) || ok.find((x) => x.plainLyrics);
+  if (d) return { synced: d.syncedLyrics || null, plain: d.plainLyrics || null, source: 'lrclib' };
+  // Sinon on devine « Artiste Titre » : « Damso - Amnésie », ou les 1 à 2 premiers mots pris comme artiste
+  const t = cleanTitle(rawTitle);
+  const guesses = [];
+  const dash = t.split(/\s+[-–|]\s+/);
+  if (dash.length >= 2) guesses.push({ artist: dash[0], title: dash.slice(1).join(' ') });
+  const w = t.split(/\s+/);
+  for (let k = 1; k <= 2 && k < w.length; k++) guesses.push({ artist: w.slice(0, k).join(' '), title: w.slice(k).join(' ') });
+  for (const g of guesses) {
+    const gq = { ...g, duration: q.duration };
+    const [a, b] = await Promise.all([fromLrclib(gq).catch(() => null), fromNetease(gq).catch(() => null)]);
+    if (a?.synced) return a;
+    if (b?.synced) return { ...b, plain: a?.plain || null };
+    if (a?.plain) return a;
+  }
+  return null;
+}
+
 export async function findLyrics({ videoId, title, artist, album, duration }) {
   const key = videoId || `${norm(artist)}|${norm(title)}`;
   if (cache.has(key)) return cache.get(key);
@@ -73,7 +105,7 @@ export async function findLyrics({ videoId, title, artist, album, duration }) {
   else if (netease?.synced) result = { ...netease, plain: lrclib?.plain || null };
   else if (lrclib?.plain) result = lrclib;
   else {
-    result = (videoId && (await ytLyrics(videoId))) || (await fromLyricsOvh(q).catch(() => null));
+    result = (videoId && (await ytLyrics(videoId))) || (await fromLyricsOvh(q).catch(() => null)) || (await fromLrclibFree(q, title, artist).catch(() => null));
   }
   cache.set(key, result);
   if (cache.size > 3000) cache.delete(cache.keys().next().value);
