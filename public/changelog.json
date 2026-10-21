@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Logo animé revu",
+    "items": [
+      "Démarrage : vrai rebond de la boombox (elle s’écrase, s’étire, retombe et rebondit), une salve d’ondes à chaque atterrissage, un tour fluide sur elle-même tous les trois sauts.",
+      "Téléphone : une mise à jour ne recharge plus l’appli toute seule pendant qu’on l’utilise (elle s’installe au lancement suivant ou avec « Installer »)."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1542",
     "title": "Corrections",
     "items": [

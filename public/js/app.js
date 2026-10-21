@@ -1659,7 +1659,8 @@ async function boot() {
     setTimeout(() => checkWebUpdate({
       onReady: (v, why) => {
         if (why === 'native') return toast('Nouvelle version de l’appli disponible : mets-la à jour dans SideStore', { timeout: 8000 });
-        if (player.paused) return applyWebUpdate();
+        // Plus de rechargement automatique en cours d'utilisation (l'appli semblait se fermer) :
+        // la mise à jour s'applique au prochain lancement, ou tout de suite avec « Installer »
         toast(`Mise à jour de Boombox prête (${v})`, { action: 'Installer', timeout: 10000, onAction: () => applyWebUpdate() });
       },
     }), 8000);
