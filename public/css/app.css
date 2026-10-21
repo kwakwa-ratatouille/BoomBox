@@ -2067,3 +2067,6 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
   .stats-hero > .row-flex { flex-wrap: wrap; gap: 8px; width: 100%; }
   .stats-hero .btn { font-size: 14px; padding: 9px 14px; white-space: nowrap; }
 }
+/* Nouveautés : cloche en haut, seulement sur téléphone (sur PC elle est dans le menu) */
+#btn-releases-top { display: none; }
+@media (max-width: 768px) { #btn-releases-top { display: grid; } #topbar.show-search #btn-releases-top { display: none !important; } }
