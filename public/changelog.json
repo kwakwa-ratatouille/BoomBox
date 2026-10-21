@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1021.1542",
     "title": "Corrections",
     "items": [
       "Le bouton File d’attente ouvre bien la file (il pouvait rester bloqué sur les Appareils quand un son avait été retiré de la liste).",
