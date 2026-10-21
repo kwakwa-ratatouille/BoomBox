@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Grosses playlists fluides",
+    "items": [
+      "Grosses playlists : les sons loin au-dessus ou en dessous de l’écran ne sont plus gardés en mémoire (ils reviennent quand tu remontes), fini les ralentissements tout en bas."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.2159",
     "title": "Swipe à la souris",
     "items": [

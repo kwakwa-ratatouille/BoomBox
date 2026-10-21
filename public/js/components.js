@@ -57,13 +57,15 @@ export function trackList(tracks, { context, album = true, added = false, playli
   const listId = registerList(tracks, context, { playlistId, reorder });
   const cls = `${album ? '' : 'no-album'} ${added ? '' : 'no-date'}`;
   const o = { album, added, playlistId, coverArt, numbered, plays };
-  // Longue liste : on n'affiche que le début ; la suite arrive au fil du défilement (bien plus fluide sur téléphone)
-  const first = tracks.length > FIRST_ROWS + 40 ? FIRST_ROWS : tracks.length;
-  const rows = tracks.slice(0, first).map((t, i) => trackRow(t, i, listId, o));
-  if (first < tracks.length) {
-    pendingRows.set(listId, { tracks, o, next: first });
-    watchMoreRows();
+  // Longue liste : sons regroupés par paquets de 100. Seuls les paquets proches de l'écran sont dessinés : la suite
+  // arrive en descendant, et les paquets loin au-dessus ou en dessous sont vidés (leur hauteur est gardée, rien ne
+  // saute) puis redessinés quand on y revient. Les grosses playlists restent fluides jusqu'en bas.
+  const long = tracks.length > CHUNK + 40;
+  if (long) {
+    chunkLists.set(listId, { tracks, o, next: CHUNK });
+    watchChunks();
   }
+  const rows = long ? raw(chunkHtml(listId, 0)) : tracks.map((t, i) => trackRow(t, i, listId, o));
   return html`<div class="tracks ${cls}" data-list-wrap="${listId}">
     <div class="track-head">
       <span class="t-num">#</span><span>Titre</span>
@@ -71,36 +73,58 @@ export function trackList(tracks, { context, album = true, added = false, playli
       ${added ? html`<span class="h-date">Date d’ajout</span>` : ''}
       <span class="r">${icon('clock', 16)}</span>
     </div>
-    ${rows}${first < tracks.length ? raw(`<div class="tl-more" data-more="${listId}"></div>`) : ''}
+    ${rows}${long ? raw(`<div class="tl-more" data-more="${listId}"></div>`) : ''}
   </div>`;
 }
 
-const FIRST_ROWS = 100;
-const MORE_ROWS = 150;
-const pendingRows = new Map();
-let moreWatched = false;
-// Quand la fin des titres affichés approche (moins de 2 écrans), on ajoute les suivants
-function appendMoreRows() {
+const CHUNK = 100;
+const chunkLists = new Map();
+let chunksWatched = false;
+const chunkRows = (listId, from) => {
+  const p = chunkLists.get(listId);
+  return p.tracks.slice(from, from + CHUNK).map((t, i) => String(trackRow(t, from + i, listId, p.o))).join('');
+};
+const chunkHtml = (listId, from) => `<div class="tl-chunk" data-list="${listId}" data-from="${from}">${chunkRows(listId, from)}</div>`;
+// À chaque défilement : ajoute le paquet suivant si la fin approche, vide ceux qui sont loin, redessine ceux qui reviennent
+function updateChunks() {
+  const H = Math.max(innerHeight, 700);
+  let changed = new Set();
   for (const el of document.querySelectorAll('.tl-more')) {
-    const p = pendingRows.get(el.dataset.more);
-    if (!p) { el.remove(); continue; }
-    if (el.getBoundingClientRect().top > Math.max(innerHeight, 700) * 3) continue;
-    const to = Math.min(p.tracks.length, p.next + MORE_ROWS);
-    el.insertAdjacentHTML('beforebegin', p.tracks.slice(p.next, to).map((t, i) => String(trackRow(t, p.next + i, el.dataset.more, p.o))).join(''));
-    p.next = to;
-    if (to >= p.tracks.length) (pendingRows.delete(el.dataset.more), el.remove());
-    refreshTrackMarks(true);
-    el.closest('[data-list-wrap]')?.dispatchEvent(new CustomEvent('tracks:more', { bubbles: true }));
+    const p = chunkLists.get(el.dataset.more);
+    if (!p || p.next >= p.tracks.length) { el.remove(); continue; }
+    if (el.getBoundingClientRect().top > H * 3) continue;
+    el.insertAdjacentHTML('beforebegin', chunkHtml(el.dataset.more, p.next));
+    p.next += CHUNK;
+    if (p.next >= p.tracks.length) el.remove();
+    changed.add(el.closest('[data-list-wrap]'));
   }
+  for (const ch of document.querySelectorAll('.tl-chunk')) {
+    if (!chunkLists.has(ch.dataset.list)) continue;
+    const r = ch.getBoundingClientRect();
+    const far = r.bottom < -H * 4 || r.top > H * 5;
+    if (far && !ch.dataset.empty) {
+      ch.style.height = `${r.height}px`;
+      ch.dataset.empty = '1';
+      ch.innerHTML = '';
+    } else if (!far && ch.dataset.empty) {
+      ch.innerHTML = chunkRows(ch.dataset.list, Number(ch.dataset.from));
+      ch.style.height = '';
+      delete ch.dataset.empty;
+      changed.add(ch.closest('[data-list-wrap]'));
+    }
+  }
+  if (!changed.size) return;
+  refreshTrackMarks(true);
+  for (const w of changed) w?.dispatchEvent(new CustomEvent('tracks:more', { bubbles: true }));
 }
-function watchMoreRows() {
-  if (moreWatched) return;
-  moreWatched = true;
+function watchChunks() {
+  if (chunksWatched) return;
+  chunksWatched = true;
   let timer = 0;
-  const tick = () => ((timer = 0), appendMoreRows());
+  const tick = () => ((timer = 0), updateChunks());
   const soon = () => timer || (timer = setTimeout(tick, 80));
   document.addEventListener('scroll', soon, { capture: true, passive: true });
-  // Liste courte à l'écran ou page déjà défilée : on vérifie aussi juste après l'affichage
+  // Nouvelle page affichée : on vérifie aussi tout de suite
   new MutationObserver(soon).observe(document.getElementById('view') || document.body, { childList: true, subtree: false });
   setTimeout(tick, 300);
 }

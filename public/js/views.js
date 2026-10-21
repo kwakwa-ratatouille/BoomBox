@@ -92,8 +92,9 @@ function findDuplicates(p) {
 // « Auto » = Boombox choisit la meilleure (son nom s'affiche dès que les deux titres sont analysés) ; un clic pour la changer.
 function drawTransitions(list, tr, p) {
   const rows = [...list.querySelectorAll('.track')];
-  rows.slice(0, -1).forEach((row, i) => {
+  rows.forEach((row) => {
     if (row.nextElementSibling?.classList.contains('mix-sep')) return; // déjà posée
+    const i = Number(row.dataset.i);
     const a = tr[i];
     const b = tr[i + 1];
     if (!a || !b) return;
