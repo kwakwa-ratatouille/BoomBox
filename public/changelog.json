@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Bluetooth",
+    "items": [
+      "Casque, écouteurs ou enceinte Bluetooth déconnecté : la musique se met en pause au lieu de continuer dans le haut-parleur (téléphone : nouvelle version de l'appli)."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1023",
     "title": "SoundCloud",
     "items": [

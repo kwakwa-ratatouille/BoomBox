@@ -1167,3 +1167,29 @@ for (const a of ACTIONS) {
 
 // Premier son quand on lance une liste entière : au hasard si l'aléatoire est activé (pas toujours le premier)
 export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Math.random() * list.length) : 0);
+
+// Casque ou enceinte Bluetooth déconnecté → pause (comme Spotify), au lieu de continuer dans le haut-parleur
+(function pauseOnUnplug() {
+  const pause = () => {
+    if (!player.paused && !player.remoteSender) {
+      player.pause();
+      toast('Appareil audio déconnecté : lecture en pause');
+    }
+  };
+  const P = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.BoomboxNative;
+  if (P?.addListener) {
+    P.addListener('audioUnplugged', pause);
+    return;
+  }
+  // PC / navigateur : une sortie audio (casque, enceinte) disparaît de la liste
+  const md = navigator.mediaDevices;
+  if (!md?.enumerateDevices || !md.addEventListener) return;
+  const outputs = async () => (await md.enumerateDevices().catch(() => [])).filter((d) => d.kind === 'audiooutput').map((d) => d.deviceId + d.label);
+  let known = null;
+  outputs().then((o) => (known = o));
+  md.addEventListener('devicechange', async () => {
+    const now = await outputs();
+    if (known && now.length < known.length) pause();
+    known = now;
+  });
+})();

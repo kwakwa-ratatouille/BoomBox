@@ -40,8 +40,18 @@ public class BoomboxNativePlugin extends Plugin {
     private final CountDownLatch ready = new CountDownLatch(1);
     private volatile String initError = null;
 
+    // Casque débranché / Bluetooth déconnecté : l'appli met en pause (sinon le son part dans le haut-parleur)
+    private BroadcastReceiver noisy;
+
     @Override
     public void load() {
+        Context app = getContext().getApplicationContext();
+        noisy = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) { notifyListeners("audioUnplugged", new JSObject()); }
+        };
+        IntentFilter nf = new IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(noisy, nf, Context.RECEIVER_EXPORTED);
+        else app.registerReceiver(noisy, nf);
         // Préparation en arrière-plan (première ouverture : extraction de Python, quelques secondes)
         new Thread(() -> {
             Context ctx = getContext().getApplicationContext();

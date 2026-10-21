@@ -19,6 +19,12 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [])
         try? session.setActive(true)
+        // Casque, écouteurs ou enceinte Bluetooth déconnecté : on prévient l'appli pour mettre en pause
+        NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
+            guard let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  let reason = AVAudioSession.RouteChangeReason(rawValue: raw), reason == .oldDeviceUnavailable else { return }
+            self?.notifyListeners("audioUnplugged", data: [:])
+        }
         // Commande Siri reçue pendant que l'appli tourne : transmise tout de suite au JavaScript
         NotificationCenter.default.addObserver(forName: Notification.Name("BoomboxVoice"), object: nil, queue: .main) { [weak self] note in
             guard let url = note.userInfo?["url"] as? String else { return }
