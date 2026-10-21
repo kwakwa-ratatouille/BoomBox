@@ -5,6 +5,7 @@ import { html, icon, plural, toast } from './ui.js';
 import { getStatsFull, createPlaylist, listeningYears } from './state.js';
 import { ctl } from './player.js';
 import { loadImg, shareStory, pixelDeco } from './story.js';
+import { pixelBackdrop } from './pixel-bg.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('fr-FR');
 
@@ -159,6 +160,9 @@ const SHAPES = {
   half: html`<i class="wr-half h1"></i><i class="wr-half h2"></i>`,
 };
 const shapes = (t) => html`<div class="wr-shapes" style="--s:${t.shape};--a:${t.alt}">${SHAPES[t.shapeSet] || SHAPES.blobs}</div>`;
+// Couleur à mi-chemin entre deux couleurs (« #rrggbb »)
+const mix = (a, b) => '#' + [0, 2, 4].map((o) => Math.round((parseInt(a.slice(1 + o, 3 + o), 16) + parseInt(b.slice(1 + o, 3 + o), 16)) / 2).toString(16).padStart(2, '0')).join('');
+
 function cardHtml(c, i) {
   const t = c.theme;
   const lines = (txt) => String(txt).split('\n').map((l, k) => html`<span class="wr-line" style="--d:${0.15 + k * 0.12}s">${l}</span>`);
@@ -464,6 +468,13 @@ export async function wrappedPage(el, params, ctx) {
     i = Math.max(0, Math.min(cards.length - 1, n));
     slot.innerHTML = String(cardHtml(cards[i], i));
     root.style.setProperty('--page', cards[i].theme.bg);
+    // Fond pixel animé propre à la carte : ses couleurs, or pour les podiums, vert pour ce qui est « en direct »
+    {
+      const th = cards[i].theme;
+      const k = String(cards[i].kind || '');
+      const accents = /list|number|hero/.test(k) ? ['#FFD34D'] : /live|now|friend/i.test(k) ? ['#2EF28B'] : [th.shape, th.alt];
+      pixelBackdrop(slot.querySelector('.wr-card'), [th.bg, th.bg2 || th.bg, mix(th.bg2 || th.bg, th.shape)], { accents, speed: 0.6, accentRate: 0.006 });
+    }
     bars.forEach((b, k) => {
       b.className = k < i ? 'done' : k === i ? 'now' : '';
       b.querySelector('i').style.animationDuration = DUR + 'ms';

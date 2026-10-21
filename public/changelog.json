@@ -1,5 +1,17 @@
 [
   {
+    "version": "next",
+    "title": "Fonds pixel et corrections",
+    "items": [
+      "Nouvelles images pixel art : pochettes (Titres likés, Mix IA, party…), écrans vides et accueil.",
+      "Fonds animés pixel art dans le mode party, le récap et l’en-tête de la page Party (DA Boombox uniquement).",
+      "Menus : les choix activés sont en couleur, on voit tout de suite ce qui est allumé.",
+      "Ajouter à une playlist : la coche disparaît tout de suite quand on retire le son.",
+      "Plus de pochettes géantes quand une rangée n’a que 1 ou 2 sons."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1155",
     "title": "Nouvelle interface Boombox",
     "items": [

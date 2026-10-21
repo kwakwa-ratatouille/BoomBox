@@ -319,7 +319,7 @@ function buildMenu(items) {
       continue;
     }
     const b = document.createElement('button');
-    b.className = 'ctx-item' + (it.danger ? ' danger' : '');
+    b.className = 'ctx-item' + (it.danger ? ' danger' : '') + (it.icon === 'check' || it.on ? ' on' : '');
     b.innerHTML = `${it.icon ? icon(it.icon, 18) : withIcons ? '<i class="ic-space"></i>' : ''}<span>${esc(it.label)}${it.hint ? `<small class="ctx-hint">${esc(it.hint)}</small>` : ''}</span>${it.submenu ? icon('forward', 18) : ''}`;
     if (it.submenu) {
       let sub = null;

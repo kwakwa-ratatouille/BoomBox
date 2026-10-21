@@ -257,7 +257,7 @@ svg.ic:not([width]) { width: 24px; height: 24px; }
 
 /* ---------- Cartes ---------- */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin: 0 -12px; }
-.cards.row { grid-auto-flow: column; grid-auto-columns: minmax(170px, 1fr); grid-template-columns: none; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.cards.row { grid-auto-flow: column; grid-auto-columns: minmax(170px, 220px); grid-template-columns: none; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .cards.row::-webkit-scrollbar { display: none; }
 .card { padding: 12px; border-radius: 8px; cursor: pointer; position: relative; min-width: 0; transition: background 0.2s; }
 .card:hover { background: var(--hover); }
@@ -1997,3 +1997,26 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .da-pixel .liked .ic.px, .da-pixel .act-btn.on .ic.px[data-like] { animation: pxPop 320ms steps(4); }
 @keyframes pxPop { 0% { transform: scale(0.6); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
 .da-pixel .ic.px { image-rendering: pixelated; }
+
+/* Images de la DA pixel : versions dans /assets/pixel/, les originales restent pour la DA Spotify */
+.da-pixel img[src^="/assets/cover-default.png"] { content: url('/assets/pixel/cover-default.png'); }
+.da-pixel img[src^="/assets/cover-liked.png"] { content: url('/assets/pixel/cover-liked.png'); }
+.da-pixel img[src^="/assets/cover-ai-mix.png"] { content: url('/assets/pixel/cover-ai-mix.png'); }
+.da-pixel img[src^="/assets/cover-jam.png"] { content: url('/assets/pixel/cover-jam.png'); }
+.da-pixel img[src^="/assets/empty-library.png"] { content: url('/assets/pixel/empty-library.png'); }
+.da-pixel img[src^="/assets/empty-search.png"] { content: url('/assets/pixel/empty-search.png'); }
+.da-pixel img[src^="/assets/onboarding.png"] { content: url('/assets/pixel/onboarding.png'); }
+.da-pixel .cover img[src^="/assets/"], .da-pixel .empty-art, .da-pixel .onboarding-art, .da-pixel .jam-art, .da-pixel img.ai-badge { image-rendering: pixelated; }
+
+/* Menus : un choix activé (coche) est en couleur d'accent */
+.ctx-item.on { color: var(--accent); }
+.ctx-item.on .ic { fill: var(--accent); }
+
+/* Fonds animés pixel art (party, récap, en-tête Jam) : canvas derrière le contenu, haut assombri pour le texte */
+.has-pxbg { isolation: isolate; overflow: hidden; }
+.has-pxbg:not(.wr-card) { position: relative; }
+.pxbg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; image-rendering: pixelated; pointer-events: none; }
+.has-pxbg::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(180deg, rgba(10, 8, 14, 0.6), rgba(10, 8, 14, 0.2)); }
+.wr-card.has-pxbg::after { display: none; }
+.jam-hero.has-pxbg { padding: 20px; border-radius: 12px; margin-bottom: 16px; }
+.party-head.has-pxbg { padding: 16px; border-radius: 12px; }

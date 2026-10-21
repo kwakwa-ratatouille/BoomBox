@@ -161,14 +161,20 @@ export function openPlaylistPicker(tracks, at = null) {
   document.body.appendChild(el);
   const ids = arr.map((t) => t.id);
   let q = '';
+  const forced = new Map(); // coche voulue en attendant la synchro : clé playlist (ou 'liked') → 'all' / 'none'
+  const pick = (key, real) => {
+    if (!forced.has(key)) return real;
+    if (forced.get(key) === real) forced.delete(key);
+    return forced.get(key) || real;
+  };
   const stateOf = (p) => {
-    const have = new Set(p.tracks.map((t) => t.id));
+    const have = new Set(p.tracks.filter((t) => !t._deleted).map((t) => t.id));
     const n = ids.filter((id) => have.has(id)).length;
-    return n === ids.length ? 'all' : n ? 'some' : 'none';
+    return pick(p.id, n === ids.length ? 'all' : n ? 'some' : 'none');
   };
   const likedState = () => {
     const n = ids.filter((id) => isLiked(id)).length;
-    return n === ids.length ? 'all' : n ? 'some' : 'none';
+    return pick('liked', n === ids.length ? 'all' : n ? 'some' : 'none');
   };
   const mark = (s) => `<span class="pp-mark ${s}">${s === 'all' ? icon('check', 16) : s === 'some' ? '–' : ''}</span>`;
   // Dossiers : une ligne qui se déroule pour ajouter aux playlists qu'il contient (déroulés pendant une recherche)
@@ -214,19 +220,26 @@ export function openPlaylistPicker(tracks, at = null) {
     if (busy.has(key)) return;
     busy.add(key);
     b.classList.add('busy');
+    const was = b.dataset.liked ? likedState() : stateOf(state.library.playlists.find((x) => x.id === b.dataset.pl) || { tracks: [] });
+    forced.set(key, was === 'all' ? 'none' : 'all');
+    draw();
     try {
       if (b.dataset.liked) {
-        if (likedState() === 'all') for (const t of arr) await toggleLike(t);
+        if (was === 'all') for (const t of arr) await toggleLike(t);
         else await likeMany(arr);
       } else {
         const p = state.library.playlists.find((x) => x.id === b.dataset.pl);
-        if (p && stateOf(p) === 'all') {
+        if (p && was === 'all') {
           for (const t of arr) await removeFromPlaylist(p.id, t);
         } else if (p) {
           await addToPlaylist(p.id, arr, { quiet: true });
           toast(`Ajouté à ${p.name}`);
         }
       }
+    } catch (err) {
+      forced.delete(key);
+      draw();
+      throw err;
     } finally {
       busy.delete(key);
       b.classList.remove('busy');

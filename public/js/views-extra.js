@@ -228,13 +228,14 @@ export async function jam(el, params) {
     const room = sync.jam;
     if (!room) {
       el.innerHTML = String(html`<div class="page party-page" style="max-width:820px">
-        <div class="row-flex" style="gap:20px;margin-bottom:8px;flex-wrap:nowrap"><img src="/assets/cover-jam.png" alt="" class="jam-art"><div><h1 style="font-size:40px;margin:0">Mode party</h1><p class="muted" style="margin:4px 0 0">Une file commune : chacun ajoute ses sons, cet appareil les joue.</p></div></div>
+        <div class="row-flex jam-hero" style="gap:20px;margin-bottom:8px;flex-wrap:nowrap"><img src="/assets/cover-jam.png" alt="" class="jam-art"><div><h1 style="font-size:40px;margin:0">Mode party</h1><p class="muted" style="margin:4px 0 0">Une file commune : chacun ajoute ses sons, cet appareil les joue.</p></div></div>
         <div class="party-start">
           <div class="np-card"><h4>${icon('users', 18)} Écouter ensemble</h4><p class="muted">Chacun entend la même musique sur son téléphone, en même temps, même à distance. Tout le monde peut proposer des sons.</p><button class="btn primary" id="jam-together">Écouter ensemble</button></div>
           <div class="np-card"><h4>${icon('play', 18)} Soirée (une seule enceinte)</h4><p class="muted">La musique sort de cet appareil, branché à l'enceinte (écran géant avec paroles et clip). Tes invités scannent un QR code pour ajouter leurs sons, sans appli.</p><button class="btn white" id="jam-create">Lancer la soirée</button></div>
           <div class="np-card"><h4>${icon('users', 18)} Rejoindre une party</h4><p class="muted">Un ami lance la party sur son appareil : entre son code pour ajouter tes sons depuis ton profil.</p><div class="row-flex"><input class="input" id="jam-code" placeholder="Code (ex : K7P2Q)" maxlength="5" style="max-width:180px;text-transform:uppercase;letter-spacing:.12em"><button class="btn white" id="jam-join">Rejoindre</button></div></div>
         </div>
       </div>`);
+      pixelBackdrop(el.querySelector('.jam-hero'), PARTY_PALETTE, { accents: PARTY_ACCENTS });
       el.querySelector('#jam-create').onclick = () => sync.jamCreate('soiree');
       el.querySelector('#jam-together').onclick = () => sync.jamCreate('together');
       el.querySelector('#jam-join').onclick = () => sync.jamJoin(el.querySelector('#jam-code').value);
@@ -247,7 +248,7 @@ export async function jam(el, params) {
     const partyWide = ls.get('boombox.partyWide', false);
     const partyUrl = partyWide ? `https://musikal-b72d1.web.app/party.html?code=${room.code}` : `${state.status.lan[0] || location.origin}/party.html?code=${room.code}`;
     el.innerHTML = String(html`<div class="page party-page" style="max-width:900px">
-      <div class="row-flex" style="justify-content:space-between;flex-wrap:nowrap"><h1 style="font-size:36px;margin:0">${host ? 'Ta party' : `Party de ${room.hostName}`}</h1><button class="btn ghost" id="jam-leave">${host ? 'Terminer la party' : 'Quitter'}</button></div>
+      <div class="row-flex jam-hero" style="justify-content:space-between;flex-wrap:nowrap"><h1 style="font-size:36px;margin:0">${host ? 'Ta party' : `Party de ${room.hostName}`}</h1><button class="btn ghost" id="jam-leave">${host ? 'Terminer la party' : 'Quitter'}</button></div>
       <div class="np-card party-invite">
         <div class="pi-qr" id="party-qr"></div>
         <div class="pi-info">
@@ -268,6 +269,7 @@ export async function jam(el, params) {
       <p class="muted" style="margin-top:-6px">Depuis la recherche, double-clique sur un son (ou « ⋯ → Ajouter à la party »).</p>
       ${room.queue.length ? html`<div>${room.queue.map((t) => html`<div class="q-item">${cover(t)}<div class="t-text" style="flex:1"><span class="t-title">${t.title}</span><span class="t-artists muted">${artistLinks(t)} · ajouté par ${t.addedBy}</span></div>${host ? html`<button class="q-x icon-btn" data-rm="${t.qid}" style="opacity:1">${icon('close')}</button>` : ''}</div>`)}</div>` : html`<p class="muted">La file est vide.</p>`}
     </div>`);
+    pixelBackdrop(el.querySelector('.jam-hero'), PARTY_PALETTE, { accents: PARTY_ACCENTS });
     el.querySelector('#jam-leave').onclick = () => sync.jamLeave();
     el.querySelectorAll('[data-mode]').forEach((b) => (b.onclick = () => sync.jamSetMode(b.dataset.mode)));
     el.querySelector('#jam-ctrl')?.addEventListener('change', (e) => sync.jamSettings({ everyoneControls: e.target.checked }));

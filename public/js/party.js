@@ -162,4 +162,9 @@ async function doSearch(q) {
   }
 }
 
+// Fond animé pixel derrière l'en-tête (recréé si l'en-tête est redessiné)
+new MutationObserver(() => {
+  const head = root.querySelector('.party-head');
+  if (head && !head.classList.contains('has-pxbg')) pixelBackdrop(head, PARTY_PALETTE, { accents: PARTY_ACCENTS });
+}).observe(root, { childList: true });
 start().catch((e) => (root.innerHTML = String(html`<div class="empty"><h2>Oups</h2><p>${e.message}</p></div>`)));
