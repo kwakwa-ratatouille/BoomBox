@@ -1,5 +1,4 @@
 import Foundation
-import UIKit
 import Capacitor
 import AVFoundation
 
@@ -25,25 +24,6 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
             guard let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
                   let reason = AVAudioSession.RouteChangeReason(rawValue: raw), reason == .oldDeviceUnavailable else { return }
             self?.notifyListeners("audioUnplugged", data: [:])
-        }
-        // Interruption (vocal WhatsApp/Snap, appel, vidéo d'une autre appli) : début et fin transmis à l'appli,
-        // qui reprend la musique quand iOS l'indique (fin d'un vocal). La session est réactivée à la fin,
-        // sinon le lecteur peut continuer « en silence » (le son est coupé mais le temps avance).
-        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
-            guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                  let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
-            if type == .began {
-                self?.notifyListeners("audioInterruption", data: ["phase": "began"])
-            } else {
-                let opts = AVAudioSession.InterruptionOptions(rawValue: (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0)
-                try? AVAudioSession.sharedInstance().setActive(true)
-                self?.notifyListeners("audioInterruption", data: ["phase": "ended", "resume": opts.contains(.shouldResume)])
-            }
-        }
-        // Retour sur l'appli : session audio réactivée (une autre appli a pu la prendre sans la rendre)
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            try? AVAudioSession.sharedInstance().setActive(true)
-            self?.notifyListeners("audioActive", data: [:])
         }
         // Commande Siri reçue pendant que l'appli tourne : transmise tout de suite au JavaScript
         NotificationCenter.default.addObserver(forName: Notification.Name("BoomboxVoice"), object: nil, queue: .main) { [weak self] note in
