@@ -1,4 +1,5 @@
 // Écrans « Amis » : activité d'écoute des amis, conversations (messages, sons, playlists), envoi à un ami.
+import { PIXEL_STICKERS, renderPixelSticker } from './stickers-pixel.js';
 import { html, raw, icon, toast, modal, contextMenu, confirmBox, plural, esc, promptText } from './ui.js';
 import { state, bus, createPlaylist, isLiked, toggleLike, api, updateProfile } from './state.js';
 
@@ -411,6 +412,7 @@ async function stickerPicker(send) {
   let close = null;
   const draw = (w) => {
     w.querySelector('.stk-grid').innerHTML = [
+      ...PIXEL_STICKERS.map((p) => `<button class="stk stk-px" data-px="${p.id}" title="${p.label}"><img src="${renderPixelSticker(p.id, 96)}" alt="${p.label}"></button>`),
       ...mine().map((src, i) => `<button class="stk" data-mine="${i}"><img src="${src}" alt=""></button>`),
       ...STICKERS.map((e) => `<button class="stk" data-emo="${e}">${e}</button>`),
     ].join('');
@@ -425,7 +427,7 @@ async function stickerPicker(send) {
       w.addEventListener('click', (e) => {
         const b = e.target.closest('.stk');
         if (!b) return;
-        send({ sticker: b.dataset.mine != null ? mine()[b.dataset.mine] : emojiSticker(b.dataset.emo) });
+        send({ sticker: b.dataset.px ? renderPixelSticker(b.dataset.px) : b.dataset.mine != null ? mine()[b.dataset.mine] : emojiSticker(b.dataset.emo) });
         close?.();
       });
       w.addEventListener('contextmenu', async (e) => {

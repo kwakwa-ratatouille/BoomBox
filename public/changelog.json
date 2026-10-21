@@ -1,5 +1,21 @@
 [
   {
+    "version": "next",
+    "title": "Bannières animées, stickers et party",
+    "items": [
+      "Bannières animées derrière les playlists : choisis le style (vagues, pluie de pixels, étoiles, ondes, plasma), la couleur, ou aucune (⋯ de la playlist → Bannière animée).",
+      "Titres likés : bannière unique avec des cœurs pixel qui montent, dans le violet de la pochette.",
+      "Stickers de la mascotte Boombox en pixel art : content, amoureux, MDR, triste, énervé, choqué, stylé, dodo, ambiance, mort de rire.",
+      "Animations aux couleurs de l’interface que tu as choisie ; démarrage avec plus d’ondes, à des rythmes différents.",
+      "Plus d’animation pendant les chargements de pages.",
+      "Son : qualité réduite automatiquement si la connexion est faible au lieu de couper (Paramètres → Qualité du son).",
+      "Écran géant de la soirée plus fluide, et « Terminer la party » marche en plein écran.",
+      "Une party oubliée ne se relance plus toute seule au démarrage.",
+      "Bannière du profil de nouveau visible après un rechargement rapide."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1446",
     "title": "Logo animé",
     "items": [

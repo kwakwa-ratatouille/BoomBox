@@ -2023,21 +2023,27 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 #profile-picker.has-pxbg > div:not(.pxbg) { background: rgba(19, 16, 25, 0.85); padding: 28px; border-radius: 16px; }
 
 /* ===== Démarrage et chargements, DA pixel : ondes de son pixel, confettis, tour sur elle-même ===== */
-.sp-wave, .sp-conf { display: none; }
+.sp-arc, .sp-conf { display: none; }
 .da-pixel .sp-ring { display: none; }
-.da-pixel .sp-wave { display: block; position: absolute; left: 50%; top: 50%; width: 190%; transform: translate(-50%, -50%); opacity: 0; image-rendering: pixelated; animation: pxWave1 0.9s steps(1) infinite; pointer-events: none; }
-.da-pixel .sp-wave:nth-of-type(2) { animation-name: pxWave2; }
-.da-pixel .sp-wave:nth-of-type(3) { animation-name: pxWave3; }
-@keyframes pxWave1 { 0%, 20% { opacity: 0; } 25%, 100% { opacity: 1; } }
-@keyframes pxWave2 { 0%, 40% { opacity: 0; } 45%, 100% { opacity: 1; } }
-@keyframes pxWave3 { 0%, 60% { opacity: 0; } 65%, 90% { opacity: 1; } 95%, 100% { opacity: 0; } }
 .da-pixel .sp-conf { display: block; position: absolute; width: 8px; height: 8px; animation: spConf 1.6s steps(2) infinite; }
 @keyframes spConf { 0%, 100% { opacity: 1; transform: translateY(0); } 50% { opacity: 0.2; transform: translateY(-6px); } }
 /* La boombox fait un tour complet de temps en temps, en 8 crans */
 .da-pixel .sp-box { animation: spBounce 0.9s cubic-bezier(0.3, 0, 0.3, 1) infinite, spSpin 3.6s steps(1) infinite; filter: none; }
 @keyframes spSpin { 0%, 74% { rotate: 0deg; } 76% { rotate: 45deg; } 78% { rotate: 90deg; } 80% { rotate: 135deg; } 82% { rotate: 180deg; } 84% { rotate: 225deg; } 86% { rotate: 270deg; } 88% { rotate: 315deg; } 90%, 100% { rotate: 360deg; } }
 .da-pixel #splash { background: #131019 repeating-conic-gradient(#1b1626 0 25%, #131019 0 50%) 0 0 / 16px 16px; }
-/* Chargement d'une page : mini logo qui rebondit avec ses ondes */
-.da-pixel .loading .spinner { position: relative; width: 56px; height: 56px; border: 0; border-radius: 0; background: url('/assets/logo-symbol.png?v=2') center / contain no-repeat; image-rendering: pixelated; animation: spBounce 0.9s cubic-bezier(0.3, 0, 0.3, 1) infinite, spSpin 3.6s steps(1) infinite; transform-origin: 50% 100%; }
-.da-pixel .loading .spinner::before { content: ''; position: absolute; left: 50%; top: 50%; width: 180px; height: 112px; transform: translate(-50%, -50%); background: url('/assets/pixel/waves.svg') center / contain no-repeat; image-rendering: pixelated; animation: spConf 0.9s steps(2) infinite; }
-@media (prefers-reduced-motion: reduce) { .da-pixel .sp-wave, .da-pixel .sp-conf, .da-pixel .sp-box, .da-pixel .loading .spinner, .da-pixel .loading .spinner::before { animation: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .da-pixel .sp-arc, .da-pixel .sp-conf, .da-pixel .sp-box { animation: none; opacity: 1; } }
+
+/* Ondes du démarrage : 3 de chaque côté, chacune à son rythme ; une part vers l'extérieur, la suivante revient */
+.da-pixel .sp-arc { display: block; position: absolute; top: 50%; left: 50%; width: 40px; height: 80px; margin: -40px 0 0 34px; transform-origin: -34px 50%; background: var(--accent, #b07cf7); -webkit-mask: url('/assets/pixel/arc.svg') center / contain no-repeat; mask: url('/assets/pixel/arc.svg') center / contain no-repeat; opacity: 0; animation: arcOut 1.2s steps(6) infinite; pointer-events: none; }
+.da-pixel .sp-arc.a1, .da-pixel .sp-arc.a3, .da-pixel .sp-arc.a5 { transform: scaleX(-1); animation-name: arcOutL; }
+.da-pixel .sp-arc.a2, .da-pixel .sp-arc.a3 { animation-name: arcIn; animation-duration: 1.8s; background: color-mix(in srgb, var(--accent, #b07cf7) 55%, #fff); }
+.da-pixel .sp-arc.a3 { animation-name: arcInL; }
+.da-pixel .sp-arc.a4, .da-pixel .sp-arc.a5 { animation-duration: 2.4s; background: color-mix(in srgb, var(--accent, #b07cf7) 60%, #2ef28b); }
+.da-pixel .sp-arc.a5 { animation-name: arcOutL; }
+@keyframes arcOut { 0% { transform: scale(0.7); opacity: 0; } 20% { opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+@keyframes arcOutL { 0% { transform: scaleX(-1) scale(0.7); opacity: 0; } 20% { opacity: 1; } 100% { transform: scaleX(-1) scale(2.2); opacity: 0; } }
+@keyframes arcIn { 0% { transform: scale(2.2); opacity: 0; } 80% { opacity: 1; } 100% { transform: scale(0.7); opacity: 0; } }
+@keyframes arcInL { 0% { transform: scaleX(-1) scale(2.2); opacity: 0; } 80% { opacity: 1; } 100% { transform: scaleX(-1) scale(0.7); opacity: 0; } }
+@media (min-width: 601px) { .da-pixel .sp-arc { width: 56px; height: 112px; margin: -56px 0 0 48px; transform-origin: -48px 50%; } }
+.hero.has-pxbg::after { background: linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.55)); }
+.stk-px img, img[src^="data:image/png"].px-sticker { image-rendering: pixelated; }

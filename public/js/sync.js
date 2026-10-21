@@ -277,7 +277,10 @@ export const sync = {
           return;
         }
         const d = s.data();
-        if (resuming && !d.members?.[state.device.id]) {
+        const lastActive = Math.max(d.createdAt || 0, d.state?.at || 0, d.updatedAt || 0);
+        if (resuming && (!d.members?.[state.device.id] || Date.now() - lastActive > 6 * 3600e3)) {
+          if (d.host === state.device.id) updateDoc(doc(db, 'jams', code), { ended: true }).catch(() => {});
+
           this._unsubscribeJam();
           return this._setJam(null);
         }

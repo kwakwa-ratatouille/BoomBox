@@ -6,10 +6,16 @@ import { automix } from './automix.js';
 import { isNative, localApi } from './native.js';
 
 // Source audio d'un titre : serveur du PC (flux yt-dlp) ou, dans l'appli, fichier téléchargé sur le téléphone
+// Connexion faible : son plus léger (~50 kb/s au lieu de ~130) plutôt qu'une lecture qui bloque.
+// Activé tout seul après des blocages répétés, ou forcé dans les Paramètres (Qualité du son).
+let lowQuality = false;
+const wantLow = () => lowQuality || setting('audioQuality', 'auto') === 'low' || !!navigator.connection?.saveData || /(^|-)2g$|^3g$/.test(navigator.connection?.effectiveType || '');
 async function audioSrc(id, fresh = false, stream = false) {
+  const low = setting('audioQuality', 'auto') !== 'high' && wantLow();
   // Appli : fichier du téléphone, ou streaming immédiat la première fois (sauf nouvel essai → fichier local)
-  if (isNative) return (await localApi()).media.localAudioSrc(id, { stream: stream && !fresh });
-  return `/api/stream/${id}${fresh ? `?fresh=${Date.now()}` : ''}`;
+  if (isNative) return (await localApi()).media.localAudioSrc(id, { stream: stream && !fresh, low });
+  const q = [fresh && `fresh=${Date.now()}`, low && 'q=low'].filter(Boolean).join('&');
+  return `/api/stream/${id}${q ? `?${q}` : ''}`;
 }
 
 // ---------- Moteur YouTube (iframe) ----------
@@ -490,6 +496,7 @@ export const player = {
       onBuffering: () => {
         this.buffering = true;
         emit('player:state');
+        this._noteStall();
       },
       onError: (code) => this._onError(code),
     };
@@ -963,6 +970,20 @@ export const player = {
       return;
     }
     this.next(true);
+  },
+
+  _noteStall() {
+    if (lowQuality || this.engine?.name !== 'audio' || !this.track || setting('audioQuality', 'auto') === 'high') return;
+    const now = Date.now();
+    this._stalls = (this._stalls || []).filter((t) => now - t < 60e3);
+    if (this.engine.time?.() < 2) return; // démarrage d'un son : chargement normal, pas un blocage
+    this._stalls.push(now);
+    if (this._stalls.length < 2) return;
+    lowQuality = true;
+    this._stalls = [];
+    toast('Connexion faible : qualité du son réduite pour éviter les coupures');
+    const at = this.engine.time() || 0;
+    this.engine.load(this.track.id, at, !this.paused, true);
   },
 
   async _onError(code) {

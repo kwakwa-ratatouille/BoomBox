@@ -283,11 +283,11 @@ export function downloadAudio(id, { keep = false } = {}) {
 // stream : titre pas encore sur le téléphone et PC joignable → lecture immédiate par le PC pendant que le
 // fichier se télécharge en arrière-plan (la prochaine écoute sera locale). Un lien YouTube direct ne peut pas
 // être lu tel quel par le lecteur (il exige l'en-tête du client) : sans PC, on attend le fichier local.
-export async function localAudioSrc(id, { stream = false } = {}) {
+export async function localAudioSrc(id, { stream = false, low = false } = {}) {
   if (!audioIndex[id] && !net.connected) throw new Error('Hors ligne : titre non téléchargé');
   if (stream && !audioIndex[id] && relay) {
     downloadAudio(id).catch(() => {});
-    return relayUrl(`/api/stream/${id}`);
+    return relayUrl(`/api/stream/${id}${low ? '?q=low' : ''}`);
   }
   await downloadAudio(id);
   const { uri } = await Filesystem.getUri({ path: `audio/${id}.m4a`, directory: Directory.Data });

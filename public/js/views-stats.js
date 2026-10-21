@@ -1,7 +1,7 @@
 // « Ton récap » : statistiques d'écoute complètes (chiffres clés, évolution, habitudes, tops, découvertes).
 // Graphiques : une seule série (couleur d'accent), barres fines arrondies, info-bulle au survol,
 // et un tableau équivalent pour chaque graphique (accessibilité).
-import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS } from './pixel-bg.js';
+import { pixelBackdrop, accentPalette } from './pixel-bg.js';
 import { html, raw, icon, plural, esc } from './ui.js';
 import { getStatsFull } from './state.js';
 import { cover, card, trackList, rememberTracks } from './components.js';
@@ -106,6 +106,6 @@ export async function statsPage(el, params, ctx) {
       <div class="cards row">${s.discoveries.map((a) => card({ type: 'artist', id: a.artist.id, name: a.artist.name, thumb: a.thumb }, { sub: plural(a.count, 'écoute'), href: a.artist.id ? `#/artist/${a.artist.id}` : '', play: a.artist.id ? `artist:${a.artist.id}` : '' }))}</div></section>` : ''}
     `}
   </div>`);
-  pixelBackdrop(el.querySelector('.stats-hero'), ['#131019', '#241D33', '#3A2A63', '#8A55D8'], { accents: ['#FFD34D'] });
+  pixelBackdrop(el.querySelector('.stats-hero'), accentPalette(), { accents: ['#FFD34D'] });
   el.querySelector('#st-share')?.addEventListener('click', share);
 }

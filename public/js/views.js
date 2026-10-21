@@ -1,4 +1,5 @@
 // Pages principales : accueil, recherche, titres likés, playlists, albums, artistes, nouveautés, bibliothèque.
+import { pixelBackdrop, accentPalette, accentColor, isPixelDA, BACKDROP_STYLES } from './pixel-bg.js';
 import { html, raw, esc, icon, fmtTotal, fmtAgo, plural, toast, promptText, confirmBox, contextMenu, dominantColor, artistLinks, debounce, modal } from './ui.js';
 import { state, api, ls, emit, setting, saveSettings, toggleFollow, isFollowing, createPlaylist, addToPlaylist, getHistory, updatePlaylist, deletePlaylist, restorePlaylist, purgePlaylist, TRASH_DAYS, sharePlaylist, movePlaylist, moveRoot, rootEntries, folderOf, followMany, setKnownReleases, setFollowThumbs, likeAllPlaylistTracks, createFolder, renameFolder, deleteFolder, movePlaylistToFolder, removeItems, isLiked, toggleLike } from './state.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
@@ -156,6 +157,26 @@ function addTracksDialog(playlistId) {
 
 function errorBox(e) {
   return html`<div class="page"><div class="empty"><h2>Oups</h2><p>${e.message}</p><button class="btn white" onclick="location.reload()">Réessayer</button></div></div>`;
+}
+
+const BANNER_COLORS = { cover: 'Couleur de la pochette', accent: 'Couleur de l’appli', '#b07cf7': 'Mauve', '#2ef28b': 'Vert', '#3ea6ff': 'Bleu', '#ff4d8d': 'Rose', '#ff9f2e': 'Orange', '#ffd34d': 'Or' };
+async function heroBackdrop(hero, p, coverUrl) {
+  if (!hero || !isPixelDA()) return;
+  const a = { style: 'waves', color: 'cover', ...(p?.anim || {}) };
+  if (a.style === 'none') return;
+  let c = a.color === 'accent' ? accentColor() : a.color === 'cover' ? null : a.color;
+  if (!c) c = (coverUrl && (await dominantColor(coverUrl).catch(() => null))) || accentColor();
+  if (hero.isConnected) pixelBackdrop(hero, accentPalette(c), { style: a.style, speed: 0.4, accents: [c] });
+}
+function bannerItems(p) {
+  const a = { style: 'waves', color: 'cover', ...(p.anim || {}) };
+  const set = (patch) => updatePlaylist(p.id, { anim: { ...a, ...patch } });
+  return [
+    { label: 'Aucune animation', icon: a.style === 'none' ? 'check' : null, action: () => set({ style: 'none' }) },
+    ...Object.entries(BACKDROP_STYLES).map(([k, label]) => ({ label, icon: a.style === k ? 'check' : null, action: () => set({ style: k }) })),
+    { sep: true },
+    { label: 'Couleur', icon: 'palette', submenu: () => Object.entries(BANNER_COLORS).map(([k, label]) => ({ label, icon: a.color === k ? 'check' : null, action: () => set({ color: k }) })) },
+  ];
 }
 
 async function heroColor(el, url) {
@@ -546,11 +567,11 @@ export async function liked(el) {
     const ctx = { type: 'liked', id: 'liked', name: 'Titres likés' };
     const total = tracks.reduce((s, t) => s + (t.duration || 0), 0);
     el.innerHTML = String(html`
-      <div class="hero" style="--hero:#c2456b">${likedCover()}
+      <div class="hero liked-hero" style="--hero:${isPixelDA() ? '#6c3fd1' : '#c2456b'}">${likedCover()}
         <div class="hero-info"><span class="hero-type">Playlist</span><h1>Titres likés</h1>
         <div class="hero-meta"><b>${state.profile.name}</b><span class="sep"></span><span>${plural(tracks.length, 'titre')}</span>${total ? html`<span>, ${fmtTotal(total)}</span>` : ''}</div></div>
       </div>
-      <div class="page-body" style="--hero:#c2456b">
+      <div class="page-body" style="--hero:${isPixelDA() ? '#6c3fd1' : '#c2456b'}">
         <div class="actions">
           <button class="big-play" data-playall>${playAllIcon(ctx)}</button>${shuffleBtn()}
           ${dlButton(setting('offlineLiked', true), tracks)}
@@ -569,6 +590,8 @@ export async function liked(el) {
       offline.sync();
       render();
     });
+    // Bannière unique des Titres likés : cœurs pixel qui montent, dans le violet de la pochette
+    pixelBackdrop(el.querySelector('.liked-hero'), ['#2a1850', '#4b2a8f', '#6c3fd1', '#9a6cf2'], { style: 'hearts', speed: 0.5 });
     el.querySelector('#lk-more').onclick = (e) => {
       const r = e.currentTarget.getBoundingClientRect();
       contextMenu(r.left, r.bottom, [
@@ -685,6 +708,7 @@ export async function playlist(el, { id }, ctx) {
         <section class="section" style="margin-top:40px"><div class="section-head"><div><h2>Recommandés</h2><div class="muted">Basés sur le contenu de cette playlist</div></div><button class="more" id="reco-refresh">Actualiser</button></div><div id="recos">${recos ? '' : loading}</div></section>
       </div>`);
     heroColor(el, p.cover || p.tracks[0]?.thumb);
+    if (!p.banner) heroBackdrop(el.querySelector('.hero'), p, p.cover || p.tracks[0]?.thumb);
     wireListActions(el, () => el._shown || p.tracks, pctx);
     if (p.tracks.length) wireTools(el, `pl.${p.id}`, () => p.tracks, (tr, custom) => ((el._shown = tr), trackList(tr, { context: pctx, added: true, playlistId: p.id, reorder: custom, counts: p.playCounts })), (list, tr) => p.mixed && drawTransitions(list, tr, p));
     el.querySelector('#pl-name').onclick = () => editPlaylist(p);
@@ -832,6 +856,7 @@ export function playlistMenu(p, x, y, { full = false } = {}) {
   }
   contextMenu(x, y, [
     { label: 'Modifier', icon: 'edit', action: () => editPlaylist(p) },
+    isPixelDA() && !p.banner && { label: 'Bannière animée', icon: 'sparkle', submenu: () => bannerItems(p) },
     visibility,
     share,
     { label: 'Compléter avec l’IA', icon: 'sparkle', action: () => (location.hash = `#/ai?playlist=${p.id}`) },

@@ -37,26 +37,27 @@ setScBin(ytDlpPath); // recherche SoundCloud des titres bloqués
 const urlCache = new Map(); // videoId -> { url, exp }
 const pending = new Map();
 
-function resolveUrl(id) {
-  const hit = urlCache.get(id);
+function resolveUrl(id, low = false) {
+  const key = low ? `${id}|low` : id;
+  const hit = urlCache.get(key);
   if (hit && hit.exp > Date.now()) return Promise.resolve(hit.url);
-  if (pending.has(id)) return pending.get(id);
+  if (pending.has(key)) return pending.get(key);
   const p = new Promise((resolve, reject) => {
     execFile(
       ytDlpPath,
       // --js-runtimes node : yt-dlp utilise Node (déjà installé) pour déchiffrer les liens YouTube
-      ['--js-runtimes', 'node', '-f', 'bestaudio[ext=m4a]/bestaudio', '-g', '--no-playlist', '--no-warnings', `https://www.youtube.com/watch?v=${id}`],
+      ['--js-runtimes', 'node', '-f', low ? 'worstaudio[ext=m4a]/bestaudio[ext=m4a]/bestaudio' : 'bestaudio[ext=m4a]/bestaudio', '-g', '--no-playlist', '--no-warnings', `https://www.youtube.com/watch?v=${id}`],
       { timeout: 30e3, windowsHide: true },
       (err, stdout) => {
-        pending.delete(id);
+        pending.delete(key);
         const url = stdout?.trim().split('\n')[0];
         if (err || !url) return reject(err || new Error('URL audio introuvable'));
-        urlCache.set(id, { url, exp: Date.now() + 4 * 3600e3 });
+        urlCache.set(key, { url, exp: Date.now() + 4 * 3600e3 });
         resolve(url);
       },
     );
   });
-  pending.set(id, p);
+  pending.set(key, p);
   return p;
 }
 
@@ -142,6 +143,8 @@ export async function streamHandler(req, res) {
   }
   // Nouvel essai demandé par le lecteur après une coupure : on repart d'un lien YouTube neuf
   if (req.query.fresh) urlCache.delete(id);
+  const low = req.query.q === 'low';
+  if (low && req.query.fresh) urlCache.delete(`${id}|low`);
   // Dernier recours : téléchargement complet par yt-dlp puis lecture depuis le disque
   const fromDisk = async () => res.sendFile(await download(id), { headers: { 'content-type': 'audio/mp4' } });
   try {
@@ -149,11 +152,11 @@ export async function streamHandler(req, res) {
     const headers = {};
     if (req.headers.range) headers.range = req.headers.range;
     try {
-      url = await resolveUrl(id);
+      url = await resolveUrl(id, low);
       upstream = await fetch(url, { headers });
       if (upstream.status === 403 || upstream.status >= 500) {
         urlCache.delete(id);
-        url = await resolveUrl(id);
+        url = await resolveUrl(id, low);
         upstream = await fetch(url, { headers });
       }
     } catch (e) {

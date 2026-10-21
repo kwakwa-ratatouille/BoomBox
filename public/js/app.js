@@ -1,5 +1,5 @@
 // Point d'entrée : profils, routeur, barre latérale, barre de lecture, panneau de droite, lecteur mobile.
-import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS } from './pixel-bg.js';
+import { pixelBackdrop, PARTY_ACCENTS, accentPalette } from './pixel-bg.js';
 import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural, confirmBox } from './ui.js';
 import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
 import { cloud, parseInvite, getDoc } from './cloud.js';
@@ -1258,6 +1258,7 @@ function setAccentColor(c) {
   const rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
   const root = document.documentElement.style;
   root.setProperty('--accent', c);
+  try { localStorage.setItem('bb-accent', c); } catch {}
   root.setProperty('--accent-2', c);
   root.setProperty('--accent-rgb', rgb.join(', '));
 }
@@ -1493,6 +1494,8 @@ async function boot() {
   // Le dernier démarrage n'a pas abouti (plantage) : mode prudent, sans bannière ni grosses images
   state.safeMode = !!localStorage.getItem("boombox.booting");
   localStorage.setItem("boombox.booting", "1");
+  // Rechargement ou fermeture normale (Ctrl+R, appli quittée) : ce n'est pas un plantage
+  addEventListener("pagehide", () => localStorage.removeItem("boombox.booting"));
   const profile = await pickProfile();
   setProfile(profile);
   renderAvatar();
@@ -1813,7 +1816,7 @@ function onboarding() {
   const jamCode = (location.hash.match(/jam\?code=([A-Z0-9]{4,8})/i) || [])[1]?.toUpperCase() || '';
   return new Promise((resolve) => {
     const box = $('#profile-picker');
-    setTimeout(() => pixelBackdrop(box, PARTY_PALETTE, { accents: PARTY_ACCENTS, speed: 0.3 }));
+    setTimeout(() => pixelBackdrop(box, accentPalette(), { accents: PARTY_ACCENTS, speed: 0.3 }));
     box.innerHTML = String(html`<div style="max-width:520px">
       <img src="/assets/onboarding.png" alt="" class="onboarding-art">
       <h1 style="margin-bottom:12px">Bienvenue sur Boombox</h1>
