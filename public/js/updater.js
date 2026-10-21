@@ -34,6 +34,9 @@ export async function webUpdateBoot() {
   if (ls.get(K.pending) && tries >= 2 && ls.get(K.prev) != null) {
     // La nouvelle version n'a jamais confirmé son démarrage : on remet l'ancienne
     const prev = ls.get(K.prev);
+    // Signalé dans les rapports d'erreurs (Firestore « errors ») pour savoir quelle version plante au démarrage
+    const bad = ls.get(K.pending);
+    setTimeout(() => import('./errors.js').then((m) => m.reportError(`Mise à jour ${bad} annulée : elle ne démarrait pas (retour à la précédente)`, 'updater')).catch(() => {}), 8000);
     ls.del(K.pending);
     ls.del(K.tries);
     await wv.setServerBasePath({ path: prev });
@@ -95,6 +98,7 @@ export async function checkWebUpdate({ onReady } = {}) {
     // Raison gardée et affichée dans Paramètres → Version (pour comprendre une mise à jour qui n'arrive pas)
     ls.set('boombox.web.lastError', `${new Date().toLocaleString('fr-FR')} : ${String(e?.message || e).slice(0, 140)}`);
     console.warn('Mise à jour de l’interface :', e?.message || e);
+    import('./errors.js').then((m) => m.reportError(`Mise à jour impossible : ${String(e?.message || e).slice(0, 140)}`, 'updater')).catch(() => {});
   } finally {
     running = false;
   }

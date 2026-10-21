@@ -93,7 +93,7 @@ export const sync = {
     if (!this.connected || !player.track) return;
     const snap = player.snapshot();
     // N'écrit que si quelque chose a réellement changé (limite les écritures Firestore)
-    const sig = [snap.track.id, snap.paused, snap.shuffle, snap.repeat, snap.volume, snap.muted, snap.context?.id, snap.upcoming.map((t) => t.id).join()].join('|');
+    const sig = [snap.track.id, snap.paused, snap.shuffle, snap.repeat, snap.volume, snap.muted, snap.context?.id, (snap.upcoming || []).map((t) => t?.id).join()].join('|');
     const last = this._last;
     const expected = last ? (last.paused ? last.position : last.position + (Date.now() - last.ts) / 1000) : 0;
     if (!force && last && sig === this._lastSig && Math.abs(expected - snap.position) < 3) return;

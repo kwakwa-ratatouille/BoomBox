@@ -665,8 +665,9 @@ export const player = {
   },
 
   upcoming(limit = 80) {
-    const ctx = this.order.slice(this.pos + 1, this.pos + 1 + limit).map((i) => this.list[i]);
-    return [...this.userQueue, ...ctx].slice(0, limit);
+    // Un son retiré ou masqué de la liste laisse une case vide dans l'ordre de lecture : on l'ignore
+    const ctx = this.order.slice(this.pos + 1, this.pos + 1 + limit).map((i) => this.list[i]).filter(Boolean);
+    return [...this.userQueue.filter(Boolean), ...ctx].slice(0, limit);
   },
 
   _load(track, { autoplay = true, start = 0, crossfade = 0, mix = null } = {}) {

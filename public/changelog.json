@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Corrections",
+    "items": [
+      "Le bouton File d’attente ouvre bien la file (il pouvait rester bloqué sur les Appareils quand un son avait été retiré de la liste).",
+      "Correction d’une erreur de synchronisation entre appareils.",
+      "Les mises à jour qui échouent sur téléphone sont maintenant signalées, pour pouvoir les corriger."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1539",
     "title": "Nouveautés sur téléphone",
     "items": [
