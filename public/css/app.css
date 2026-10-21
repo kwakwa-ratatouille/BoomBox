@@ -2021,3 +2021,23 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .party-head.has-pxbg { padding: 16px; border-radius: 12px; }
 .stats-hero.has-pxbg { padding: 20px; border-radius: 12px; margin-bottom: 16px; }
 #profile-picker.has-pxbg > div:not(.pxbg) { background: rgba(19, 16, 25, 0.85); padding: 28px; border-radius: 16px; }
+
+/* ===== Démarrage et chargements, DA pixel : ondes de son pixel, confettis, tour sur elle-même ===== */
+.sp-wave, .sp-conf { display: none; }
+.da-pixel .sp-ring { display: none; }
+.da-pixel .sp-wave { display: block; position: absolute; left: 50%; top: 50%; width: 190%; transform: translate(-50%, -50%); opacity: 0; image-rendering: pixelated; animation: pxWave1 0.9s steps(1) infinite; pointer-events: none; }
+.da-pixel .sp-wave:nth-of-type(2) { animation-name: pxWave2; }
+.da-pixel .sp-wave:nth-of-type(3) { animation-name: pxWave3; }
+@keyframes pxWave1 { 0%, 20% { opacity: 0; } 25%, 100% { opacity: 1; } }
+@keyframes pxWave2 { 0%, 40% { opacity: 0; } 45%, 100% { opacity: 1; } }
+@keyframes pxWave3 { 0%, 60% { opacity: 0; } 65%, 90% { opacity: 1; } 95%, 100% { opacity: 0; } }
+.da-pixel .sp-conf { display: block; position: absolute; width: 8px; height: 8px; animation: spConf 1.6s steps(2) infinite; }
+@keyframes spConf { 0%, 100% { opacity: 1; transform: translateY(0); } 50% { opacity: 0.2; transform: translateY(-6px); } }
+/* La boombox fait un tour complet de temps en temps, en 8 crans */
+.da-pixel .sp-box { animation: spBounce 0.9s cubic-bezier(0.3, 0, 0.3, 1) infinite, spSpin 3.6s steps(1) infinite; filter: none; }
+@keyframes spSpin { 0%, 74% { rotate: 0deg; } 76% { rotate: 45deg; } 78% { rotate: 90deg; } 80% { rotate: 135deg; } 82% { rotate: 180deg; } 84% { rotate: 225deg; } 86% { rotate: 270deg; } 88% { rotate: 315deg; } 90%, 100% { rotate: 360deg; } }
+.da-pixel #splash { background: #131019 repeating-conic-gradient(#1b1626 0 25%, #131019 0 50%) 0 0 / 16px 16px; }
+/* Chargement d'une page : mini logo qui rebondit avec ses ondes */
+.da-pixel .loading .spinner { position: relative; width: 56px; height: 56px; border: 0; border-radius: 0; background: url('/assets/logo-symbol.png?v=2') center / contain no-repeat; image-rendering: pixelated; animation: spBounce 0.9s cubic-bezier(0.3, 0, 0.3, 1) infinite, spSpin 3.6s steps(1) infinite; transform-origin: 50% 100%; }
+.da-pixel .loading .spinner::before { content: ''; position: absolute; left: 50%; top: 50%; width: 180px; height: 112px; transform: translate(-50%, -50%); background: url('/assets/pixel/waves.svg') center / contain no-repeat; image-rendering: pixelated; animation: spConf 0.9s steps(2) infinite; }
+@media (prefers-reduced-motion: reduce) { .da-pixel .sp-wave, .da-pixel .sp-conf, .da-pixel .sp-box, .da-pixel .loading .spinner, .da-pixel .loading .spinner::before { animation: none; opacity: 1; } }

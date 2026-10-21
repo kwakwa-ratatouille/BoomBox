@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Logo animé",
+    "items": [
+      "Démarrage : la boombox rebondit avec des ondes de son pixel qui apparaissent en saccades, des confettis qui scintillent, et fait un tour sur elle-même de temps en temps.",
+      "Chargement des pages : mini boombox animée à la place du rond qui tourne (DA Boombox)."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1442",
     "title": "Correction party et fonds animés",
     "items": [
