@@ -161,6 +161,7 @@ function errorBox(e) {
 
 const BANNER_COLORS = { cover: 'Couleur de la pochette', accent: 'Couleur de l’appli', '#b07cf7': 'Mauve', '#2ef28b': 'Vert', '#3ea6ff': 'Bleu', '#ff4d8d': 'Rose', '#ff9f2e': 'Orange', '#ffd34d': 'Or' };
 async function heroBackdrop(hero, p, coverUrl) {
+  return; // désactivé : bannières animées retirées des playlists
   if (!hero || !isPixelDA()) return;
   const a = { style: 'waves', color: 'cover', ...(p?.anim || {}) };
   if (a.style === 'none') return;
@@ -373,7 +374,6 @@ export async function mixPage(el, { id }) {
   const m = lastMixes.find((x) => x.id === id) || (await dailyMixes()).find((x) => x.id === id);
   if (!m) return (el.innerHTML = '<div class="page"><div class="empty"><h2>Mix introuvable</h2><a class="btn white" href="#/">Accueil</a></div></div>');
   const mctx = { type: 'daily', id: m.id, name: m.name };
-  setTimeout(() => isPixelDA() && pixelBackdrop(el.querySelector('.hero'), accentPalette(usableColor(m.color) || accentColor()), { style: 'plasma', speed: 0.4, cell: 10, fps: 8 }));
   el.innerHTML = String(html`<div class="hero" style="--hero:${m.color}">${mixCover(m)}<div class="hero-info"><span class="hero-type">Playlist générée pour toi</span><h1>${m.name}</h1><div class="hero-desc">${m.desc}</div><div class="hero-meta"><span>${plural(m.tracks.length, 'titre')}</span><span class="sep"></span><span>Renouvelé chaque jour</span></div></div></div>
     <div class="page-body" style="--hero:${m.color}"><div class="actions"><button class="big-play" data-playall>${playAllIcon(mctx)}</button>${shuffleBtn()}<button class="outline-btn" id="mx-save">Enregistrer dans ma bibliothèque</button></div>${trackList(m.tracks, { context: mctx })}</div>`);
   wireListActions(el, () => m.tracks, mctx);
@@ -592,13 +592,12 @@ export async function liked(el) {
       render();
     });
     // Bannière unique des Titres likés : cœurs pixel qui montent, dans le violet de la pochette
-    if (setting('likedAnim', true)) pixelBackdrop(el.querySelector('.liked-hero'), ['#2a1850', '#4b2a8f', '#6c3fd1', '#9a6cf2'], { style: 'hearts', speed: 0.5, cell: 10, fps: 8 });
+    if (false) pixelBackdrop(el.querySelector('.liked-hero'), ['#2a1850', '#4b2a8f', '#6c3fd1', '#9a6cf2'], { style: 'hearts', speed: 0.5, cell: 10, fps: 8 });
     el.querySelector('#lk-more').onclick = (e) => {
       const r = e.currentTarget.getBoundingClientRect();
       contextMenu(r.left, r.bottom, [
         { label: 'Liker tous les titres de mes playlists', icon: 'heart', action: async () => { const n = await likeAllPlaylistTracks(); toast(n ? ` ajouté${n > 1 ? 's' : ''}` : 'Tout est déjà liké'); } },
         { label: `Ajouter à la file d'attente`, icon: 'addQueue', action: () => ctl.addToQueue(state.library.liked) },
-        isPixelDA() && { label: 'Bannière animée (cœurs)', icon: setting('likedAnim', true) ? 'check' : 'sparkle', action: async () => (await saveSettings({ likedAnim: !setting('likedAnim', true) }), render()) },
         { label: 'Copier dans une playlist…', icon: 'plus', action: () => openPlaylistPicker(state.library.liked, { x: r.left + 150, y: r.bottom + 300 }) },
       ]);
     };
@@ -858,7 +857,6 @@ export function playlistMenu(p, x, y, { full = false } = {}) {
   }
   contextMenu(x, y, [
     { label: 'Modifier', icon: 'edit', action: () => editPlaylist(p) },
-    isPixelDA() && !p.banner && { label: 'Bannière animée', icon: 'sparkle', submenu: () => bannerItems(p) },
     visibility,
     share,
     { label: 'Compléter avec l’IA', icon: 'sparkle', action: () => (location.hash = `#/ai?playlist=${p.id}`) },

@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Retouches",
+    "items": [
+      "Bannières animées retirées des playlists (Titres likés, playlists, Mix du jour).",
+      "Ton récap : boutons bien rangés sur téléphone."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1516",
     "title": "Animations plus légères et réglables",
     "items": [

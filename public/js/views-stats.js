@@ -69,7 +69,7 @@ export async function statsPage(el, params, ctx) {
   };
 
   el.innerHTML = String(html`<div class="page stats-page">
-    <div class="row-flex stats-hero" style="justify-content:space-between"><h1 class="stats-title">Ton récap</h1><div class="row-flex">${s.plays ? html`<button class="btn ghost" id="st-share">${icon('share', 18)} Partager en Story</button>` : ''}<a class="btn wrapped-btn" href="#/wrapped">✨ Récap animé (jour, semaine, mois, année)</a></div></div>
+    <div class="row-flex stats-hero" style="justify-content:space-between"><h1 class="stats-title">Ton récap</h1><div class="row-flex">${s.plays ? html`<button class="btn ghost" id="st-share">${icon('share', 18)} Partager en Story</button>` : ''}<a class="btn wrapped-btn" href="#/wrapped">✨ Récap animé</a></div></div>
     <div class="search-tabs">${PERIODS.map(([d, l]) => html`<a class="chip ${d === days ? 'active' : ''}" href="#/stats?days=${d}">${l}</a>`)}</div>
     ${!s.hasImported ? html`<p class="muted" style="margin-top:-8px">Astuce : importe ton historique Spotify (Importer une playlist → Données Spotify) pour inclure tes écoutes passées.</p>` : ''}
     ${!s.plays ? html`<div class="empty"><h2>Pas encore d'écoutes sur cette période</h2><p>Lance de la musique, ton récap se remplira tout seul.</p></div>` : html`
