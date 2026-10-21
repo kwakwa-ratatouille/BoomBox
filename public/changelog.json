@@ -1,5 +1,19 @@
 [
   {
+    "version": "next",
+    "title": "Animations plus légères et réglables",
+    "items": [
+      "Bannières animées plus fluides (elles ne tournent plus hors de l’écran et ne font plus ramer le défilement).",
+      "Pochettes en mosaïque ou sombres : la bannière prend la couleur de l’appli au lieu du noir.",
+      "Démarrage : la boombox tourne sur elle-même (axe vertical) et tire de petites ondes l’une après l’autre, d’un côté puis de l’autre.",
+      "Bannière animée sur l’Assistant IA et les Mix du jour.",
+      "Titres likés : ⋯ → Bannière animée (cœurs) pour la couper.",
+      "Paramètres → Animations : coupe toutes les animations de l’appli.",
+      "Party : bouton « Fond » pour choisir l’animation et la couleur du fond (aussi sur l’écran géant)."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1506",
     "title": "Petites retouches",
     "items": [

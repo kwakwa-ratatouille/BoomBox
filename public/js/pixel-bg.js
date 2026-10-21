@@ -15,6 +15,15 @@ const rgb = (hex) => {
 const hex = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
 const mix = (a, b, k) => hex(rgb(a).map((v, i) => v + (rgb(b)[i] - v) * k));
 
+// Animations coupées dans les Paramètres (pour cet appareil) : les fonds restent, mais fixes
+export const animationsOff = () => {
+  try { return localStorage.getItem('bb-anim') === 'off'; } catch { return false; }
+};
+// Couleur trop sombre (pochette en mosaïque, pochette noire) : on prend la couleur de l'appli à la place
+export const usableColor = (c) => {
+  const [r, g, b] = rgb(c || '#000');
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.16 ? null : c;
+};
 export const isPixelDA = () => {
   try { return (localStorage.getItem('bb-da') || 'pixel') === 'pixel'; } catch { return true; }
 };
@@ -64,7 +73,8 @@ export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves'
   const cols = palette.map(rgb);
   const acc = accents.map(rgb);
   const top = rgb(mix(palette[palette.length - 1], '#ffffff', 0.55)); // cœurs : couleur la plus claire
-  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const still = animationsOff() || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let visible = true;
   let w = 0, h = 0, img = null, timer = 0, stopped = false;
   const size = () => {
     const r = host.getBoundingClientRect();
@@ -117,14 +127,14 @@ export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves'
     timer = 0;
     if (stopped) return;
     if (!host.isConnected) return stop(); // écran quitté
-    if (!host.getClientRects().length) return (timer = setTimeout(loop, 1000)); // masqué : on attend sans dessiner
-    if (!w || cv.width !== Math.ceil(host.getBoundingClientRect().width / cell)) size();
-    if (document.hidden) return; // repris par visibilitychange
+    if (document.hidden || !visible) return; // repris par visibilitychange ou quand le fond revient à l'écran
     draw((performance.now() - t0) / 1000);
     timer = setTimeout(loop, 1000 / fps);
   };
-  const onVis = () => !document.hidden && !timer && !still && loop();
-  const ro = new ResizeObserver(() => (size(), still && draw(0)));
+  const onVis = () => !document.hidden && visible && !timer && !still && loop();
+  const io = new IntersectionObserver(([e]) => ((visible = e.isIntersecting), onVis()));
+  io.observe(host);
+  const ro = new ResizeObserver(() => (size(), (still || !timer) && draw(still ? 4 : (performance.now() - t0) / 1000)));
   ro.observe(host);
   // Contenu redessiné (innerHTML) : on remet le canvas derrière
   const mo = new MutationObserver(() => !stopped && !cv.isConnected && (host.prepend(cv), host.classList.add('has-pxbg')));
@@ -139,6 +149,7 @@ export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves'
     stopped = true;
     clearTimeout(timer);
     ro.disconnect();
+    io.disconnect();
     mo.disconnect();
     document.removeEventListener('visibilitychange', onVis);
     cv.remove();

@@ -1,6 +1,6 @@
 // Pages annexes : import, Jam, paramètres, récap d'écoute, historique, paroles plein écran.
-import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS, isPixelDA, accentPalette } from './pixel-bg.js';
-import { DA, setDA, ACCENTS, html, raw, icon, plural, toast, fmtAgo, artistLinks, dominantColor, confirmBox, esc, modal } from './ui.js';
+import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS, isPixelDA, accentPalette, animationsOff, BACKDROP_STYLES } from './pixel-bg.js';
+import { DA, setDA, ACCENTS, html, raw, icon, plural, toast, fmtAgo, artistLinks, dominantColor, confirmBox, esc, modal, contextMenu } from './ui.js';
 import { state, api, ls, getShare, createPlaylist, likeMany, addReport, saveSettings, setting, updateProfile, getHistory, getStats, exportLibrary, restoreLibrary } from './state.js';
 import { cloud } from './cloud.js';
 import { player, ctl } from './player.js';
@@ -211,6 +211,25 @@ async function batchImport(box, files, ctx) {
   if (ctx.alive()) toast('Import terminé');
 }
 
+// Fond animé de la party : style et couleur choisis par l'hôte (Paramètres du profil : partyBg)
+const PARTY_COLORS = { accent: 'Couleur de l’appli', '#b07cf7': 'Mauve', '#2ef28b': 'Vert', '#3ea6ff': 'Bleu', '#ff4d8d': 'Rose', '#ff9f2e': 'Orange', '#ffd34d': 'Or' };
+const partyBg = () => ({ style: 'waves', color: 'accent', ...(setting('partyBg', null) || {}) });
+const partyBackdrop = (host, opts = {}) => {
+  const b = partyBg();
+  if (b.style === 'none') return;
+  pixelBackdrop(host, b.color === 'accent' ? accentPalette() : accentPalette(b.color), { style: b.style, accents: PARTY_ACCENTS, ...opts });
+};
+const partyBgMenu = (x, y, redraw) => {
+  const b = partyBg();
+  const set = async (patch) => (await saveSettings({ partyBg: { ...b, ...patch } }), redraw());
+  contextMenu(x, y, [
+    { label: 'Aucune animation', icon: b.style === 'none' ? 'check' : null, action: () => set({ style: 'none' }) },
+    ...Object.entries(BACKDROP_STYLES).map(([k, label]) => ({ label, icon: b.style === k ? 'check' : null, action: () => set({ style: k }) })),
+    { sep: true },
+    { label: 'Couleur', icon: 'palette', submenu: () => Object.entries(PARTY_COLORS).map(([k, label]) => ({ label, icon: b.color === k ? 'check' : null, action: () => set({ color: k }) })) },
+  ]);
+};
+
 // Couleur d'accent affichée comme choisie (l'ancien vert par défaut compte comme le mauve)
 const curAccent = () => {
   const c = setting('accent', ACCENTS.Mauve);
@@ -236,7 +255,7 @@ export async function jam(el, params) {
           <div class="np-card"><h4>${icon('users', 18)} Rejoindre une party</h4><p class="muted">Un ami lance la party sur son appareil : entre son code pour ajouter tes sons depuis ton profil.</p><div class="row-flex"><input class="input" id="jam-code" placeholder="Code (ex : K7P2Q)" maxlength="5" style="max-width:180px;text-transform:uppercase;letter-spacing:.12em"><button class="btn white" id="jam-join">Rejoindre</button></div></div>
         </div>
       </div>`);
-      pixelBackdrop(el.querySelector('.jam-hero'), accentPalette(), { accents: PARTY_ACCENTS });
+      partyBackdrop(el.querySelector('.jam-hero'));
       el.querySelector('#jam-create').onclick = () => sync.jamCreate('soiree');
       el.querySelector('#jam-together').onclick = () => sync.jamCreate('together');
       el.querySelector('#jam-join').onclick = () => sync.jamJoin(el.querySelector('#jam-code').value);
@@ -249,7 +268,7 @@ export async function jam(el, params) {
     const partyWide = ls.get('boombox.partyWide', false);
     const partyUrl = partyWide ? `https://musikal-b72d1.web.app/party.html?code=${room.code}` : `${state.status.lan[0] || location.origin}/party.html?code=${room.code}`;
     el.innerHTML = String(html`<div class="page party-page" style="max-width:900px">
-      <div class="row-flex jam-hero" style="justify-content:space-between;flex-wrap:nowrap"><h1 style="font-size:36px;margin:0">${host ? 'Ta party' : `Party de ${room.hostName}`}</h1><button class="btn ghost" id="jam-leave">${host ? 'Terminer la party' : 'Quitter'}</button></div>
+      <div class="row-flex jam-hero" style="justify-content:space-between;flex-wrap:nowrap"><h1 style="font-size:36px;margin:0">${host ? 'Ta party' : `Party de ${room.hostName}`}</h1><div class="row-flex" style="gap:8px;flex-wrap:nowrap">${isPixelDA() ? html`<button class="btn ghost" id="jam-bg" title="Animation et couleur du fond">${icon('palette', 16)} Fond</button>` : ''}<button class="btn ghost" id="jam-leave">${host ? 'Terminer la party' : 'Quitter'}</button></div></div>
       <div class="np-card party-invite">
         <div class="pi-qr" id="party-qr"></div>
         <div class="pi-info">
@@ -270,8 +289,9 @@ export async function jam(el, params) {
       <p class="muted" style="margin-top:-6px">Depuis la recherche, double-clique sur un son (ou « ⋯ → Ajouter à la party »).</p>
       ${room.queue.length ? html`<div>${room.queue.map((t) => html`<div class="q-item">${cover(t)}<div class="t-text" style="flex:1"><span class="t-title">${t.title}</span><span class="t-artists muted">${artistLinks(t)} · ajouté par ${t.addedBy}</span></div>${host ? html`<button class="q-x icon-btn" data-rm="${t.qid}" style="opacity:1">${icon('close')}</button>` : ''}</div>`)}</div>` : html`<p class="muted">La file est vide.</p>`}
     </div>`);
-    pixelBackdrop(el.querySelector('.jam-hero'), accentPalette(), { accents: PARTY_ACCENTS });
+    partyBackdrop(el.querySelector('.jam-hero'));
     el.querySelector('#jam-leave').onclick = () => sync.jamLeave();
+    el.querySelector('#jam-bg')?.addEventListener('click', (e) => partyBgMenu(e.clientX, e.clientY, render));
     el.querySelectorAll('[data-mode]').forEach((b) => (b.onclick = () => sync.jamSetMode(b.dataset.mode)));
     el.querySelector('#jam-ctrl')?.addEventListener('change', (e) => sync.jamSettings({ everyoneControls: e.target.checked }));
     el.querySelector('#jam-along')?.addEventListener('change', (e) => sync.setListenAlong(e.target.checked));
@@ -371,7 +391,7 @@ function partyScreen(url) {
     if (await confirmBox('Terminer la party ?', 'La file commune sera fermée pour tout le monde.')) close(), sync.jamLeave();
   });
   renderQr(ov.querySelector('#ps-qr'), url, 260);
-  pixelBackdrop(ov, accentPalette(), { accents: PARTY_ACCENTS, cell: 16, fps: 8 }); // visible quand il n'y a pas de clip
+  partyBackdrop(ov, { cell: 16, fps: 8 }); // visible quand il n'y a pas de clip
   const off = onJam(draw);
   const onTrackChange = () => draw();
   bus.addEventListener('player:track', onTrackChange);
@@ -399,6 +419,7 @@ export async function settings(el) {
 
     <div class="settings-row"><div><b>Qualité du son en streaming</b><p>« Auto » : passe en son plus léger si la connexion est faible (au lieu de couper). « Économie » : toujours léger. « Haute » : toujours la meilleure qualité.</p></div>
       <div class="row-flex" style="gap:8px;flex:none">${[['auto', 'Auto'], ['low', 'Économie'], ['high', 'Haute']].map(([k, l]) => html`<button class="chip ${setting('audioQuality', 'auto') === k ? 'active' : ''}" data-aq="${k}">${l}</button>`)}</div></div>
+    <div class="settings-row"><div><b>Animations</b><p>Fonds animés, bannières, logo du démarrage. Coupées : tout reste fixe (plus léger pour un vieil appareil). Réglé pour cet appareil.</p></div><label class="switch"><input type="checkbox" id="s-anim" ${animationsOff() ? '' : 'checked'}><span></span></label></div>
     <div class="settings-row"><div><b>Style de l'interface</b><p>« Boombox » : la nouvelle interface, icônes en pixel art. « DA Spotify » : l'ancienne, plus classique. Réglé pour cet appareil.</p></div>
       <div class="row-flex" style="gap:8px;flex:none"><button class="chip ${DA() === 'pixel' ? 'active' : ''}" data-da="pixel">Boombox</button><button class="chip ${DA() === 'spotify' ? 'active' : ''}" data-da="spotify">DA Spotify</button></div></div>
 
@@ -599,6 +620,11 @@ export async function settings(el) {
     });
     show(val);
   }
+  el.querySelector('#s-anim')?.addEventListener('change', (e) => {
+    try { localStorage.setItem('bb-anim', e.target.checked ? 'on' : 'off'); } catch {}
+    document.documentElement.classList.toggle('no-anim', !e.target.checked);
+    toast(e.target.checked ? 'Animations activées' : 'Animations coupées');
+  });
   el.querySelectorAll('[data-aq]').forEach((b) => (b.onclick = async () => {
     await saveSettings({ audioQuality: b.dataset.aq });
     el.querySelectorAll('[data-aq]').forEach((x) => x.classList.toggle('active', x === b));

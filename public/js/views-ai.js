@@ -1,4 +1,5 @@
 // Assistant IA : crée des playlists sur mesure, complète une playlist existante, recommande des artistes.
+import { pixelBackdrop, accentPalette } from './pixel-bg.js';
 import { html, raw, icon, plural, toast, esc } from './ui.js';
 import { state, api, createPlaylist, addToPlaylist, getHistory, getImported, toggleFollow, isFollowing, likeAllPlaylistTracks, isLiked } from './state.js';
 import { ctl, startAt } from './player.js';
@@ -41,7 +42,7 @@ export async function aiPage(el, params) {
   const render = () => {
     const pl = targetPl();
     el.innerHTML = String(html`<div class="page ai-page">
-      <div class="ai-head"><img class="ai-badge" src="/assets/cover-ai-mix.png" alt=""><div><h1>Assistant IA</h1><p class="muted">Décris ce que tu veux écouter, l'IA s'occupe du reste.</p></div></div>
+      <div class="ai-head ai-hero"><img class="ai-badge" src="/assets/cover-ai-mix.png" alt=""><div><h1>Assistant IA</h1><p class="muted">Décris ce que tu veux écouter, l'IA s'occupe du reste.</p></div></div>
       <div class="row-flex ai-target"><span class="muted">Pour :</span>
         <select class="input" id="ai-target" style="width:auto">
           <option value="new">Une nouvelle playlist</option>
@@ -59,6 +60,7 @@ export async function aiPage(el, params) {
       </form>
     </div>`);
 
+    pixelBackdrop(el.querySelector('.ai-hero'), accentPalette(), { style: 'plasma', speed: 0.4, cell: 10, fps: 8 });
     const text = el.querySelector('#ai-text');
     text.addEventListener('input', () => {
       text.style.height = 'auto';

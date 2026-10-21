@@ -1,5 +1,5 @@
 // Pages principales : accueil, recherche, titres likés, playlists, albums, artistes, nouveautés, bibliothèque.
-import { pixelBackdrop, accentPalette, accentColor, isPixelDA, BACKDROP_STYLES } from './pixel-bg.js';
+import { pixelBackdrop, accentPalette, accentColor, isPixelDA, BACKDROP_STYLES, usableColor } from './pixel-bg.js';
 import { html, raw, esc, icon, fmtTotal, fmtAgo, plural, toast, promptText, confirmBox, contextMenu, dominantColor, artistLinks, debounce, modal } from './ui.js';
 import { state, api, ls, emit, setting, saveSettings, toggleFollow, isFollowing, createPlaylist, addToPlaylist, getHistory, updatePlaylist, deletePlaylist, restorePlaylist, purgePlaylist, TRASH_DAYS, sharePlaylist, movePlaylist, moveRoot, rootEntries, folderOf, followMany, setKnownReleases, setFollowThumbs, likeAllPlaylistTracks, createFolder, renameFolder, deleteFolder, movePlaylistToFolder, removeItems, isLiked, toggleLike } from './state.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
@@ -165,8 +165,8 @@ async function heroBackdrop(hero, p, coverUrl) {
   const a = { style: 'waves', color: 'cover', ...(p?.anim || {}) };
   if (a.style === 'none') return;
   let c = a.color === 'accent' ? accentColor() : a.color === 'cover' ? null : a.color;
-  if (!c) c = (coverUrl && (await dominantColor(coverUrl).catch(() => null))) || accentColor();
-  if (hero.isConnected) pixelBackdrop(hero, accentPalette(c), { style: a.style, speed: 0.4, accents: [c] });
+  if (!c) c = usableColor(coverUrl && (await dominantColor(coverUrl).catch(() => null))) || accentColor();
+  if (hero.isConnected) pixelBackdrop(hero, accentPalette(c), { style: a.style, speed: 0.4, accents: [c], cell: 10, fps: 8 });
 }
 function bannerItems(p) {
   const a = { style: 'waves', color: 'cover', ...(p.anim || {}) };
@@ -373,6 +373,7 @@ export async function mixPage(el, { id }) {
   const m = lastMixes.find((x) => x.id === id) || (await dailyMixes()).find((x) => x.id === id);
   if (!m) return (el.innerHTML = '<div class="page"><div class="empty"><h2>Mix introuvable</h2><a class="btn white" href="#/">Accueil</a></div></div>');
   const mctx = { type: 'daily', id: m.id, name: m.name };
+  setTimeout(() => isPixelDA() && pixelBackdrop(el.querySelector('.hero'), accentPalette(usableColor(m.color) || accentColor()), { style: 'plasma', speed: 0.4, cell: 10, fps: 8 }));
   el.innerHTML = String(html`<div class="hero" style="--hero:${m.color}">${mixCover(m)}<div class="hero-info"><span class="hero-type">Playlist générée pour toi</span><h1>${m.name}</h1><div class="hero-desc">${m.desc}</div><div class="hero-meta"><span>${plural(m.tracks.length, 'titre')}</span><span class="sep"></span><span>Renouvelé chaque jour</span></div></div></div>
     <div class="page-body" style="--hero:${m.color}"><div class="actions"><button class="big-play" data-playall>${playAllIcon(mctx)}</button>${shuffleBtn()}<button class="outline-btn" id="mx-save">Enregistrer dans ma bibliothèque</button></div>${trackList(m.tracks, { context: mctx })}</div>`);
   wireListActions(el, () => m.tracks, mctx);
@@ -591,12 +592,13 @@ export async function liked(el) {
       render();
     });
     // Bannière unique des Titres likés : cœurs pixel qui montent, dans le violet de la pochette
-    pixelBackdrop(el.querySelector('.liked-hero'), ['#2a1850', '#4b2a8f', '#6c3fd1', '#9a6cf2'], { style: 'hearts', speed: 0.5 });
+    if (setting('likedAnim', true)) pixelBackdrop(el.querySelector('.liked-hero'), ['#2a1850', '#4b2a8f', '#6c3fd1', '#9a6cf2'], { style: 'hearts', speed: 0.5, cell: 10, fps: 8 });
     el.querySelector('#lk-more').onclick = (e) => {
       const r = e.currentTarget.getBoundingClientRect();
       contextMenu(r.left, r.bottom, [
         { label: 'Liker tous les titres de mes playlists', icon: 'heart', action: async () => { const n = await likeAllPlaylistTracks(); toast(n ? ` ajouté${n > 1 ? 's' : ''}` : 'Tout est déjà liké'); } },
         { label: `Ajouter à la file d'attente`, icon: 'addQueue', action: () => ctl.addToQueue(state.library.liked) },
+        isPixelDA() && { label: 'Bannière animée (cœurs)', icon: setting('likedAnim', true) ? 'check' : 'sparkle', action: async () => (await saveSettings({ likedAnim: !setting('likedAnim', true) }), render()) },
         { label: 'Copier dans une playlist…', icon: 'plus', action: () => openPlaylistPicker(state.library.liked, { x: r.left + 150, y: r.bottom + 300 }) },
       ]);
     };
