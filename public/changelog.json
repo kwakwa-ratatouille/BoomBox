@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Petites retouches",
+    "items": [
+      "Le petit égaliseur du son en cours reste visible quand on passe la souris dessus.",
+      "Playlists mixées : les pastilles de transition se détachent mieux du survol des sons."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1504",
     "title": "Bannières animées, stickers et party",
     "items": [

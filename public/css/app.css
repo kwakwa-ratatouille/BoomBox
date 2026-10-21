@@ -2047,3 +2047,11 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 @media (min-width: 601px) { .da-pixel .sp-arc { width: 56px; height: 112px; margin: -56px 0 0 48px; transform-origin: -48px 50%; } }
 .hero.has-pxbg::after { background: linear-gradient(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.55)); }
 .stk-px img, img[src^="data:image/png"].px-sticker { image-rendering: pixelated; }
+/* Son en cours : l'égaliseur reste visible au survol (à la place du bouton lecture) */
+.track.playing:hover .t-num .eq { display: flex; }
+.track.playing:hover .t-num .ic.play-i, .track.playing:hover .t-num .ic { display: none; }
+/* Pastilles de transition : fond plein et contour, elles ne se fondent plus dans le survol d'un son */
+.mix-sep button { background: color-mix(in srgb, var(--accent) 18%, var(--panel)); border: 1px solid rgba(var(--accent-rgb), 0.45); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
+.mix-sep button:hover { background: color-mix(in srgb, var(--accent) 30%, var(--panel)); }
+.mix-sep.off button { background: var(--elev-2); border-color: rgba(255, 255, 255, 0.15); }
+.mix-sep.set button { border-color: var(--accent); }
