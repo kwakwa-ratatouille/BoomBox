@@ -1464,6 +1464,7 @@ function notifyReleases(list = []) {
 
 // ======================= DÉMARRAGE =======================
 async function boot() {
+  import('./errors.js').then((m) => m.setupErrorReports()).catch(() => {}); // rapports de bugs automatiques
   // Appli mobile : mise à jour de l'interface déjà téléchargée → on l'applique avant tout (rechargement instantané)
   if (isNative) {
     await webUpdateBoot();

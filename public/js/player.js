@@ -1002,6 +1002,7 @@ export const player = {
       return;
     }
     toast(`« ${t.title} » ne peut pas être lu (${code}). Titre suivant…`);
+    import('./errors.js').then((m) => m.reportError(`Lecture impossible : ${code}`, `player:${this.engine?.name || '?'}`, `${t.id} · ${t.title}`)).catch(() => {});
     setTimeout(() => this.next(), 800);
   },
 

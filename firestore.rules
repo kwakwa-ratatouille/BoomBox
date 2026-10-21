@@ -108,6 +108,18 @@ service cloud.firestore {
       }
     }
 
+    // Rapports de bugs automatiques : une fiche par erreur distincte (compteur), sans données personnelles.
+    // Écriture seulement des champs prévus, de taille limitée ; personne ne peut en supprimer.
+    match /errors/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly(['message', 'where', 'stack', 'count', 'first', 'last', 'version', 'platform', 'devices'])
+        && request.resource.data.message is string && request.resource.data.message.size() <= 500
+        && (!('stack' in request.resource.data) || (request.resource.data.stack is string && request.resource.data.stack.size() <= 2000))
+        && (!('devices' in request.resource.data) || request.resource.data.devices.size() <= 50);
+      allow delete: if false;
+    }
+
     // Jams : ouvertes à tout utilisateur connecté qui connaît le code (pour inviter des amis).
     match /jams/{code} {
       allow read, write: if signedIn();

@@ -397,7 +397,7 @@ export async function search(el, params, ctx) {
   if (/https?:\/\/\S*(youtu\.?be|spotify\.com\/(intl-\w+\/)?track|deezer\.com|deezer\.page|spotify\.link|soundcloud\.com)/i.test(q)) return linkResult(el, q, ctx);
   ls.set('boombox.recentSearches', [q, ...recents.filter((r) => r.toLowerCase() !== q.toLowerCase())].slice(0, 10));
 
-  const tabs = [['all', 'Tout'], ['song', 'Titres'], ['artist', 'Artistes'], ['album', 'Albums'], ['playlist', 'Playlists'], ['video', 'Vidéos'], ['people', 'Profils Spotify'], ['lyrics', 'Paroles']];
+  const tabs = [['all', 'Tout'], ['song', 'Titres'], ['artist', 'Artistes'], ['album', 'Albums'], ['playlist', 'Playlists'], ['video', 'Vidéos'], ['soundcloud', 'SoundCloud'], ['people', 'Profils Spotify'], ['lyrics', 'Paroles']];
   el.innerHTML = String(html`<div class="page">
     <div class="search-tabs">${tabs.map(([k, l]) => html`<a class="chip ${k === type ? 'active' : ''}" href="#/search?q=${encodeURIComponent(q)}&type=${k}">${l}</a>`)}</div>
     <div id="results">${loading}</div>
@@ -405,6 +405,16 @@ export async function search(el, params, ctx) {
   // Recherche par paroles : « je me souviens juste d'une phrase »
   const lyricsHits = (list) => html`<section class="section lyr-hits"><div class="section-head"><h2>Trouvé dans les paroles</h2></div>${list.map((h, i) => html`<div class="lyr-hit" data-lh="${i}">${cover(h.track, '', 96)}<div class="t-text"><span class="t-title">${h.track.title}</span><span class="t-artists muted">${(h.track.artists || []).map((a) => a.name).join(', ')}</span><q>${h.line}</q></div><button class="play-btn" aria-label="Écouter">${icon('play')}</button></div>`)}</section>`;
   const wireHits = (box, list) => box.querySelectorAll('[data-lh]').forEach((r) => (r.onclick = () => ctl.playList(list.map((h) => h.track), +r.dataset.lh, { type: 'search', name: `Paroles : ${q}` })));
+  // SoundCloud : les sons publiés par les artistes (utile quand YouTube Music bloque un titre)
+  if (type === 'soundcloud') {
+    const box = el.querySelector('#results');
+    box.innerHTML = String(html`<p class="muted">Recherche sur SoundCloud…</p>${loading}`);
+    const list = await api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).catch(() => []);
+    if (!ctx.alive()) return;
+    rememberTracks(list);
+    box.innerHTML = list.length ? String(trackList(list, { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false })) : String(html`<div class="empty"><h2>Rien sur SoundCloud pour « ${q} »</h2><p class="muted">La recherche SoundCloud se fait avec Boombox ouvert sur ton PC.</p></div>`);
+    return;
+  }
   // Profils Spotify (recherche par nom) : voir ses playlists et les ajouter à sa bibliothèque
   if (type === 'people') {
     const box = el.querySelector('#results');
@@ -478,8 +488,15 @@ export async function search(el, params, ctx) {
     ${res.albums.length ? raw(section('Albums', res.albums.map((a) => card(a)), `#/search?q=${encodeURIComponent(q)}&type=album`)) : ''}
     ${res.playlists.length ? raw(section('Playlists', res.playlists.map((a) => card(a)), `#/search?q=${encodeURIComponent(q)}&type=playlist`)) : ''}
     ${res.videos.length ? raw(section('Vidéos', res.videos.map((v) => card({ ...v, type: 'video' })), `#/search?q=${encodeURIComponent(q)}&type=video`)) : ''}
+    <div id="sc-results"></div>
     <div id="sp-users"></div>
   `);
+  api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).then((list) => {
+    const box = el.querySelector('#sc-results');
+    if (!box || !list.length || !ctx.alive()) return;
+    rememberTracks(list);
+    box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(list.slice(0, 5), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false, numbered: false })}</section>`);
+  }).catch(() => {});
   api(`/api/spotify/users?q=${encodeURIComponent(q)}`).then((users) => {
     const box = el.querySelector('#sp-users');
     if (!box || !users.length) return;

@@ -71,3 +71,13 @@ export async function scResolve(url) {
   const thumb = (j.thumbnails || []).slice().sort((a, b) => (b.width || 0) - (a.width || 0))[0]?.url || j.thumbnail || null;
   return { id: scId(j.id), title: j.title, artists: [{ name: j.uploader || 'SoundCloud' }], album: null, duration: Math.round(j.duration || 0), thumb };
 }
+
+// Recherche SoundCloud (onglet « SoundCloud » de la recherche) : sons publics, sans les remix en premier
+export async function scSearch(q, n = 15) {
+  if (!BIN) return [];
+  const out = await ytdlp(BIN, ['--flat-playlist', '--dump-json', '--no-warnings', `scsearch${n}:${String(q).slice(0, 100)}`]).catch(() => '');
+  return out.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l)).map((h) => {
+    const thumb = (h.thumbnails || []).slice().sort((a, b) => (b.width || 0) - (a.width || 0))[0]?.url || null;
+    return { id: scId(h.id), title: h.title, artists: [{ name: h.uploader || 'SoundCloud' }], album: null, duration: Math.round(h.duration || 0), thumb, soundcloud: true };
+  });
+}

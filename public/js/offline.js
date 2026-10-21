@@ -1,6 +1,6 @@
 // Écoute hors ligne (appli mobile uniquement) : playlists téléchargées, likes téléchargés automatiquement
 // (en Wi-Fi par défaut), limite d'espace, et cache intelligent des titres écoutés récemment.
-import { state, on, setting, saveSettings, ls } from './state.js';
+import { state, on, setting, saveSettings, ls, getStatsFull } from './state.js';
 import { isNative, localApi } from './native.js';
 import { toast } from './ui.js';
 
@@ -32,12 +32,22 @@ export const offline = {
   },
 
   limitBytes() {
-    return Number(ls.get('boombox.storageLimitGB', 5)) * 1024 ** 3;
+    return Number(ls.get('boombox.storageLimitGB', 4)) * 1024 ** 3;
   },
 
-  // Titres à garder sur le téléphone selon les réglages
+  // Téléchargement intelligent : les sons les plus écoutés ces 2 derniers mois (recalculés toutes les 6 h)
+  smart: [],
+  async refreshSmart() {
+    if (!setting('offlineSmart', true)) return (this.smart = []);
+    const st = await getStatsFull(60, null, 150).catch(() => null);
+    this.smart = (st?.topTracks || []).map((x) => x.track).filter((t) => t?.id);
+  },
+
+  // Titres à garder sur le téléphone selon les réglages, par ordre de priorité (si la place manque, les derniers
+  // attendent) : les plus écoutés, puis les playlists téléchargées, puis les likes
   wanted() {
     const ids = new Map();
+    if (setting('offlineSmart', true)) this.smart.forEach((t) => ids.set(t.id, t));
     const offPl = setting('offlinePlaylists', []);
     for (const p of state.library.playlists) if (offPl.includes(p.id)) p.tracks.forEach((t) => ids.set(t.id, t));
     // Likes téléchargés automatiquement (par défaut) : écoute possible PC éteint, dans la limite d'espace
@@ -48,6 +58,11 @@ export const offline = {
   // Télécharge ce qui manque (en Wi-Fi seulement si l'option est active), dans la limite d'espace
   sync() {
     if (!this.ready || !this.media.net.connected) return;
+    // Liste « les plus écoutés » mise à jour au plus toutes les 6 h
+    if (Date.now() - (this._smartAt || 0) > 6 * 3600e3) {
+      this._smartAt = Date.now();
+      this.refreshSmart().then(() => this.sync()).catch(() => {});
+    }
     if (setting('offlineWifiOnly', true) && !this.media.net.wifi) return;
     const want = this.wanted();
     for (const id of Object.keys(this.media.audioIndex)) if (!want.has(id) && this.media.audioIndex[id].keep) this.media.unkeep(id);

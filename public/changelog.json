@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "SoundCloud et hors ligne",
+    "items": [
+      "Recherche : onglet SoundCloud, et une section « Sur SoundCloud » dans les résultats (ex. PNL – Hasta la vista).",
+      "Téléchargement intelligent : tes sons les plus écoutés restent sur le téléphone en priorité (limite par défaut : 4 Go).",
+      "Rapports de bugs automatiques (sans données personnelles) pour corriger plus vite."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1031",
     "title": "Bluetooth",
     "items": [

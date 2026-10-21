@@ -422,10 +422,11 @@ export async function settings(el) {
     <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Appareils liés</b><p>Tous les appareils qui partagent ta bibliothèque. Retire un appareil perdu ou vendu : il n'aura plus accès à rien.</p><div id="s-members" class="members"><p class="muted">Chargement…</p></div></div></div>
 
     ${isNative && offline.ready ? html`<h2 style="font-size:20px;margin-top:32px">Hors ligne</h2>
-    <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Espace utilisé sur le téléphone</b><p>${(offline.media.storageUsed() / 1024 ** 3).toFixed(2).replace('.', ',')} Go sur ${ls.get('boombox.storageLimitGB', 5)} Go · ${plural(offline.downloaded.size, 'titre')}</p>
+    <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Espace utilisé sur le téléphone</b><p>${(offline.media.storageUsed() / 1024 ** 3).toFixed(2).replace('.', ',')} Go sur ${ls.get('boombox.storageLimitGB', 4)} Go · ${plural(offline.downloaded.size, 'titre')}</p>
       <div class="storage-bar"><div style="width:${Math.min(100, (offline.media.storageUsed() / offline.limitBytes()) * 100)}%"></div></div></div></div>
-    <div class="settings-row"><div style="flex:1"><b>Limite d'espace : <span id="s-lim-v">${ls.get('boombox.storageLimitGB', 5)}</span> Go</b><p>Au-delà, les titres écoutés il y a le plus longtemps (et non téléchargés volontairement) sont supprimés.</p><input type="range" class="range" id="s-lim" min="1" max="64" step="1" value="${ls.get('boombox.storageLimitGB', 5)}"></div></div>
+    <div class="settings-row"><div style="flex:1"><b>Limite d'espace : <span id="s-lim-v">${ls.get('boombox.storageLimitGB', 4)}</span> Go</b><p>Au-delà, les titres écoutés il y a le plus longtemps (et non téléchargés volontairement) sont supprimés.</p><input type="range" class="range" id="s-lim" min="1" max="64" step="1" value="${ls.get('boombox.storageLimitGB', 4)}"></div></div>
     <div class="settings-row"><div><b>Télécharger seulement en Wi-Fi</b><p>Pour ne pas consommer ton forfait.</p></div><label class="switch"><input type="checkbox" id="s-wifi" ${setting('offlineWifiOnly', true) ? 'checked' : ''}><span></span></label></div>
+    <div class="settings-row"><div><b>Téléchargement intelligent</b><p>Tes sons les plus écoutés ces 2 derniers mois sont gardés sur le téléphone, en priorité, pour ne jamais tomber sur « indisponible hors connexion ».</p></div><label class="switch"><input type="checkbox" id="s-offsmart" ${setting('offlineSmart', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Télécharger mes titres likés</b><p>Tous tes likes disponibles hors ligne, y compris les prochains.</p></div><label class="switch"><input type="checkbox" id="s-offliked" ${setting('offlineLiked', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Supprimer tous les téléchargements</b><p>Libère l'espace (les playlists restent marquées et se re-téléchargeront en Wi-Fi).</p></div><button class="btn ghost" id="s-dlclear">Tout supprimer</button></div>` : ''}
 
@@ -482,6 +483,7 @@ export async function settings(el) {
     offline.sync();
   });
   el.querySelector('#s-wifi')?.addEventListener('change', async (e) => (await saveSettings({ offlineWifiOnly: e.target.checked }), offline.sync()));
+  el.querySelector('#s-offsmart')?.addEventListener('change', async (e) => (await saveSettings({ offlineSmart: e.target.checked }), (offline._smartAt = 0), offline.sync()));
   el.querySelector('#s-offliked')?.addEventListener('change', async (e) => (await saveSettings({ offlineLiked: e.target.checked }), offline.sync()));
   el.querySelector('#s-dlclear')?.addEventListener('click', async () => {
     if (!(await confirmBox('Supprimer les téléchargements ?', 'Les fichiers audio seront effacés du téléphone.'))) return;

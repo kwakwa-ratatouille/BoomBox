@@ -72,6 +72,7 @@ app.post('/api/discord/presence', wrap(async (req, res) => {
   if (!relay.isLocal(req)) return res.status(403).json({ error: 'Depuis ce PC uniquement' });
   res.json(await setPresence(req.body?.title ? req.body : null));
 }));
+app.get('/api/soundcloud/search', wrap(async (req, res) => res.json(await (await import('./soundcloud.js')).scSearch(String(req.query.q || '')))));
 app.get('/api/spotify/users', wrap(async (req, res) => res.json(await searchSpotifyUsers(String(req.query.q || '')))));
 app.get('/api/spotify/user/:id', wrap(async (req, res) => res.json(await spotifyUserProfile(req.params.id))));
 app.get('/api/new-releases', wrap(async (req, res) => res.json(await yt.newReleases())));
