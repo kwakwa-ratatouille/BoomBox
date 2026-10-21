@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Playlists plus fluides",
+    "items": [
+      "Longues playlists bien plus fluides : les sons s’affichent au fil du défilement au lieu de tous d’un coup.",
+      "Glisser un son (file d’attente / playlist) : le fond coloré suit bien la ligne, la ligne freine au-delà du seuil et revient avec un petit rebond quand c’est validé."
+    ],
+    "date": "2026-10-21"
+  },
+  {
     "version": "2026.1021.1600",
     "title": "Logo animé revu",
     "items": [

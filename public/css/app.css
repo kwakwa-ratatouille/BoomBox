@@ -1360,10 +1360,6 @@ img.ai-badge { object-fit: cover; padding: 0; }
 /* ===== Téléphone : gestes et panneaux façon Spotify ===== */
 /* Glisser un titre : vers la droite = file d'attente (vert), vers la gauche = playlists (mauve) */
 .track.swiping { position: relative; z-index: 2; background: var(--panel); }
-.track.swiping::before { content: ''; position: absolute; top: 0; bottom: 0; width: 150px; display: flex; align-items: center; font-weight: 800; font-size: 13px; }
-.track[data-swipe^="queue"]::before { content: "＋ File d'attente"; right: 100%; justify-content: flex-start; padding-left: 14px; background: #1db954; color: #000; }
-.track[data-swipe^="add"]::before { content: 'Playlists ＋'; left: 100%; justify-content: flex-end; padding-right: 14px; background: var(--accent); color: #12002a; }
-.track[data-swipe$="-hint"]::before { opacity: 0.55; }
 /* Menus en bas de l'écran */
 .ctx-backdrop { position: fixed; inset: 0; z-index: 199; background: rgba(0, 0, 0, 0.55); animation: fadeIn 0.18s; }
 .ctx.sheet { position: fixed; left: 0; right: 0; bottom: 0; top: auto; max-width: none; min-width: 0; max-height: 75vh; border-radius: 16px 16px 0 0; padding: 10px 8px calc(14px + env(safe-area-inset-bottom)); animation: sheetUp 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -1902,7 +1898,7 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .party-page .np-card > .cover { width: 72px; height: 72px; flex: none; }
 
 /* Glisser un titre (téléphone) : fond coloré avec l'action, qui grossit quand elle est « armée » */
-.swipe-bg { position: fixed; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border-radius: 6px; pointer-events: none; color: #fff; font-size: 13px; transition: background 0.15s, opacity 0.25s; background: #2a2533; }
+.swipe-bg { position: absolute; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; border-radius: 6px; pointer-events: none; color: #fff; font-size: 13px; transition: background 0.15s, opacity 0.25s; background: #2a2533; }
 .swipe-bg span { display: flex; align-items: center; gap: 8px; opacity: 0.55; transform: scale(0.9); transition: transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1), opacity 0.15s; }
 .swipe-bg[data-dir="right"] .sb-a, .swipe-bg[data-dir="left"] .sb-q { display: none; }
 .swipe-bg[data-dir="left"] { justify-content: flex-end; }
@@ -2103,3 +2099,11 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 /* Les confettis sautent un peu à chaque impact */
 .da-pixel .sp-conf { animation: spConfHop 1.1s 0.92s steps(3) infinite; }
 @keyframes spConfHop { 0% { transform: translateY(0); opacity: 1; } 30% { transform: translateY(-8px); opacity: 1; } 100% { transform: translateY(0); opacity: 0.35; } }
+/* Swipe : la ligne passe au-dessus de son fond ; petit éclair quand le son est ajouté */
+.track.swiping { position: relative; z-index: 2; background: var(--panel); will-change: transform; }
+.track.swiped { animation: swipedFlash 0.6s ease; }
+@keyframes swipedFlash { 0% { background: rgba(var(--accent-rgb), 0.28); } 100% { background: transparent; } }
+/* Longues listes : repère invisible en bas qui déclenche l'affichage de la suite */
+.tl-more { height: 1px; }
+/* Défilement plus léger sur téléphone : lignes isolées du reste de la page */
+@media (max-width: 768px) { .track { contain: layout paint style; } }

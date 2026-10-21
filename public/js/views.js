@@ -93,6 +93,7 @@ function findDuplicates(p) {
 function drawTransitions(list, tr, p) {
   const rows = [...list.querySelectorAll('.track')];
   rows.slice(0, -1).forEach((row, i) => {
+    if (row.nextElementSibling?.classList.contains('mix-sep')) return; // déjà posée
     const a = tr[i];
     const b = tr[i + 1];
     if (!a || !b) return;
@@ -712,6 +713,7 @@ export async function playlist(el, { id }, ctx) {
     if (!p.banner) heroBackdrop(el.querySelector('.hero'), p, p.cover || p.tracks[0]?.thumb);
     wireListActions(el, () => el._shown || p.tracks, pctx);
     if (p.tracks.length) wireTools(el, `pl.${p.id}`, () => p.tracks, (tr, custom) => ((el._shown = tr), trackList(tr, { context: pctx, added: true, playlistId: p.id, reorder: custom, counts: p.playCounts })), (list, tr) => p.mixed && drawTransitions(list, tr, p));
+    el.addEventListener('tracks:more', () => p.mixed && drawTransitions(el.querySelector('#list'), el._shown || p.tracks, p));
     el.querySelector('#pl-name').onclick = () => editPlaylist(p);
     el.querySelector('#pl-cover').onclick = () => editPlaylist(p);
     el.querySelector('#dl-toggle')?.addEventListener('click', async () => (await offline.togglePlaylist(p.id), render()));

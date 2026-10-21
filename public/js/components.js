@@ -56,7 +56,14 @@ export function trackList(tracks, { context, album = true, added = false, playli
   if (banned.size && !mine) tracks = tracks.filter((t) => !banned.has(t.id));
   const listId = registerList(tracks, context, { playlistId, reorder });
   const cls = `${album ? '' : 'no-album'} ${added ? '' : 'no-date'}`;
-  const rows = tracks.map((t, i) => trackRow(t, i, listId, { album, added, playlistId, coverArt, numbered, plays }));
+  const o = { album, added, playlistId, coverArt, numbered, plays };
+  // Longue liste : on n'affiche que le début ; la suite arrive au fil du défilement (bien plus fluide sur téléphone)
+  const first = tracks.length > FIRST_ROWS + 40 ? FIRST_ROWS : tracks.length;
+  const rows = tracks.slice(0, first).map((t, i) => trackRow(t, i, listId, o));
+  if (first < tracks.length) {
+    pendingRows.set(listId, { tracks, o, next: first });
+    watchMoreRows();
+  }
   return html`<div class="tracks ${cls}" data-list-wrap="${listId}">
     <div class="track-head">
       <span class="t-num">#</span><span>Titre</span>
@@ -64,8 +71,38 @@ export function trackList(tracks, { context, album = true, added = false, playli
       ${added ? html`<span class="h-date">Date d’ajout</span>` : ''}
       <span class="r">${icon('clock', 16)}</span>
     </div>
-    ${rows}
+    ${rows}${first < tracks.length ? raw(`<div class="tl-more" data-more="${listId}"></div>`) : ''}
   </div>`;
+}
+
+const FIRST_ROWS = 100;
+const MORE_ROWS = 150;
+const pendingRows = new Map();
+let moreWatched = false;
+// Quand la fin des titres affichés approche (moins de 2 écrans), on ajoute les suivants
+export function appendMoreRows() {
+  for (const el of document.querySelectorAll('.tl-more')) {
+    const p = pendingRows.get(el.dataset.more);
+    if (!p) { el.remove(); continue; }
+    if (el.getBoundingClientRect().top > Math.max(innerHeight, 700) * 3) continue;
+    const to = Math.min(p.tracks.length, p.next + MORE_ROWS);
+    el.insertAdjacentHTML('beforebegin', p.tracks.slice(p.next, to).map((t, i) => String(trackRow(t, p.next + i, el.dataset.more, p.o))).join(''));
+    p.next = to;
+    if (to >= p.tracks.length) (pendingRows.delete(el.dataset.more), el.remove());
+    refreshTrackMarks(true);
+    el.closest('[data-list-wrap]')?.dispatchEvent(new CustomEvent('tracks:more', { bubbles: true }));
+  }
+}
+function watchMoreRows() {
+  if (moreWatched) return;
+  moreWatched = true;
+  let timer = 0;
+  const tick = () => ((timer = 0), appendMoreRows());
+  const soon = () => timer || (timer = setTimeout(tick, 80));
+  document.addEventListener('scroll', soon, { capture: true, passive: true });
+  // Liste courte à l'écran ou page déjà défilée : on vérifie aussi juste après l'affichage
+  new MutationObserver(soon).observe(document.getElementById('view') || document.body, { childList: true, subtree: false });
+  setTimeout(tick, 300);
 }
 
 function trackRow(t, i, listId, o) {
@@ -516,18 +553,21 @@ export function setupDelegation() {
       clearTimeout(sw.long);
     }
     if (sw.locked !== 'h') return;
+    // Résistance au-delà du seuil (comme Spotify) : la ligne suit le doigt puis freine
+    const soft = (v) => (Math.abs(v) <= 70 ? v : Math.sign(v) * (70 + (Math.abs(v) - 70) * 0.35));
     sw.dx = Math.max(-150, Math.min(150, dx));
     sw.row.classList.add('swiping');
-    sw.row.style.transform = `translateX(${sw.dx}px)`;
+    sw.row.style.transform = `translateX(${soft(sw.dx)}px)`;
     sw.row.dataset.swipe = sw.dx > 70 ? 'queue' : sw.dx < -70 ? 'add' : sw.dx > 0 ? 'queue-hint' : 'add-hint';
     // Fond révélé sous le titre (comme Spotify) : icône + action, qui s'allume quand on a glissé assez loin
     if (!sw.bg) {
-      const r = sw.row.getBoundingClientRect();
+      const host = sw.row.parentElement;
+      if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
       sw.bg = document.createElement('div');
       sw.bg.className = 'swipe-bg';
-      sw.bg.style.cssText = `top:${r.top}px;left:${r.left}px;width:${r.width}px;height:${r.height}px`;
+      sw.bg.style.cssText = `top:${sw.row.offsetTop}px;left:${sw.row.offsetLeft}px;width:${sw.row.offsetWidth}px;height:${sw.row.offsetHeight}px`;
       sw.bg.innerHTML = `<span class="sb-q">${icon('addQueue', 22)}<b>File d'attente</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`;
-      document.body.appendChild(sw.bg);
+      sw.row.before(sw.bg);
     }
     sw.bg.dataset.dir = sw.dx > 0 ? 'right' : 'left';
     sw.bg.classList.toggle('armed', Math.abs(sw.dx) > 70);
@@ -542,13 +582,15 @@ export function setupDelegation() {
     if (bg) (bg.classList.add('out'), setTimeout(() => bg.remove(), 260));
     if (locked !== 'h') return;
     suppressClick = Date.now();
-    row.style.transition = 'transform 0.22s ease';
+    // Retour en place : petit rebond si l'action est validée
+    row.style.transition = Math.abs(dx) > 70 ? 'transform 0.38s cubic-bezier(0.3, 1.45, 0.5, 1)' : 'transform 0.22s ease';
     row.style.transform = '';
+    if (Math.abs(dx) > 70) (row.classList.add('swiped'), setTimeout(() => row.classList.remove('swiped'), 600));
     setTimeout(() => {
       row.style.transition = '';
       row.classList.remove('swiping');
       delete row.dataset.swipe;
-    }, 240);
+    }, 400);
     const info = rowInfo(row);
     if (!info) return;
     if (dx > 70) {
