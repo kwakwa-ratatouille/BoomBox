@@ -534,11 +534,32 @@ async function cardImage(c, format = 'story', opts = {}) {
 const VIDEO_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
 export const canRecordVideo = () => !!window.MediaRecorder && !!HTMLCanvasElement.prototype.captureStream && VIDEO_TYPES.some((m) => MediaRecorder.isTypeSupported?.(m));
 // Son d'un titre (fichier du téléphone, ou flux du PC) décodé pour être mis dans la vidéo
-async function musicBuffer(track, ac) {
-  const data = isNative ? await (await localApi()).media.audioBuffer(track.id) : await (await fetch(`/api/stream/${track.id}`)).arrayBuffer();
-  return ac.decodeAudioData(data);
+// onProgress(0..1) pendant le téléchargement ; abandon au bout de 25 s (la vidéo se fait alors sans musique)
+async function musicBuffer(track, ac, onProgress) {
+  const timeout = new Promise((_, ko) => setTimeout(() => ko(new Error('son trop long à préparer')), 25e3));
+  const load = async () => {
+    if (isNative) return (await localApi()).media.audioBuffer(track.id);
+    const r = await fetch(`/api/stream/${track.id}`);
+    const total = Number(r.headers.get('content-length')) || 0;
+    if (!r.body || !total) return r.arrayBuffer();
+    const reader = r.body.getReader();
+    const parts = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      got += value.length;
+      onProgress?.(got / total);
+    }
+    const all = new Uint8Array(got);
+    let o = 0;
+    for (const p of parts) (all.set(p, o), (o += p.length));
+    return all.buffer;
+  };
+  return ac.decodeAudioData(await Promise.race([load(), timeout]));
 }
-export async function cardVideo(c, format = 'story', onTick, { music = null, ac = null } = {}) {
+export async function cardVideo(c, format = 'story', onTick, { music = null, ac = null, onPrep = null, onNoSound = null } = {}) {
   const { shapes, content } = await cardImage(c, format, { layers: true });
   const W = content.width;
   const H = content.height;
@@ -580,14 +601,15 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
   let audio = null;
   if (music && ac) {
     try {
-      const buf = await musicBuffer(music, ac);
+      const buf = await musicBuffer(music, ac, onPrep);
       const dest = ac.createMediaStreamDestination();
       const gain = ac.createGain();
       gain.connect(dest);
       const at = c.musicAt != null ? Math.max(0, c.musicAt - 0.6) : buf.duration * 0.35;
       audio = { buf, dest, gain, offset: Math.max(0, Math.min(at, buf.duration - DUR - 0.5)) };
-    } catch {
+    } catch (e) {
       audio = null; // son indisponible : vidéo sans musique
+      onNoSound?.(e);
     }
   }
   const withAudio = !!audio;
@@ -760,9 +782,14 @@ async function exportSheet(c, format, name) {
       const sound = ov.querySelector('#se-sound')?.checked && c.music;
       const ac = sound ? new (window.AudioContext || window.webkitAudioContext)() : null;
       try {
-        const vid = await cardVideo(c, format, (p) => (b.textContent = `Création… ${Math.round(p * 100)} %`), { music: sound ? c.music : null, ac });
+        const vid = await cardVideo(c, format, (p) => (b.textContent = `Création… ${Math.round(p * 100)} %`), {
+          music: sound ? c.music : null,
+          ac,
+          onPrep: (p) => (b.textContent = `Préparation du son… ${Math.round(p * 100)} %`),
+          onNoSound: () => (hint.textContent = 'Son indisponible pour l’instant : vidéo sans musique'),
+        });
         ac?.close().catch(() => {});
-        hint.textContent = '';
+        if (!/sans musique/.test(hint.textContent)) hint.textContent = '';
         b.textContent = vidLabel;
         await shareFile(vid, name.replace(/\.png$/, vid.type.includes('mp4') ? '.mp4' : '.webm'));
       } catch (err) {

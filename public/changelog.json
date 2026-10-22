@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Préparation du son visible",
+    "items": [
+      "Export vidéo : avancement de la préparation du son en %, et si le son met plus de 25 s à arriver, la vidéo se fait sans musique au lieu de rester bloquée."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1513",
     "title": "Création de vidéo plus claire",
     "items": [
