@@ -58,11 +58,52 @@ const FIELDS = {
 // Cœur pixel 7×6 qui monte (Titres likés)
 const HEART = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
 
+// Peintre du fond : remplit une image basse résolution (w × h cellules) pour l'instant t (en secondes)
+export function fieldPainter(palette, { style = 'waves', accents = [], speed = 0.5, accentRate = 0.004 } = {}) {
+  const field = FIELDS[style] || FIELDS.waves;
+  const cols = palette.map(rgb);
+  const acc = accents.map(rgb);
+  const top = rgb(mix(palette[palette.length - 1], '#ffffff', 0.55)); // cœurs : couleur la plus claire
+  return (img, w, h, t) => {
+    const d = img.data;
+    const put = (x, y, c) => {
+      if (x < 0 || y < 0 || x >= w || y >= h) return;
+      const o = (y * w + x) * 4;
+      d[o] = c[0];
+      d[o + 1] = c[1];
+      d[o + 2] = c[2];
+      d[o + 3] = 255;
+    };
+    const n = cols.length - 1;
+    const tick = Math.floor(t * 0.6); // les cellules d'accent changent de place de temps en temps
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const v = Math.max(0, Math.min(1, field(x, y, t, w, h, speed)));
+        const s = v * n;
+        let k = Math.floor(s);
+        if (s - k > BAYER[(y & 3) * 4 + (x & 3)]) k++;
+        let c = cols[Math.min(n, k)];
+        if (acc.length && v > 0.75 && hash(x, y, tick) < accentRate) c = acc[Math.floor(hash(y, x, tick) * acc.length)];
+        put(x, y, c);
+      }
+    }
+    // Titres likés : des cœurs pixel montent doucement
+    if (style === 'hearts') {
+      const count = Math.max(3, Math.round(w / 14));
+      for (let i = 0; i < count; i++) {
+        const hx = Math.floor(hash(i, 5) * (w - 7));
+        const span = h + 8;
+        const hy = Math.floor(span - ((t * speed * (2 + hash(i, 9) * 2.5) + hash(i, 2) * span) % span)) - 6;
+        HEART.forEach((row, ry) => [...row].forEach((ch, rx) => ch === '#' && put(hx + rx, hy + ry, top)));
+      }
+    }
+  };
+}
+
 // host : élément qui reçoit le fond (le canvas est placé derrière son contenu). Renvoie une fonction d'arrêt.
 export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves', accents = [], speed = 0.5, cell = 8, fps = 10, accentRate = 0.004 } = {}) {
   if (!host || !isPixelDA()) return () => {};
   host.querySelector(':scope > canvas.pxbg')?._stop?.();
-  const field = FIELDS[style] || FIELDS.waves;
   const cv = document.createElement('canvas');
   cv.className = 'pxbg';
   cv.setAttribute('aria-hidden', 'true');
@@ -70,9 +111,6 @@ export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves'
   if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
   host.prepend(cv);
   const g = cv.getContext('2d');
-  const cols = palette.map(rgb);
-  const acc = accents.map(rgb);
-  const top = rgb(mix(palette[palette.length - 1], '#ffffff', 0.55)); // cœurs : couleur la plus claire
   const still = animationsOff() || matchMedia('(prefers-reduced-motion: reduce)').matches;
   let visible = true;
   let w = 0, h = 0, img = null, timer = 0, stopped = false;
@@ -86,40 +124,10 @@ export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves'
       img = g.createImageData(w, h);
     }
   };
-  const put = (d, x, y, c) => {
-    if (x < 0 || y < 0 || x >= w || y >= h) return;
-    const o = (y * w + x) * 4;
-    d[o] = c[0];
-    d[o + 1] = c[1];
-    d[o + 2] = c[2];
-    d[o + 3] = 255;
-  };
+  const paint = fieldPainter(palette, { style, accents, speed, accentRate });
   const draw = (t) => {
     if (!img) return;
-    const d = img.data;
-    const n = cols.length - 1;
-    const tick = Math.floor(t * 0.6); // les cellules d'accent changent de place de temps en temps
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const v = Math.max(0, Math.min(1, field(x, y, t, w, h, speed)));
-        const s = v * n;
-        let k = Math.floor(s);
-        if (s - k > BAYER[(y & 3) * 4 + (x & 3)]) k++;
-        let c = cols[Math.min(n, k)];
-        if (acc.length && v > 0.75 && hash(x, y, tick) < accentRate) c = acc[Math.floor(hash(y, x, tick) * acc.length)];
-        put(d, x, y, c);
-      }
-    }
-    // Titres likés : des cœurs pixel montent doucement
-    if (style === 'hearts') {
-      const count = Math.max(3, Math.round(w / 14));
-      for (let i = 0; i < count; i++) {
-        const hx = Math.floor(hash(i, 5) * (w - 7));
-        const span = h + 8;
-        const hy = Math.floor(span - ((t * speed * (2 + hash(i, 9) * 2.5) + hash(i, 2) * span) % span)) - 6;
-        HEART.forEach((row, ry) => [...row].forEach((ch, rx) => ch === '#' && put(d, hx + rx, hy + ry, top)));
-      }
-    }
+    paint(img, w, h, t);
     g.putImageData(img, 0, 0);
   };
   const t0 = performance.now();

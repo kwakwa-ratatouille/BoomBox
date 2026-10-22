@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Vidéo du récap identique à l’appli",
+    "items": [
+      "La vidéo exportée reprend exactement la carte affichée : même fond pixel animé, mêmes couleurs et formes, le contenu qui apparaît comme dans l’appli."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1120",
     "title": "Vidéo du récap",
     "items": [

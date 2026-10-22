@@ -5,7 +5,7 @@ import { html, icon, plural, toast } from './ui.js';
 import { getStatsFull, createPlaylist, listeningYears } from './state.js';
 import { ctl } from './player.js';
 import { loadImg, shareStory, pixelDeco, shareFile, copyImage } from './story.js';
-import { pixelBackdrop } from './pixel-bg.js';
+import { pixelBackdrop, fieldPainter, isPixelDA } from './pixel-bg.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('fr-FR');
 
@@ -160,6 +160,14 @@ const SHAPES = {
   half: html`<i class="wr-half h1"></i><i class="wr-half h2"></i>`,
 };
 const shapes = (t) => html`<div class="wr-shapes" style="--s:${t.shape};--a:${t.alt}">${SHAPES[t.shapeSet] || SHAPES.blobs}</div>`;
+// Fond animé d'une carte (couleurs de la carte ; or pour les podiums, vert pour « en direct »)
+function cardBackdrop(c) {
+  const th = c.theme;
+  const k = String(c.kind || '');
+  const accents = /list|number|hero/.test(k) ? ['#FFD34D'] : /live|now|friend/i.test(k) ? ['#2EF28B'] : [th.shape, th.alt];
+  return { palette: [th.bg, th.bg2 || th.bg, mix(th.bg2 || th.bg, th.shape)], opts: { accents, speed: 0.6, accentRate: 0.006 } };
+}
+
 // Couleur à mi-chemin entre deux couleurs (« #rrggbb »)
 const mix = (a, b) => '#' + [0, 2, 4].map((o) => Math.round((parseInt(a.slice(1 + o, 3 + o), 16) + parseInt(b.slice(1 + o, 3 + o), 16)) / 2).toString(16).padStart(2, '0')).join('');
 
@@ -264,21 +272,23 @@ async function cardImage(c, format = 'story', opts = {}) {
   const x = cv.getContext('2d');
   const t = c.theme;
   const font = getComputedStyle(document.body).fontFamily || 'sans-serif';
-  const g = x.createLinearGradient(0, 0, W * 0.4, H);
-  g.addColorStop(0, t.bg);
-  g.addColorStop(1, t.bg2 || t.bg);
-  x.fillStyle = g;
-  x.fillRect(0, 0, W, H);
-  drawShapes(x, t, W, H);
-  pixelDeco(x, W, H, String(c.kicker || '').length + (c.num || 0));
-  // Vidéo : on garde le fond seul (sans le texte) pour faire apparaître le contenu par-dessus
-  let bgLayer = null;
+  let shapesLayer = null;
   if (opts.layers) {
-    bgLayer = document.createElement('canvas');
-    bgLayer.width = W;
-    bgLayer.height = H;
-    bgLayer.getContext('2d').drawImage(cv, 0, 0);
-  }  const wrap = (text, maxW, size, weight = 900) => {
+    // Vidéo : le fond est animé à part ; on garde les formes sur leur propre calque, le contenu sur un calque transparent
+    shapesLayer = document.createElement('canvas');
+    shapesLayer.width = W;
+    shapesLayer.height = H;
+    drawShapes(shapesLayer.getContext('2d'), t, W, H);
+  } else {
+    const g = x.createLinearGradient(0, 0, W * 0.4, H);
+    g.addColorStop(0, t.bg);
+    g.addColorStop(1, t.bg2 || t.bg);
+    x.fillStyle = g;
+    x.fillRect(0, 0, W, H);
+    drawShapes(x, t, W, H);
+    pixelDeco(x, W, H, String(c.kicker || '').length + (c.num || 0));
+  }
+  const wrap = (text, maxW, size, weight = 900) => {
     x.font = `${weight} ${size}px ${font}`;
     const out = [];
     for (const para of String(text).split('\n')) {
@@ -412,7 +422,7 @@ async function cardImage(c, format = 'story', opts = {}) {
   x.fillStyle = t.fg;
   x.font = `800 40px ${font}`;
   x.fillText('Boombox', 160, H - 92);
-  if (opts.layers) return { bg: bgLayer, full: cv };
+  if (opts.layers) return { shapes: shapesLayer, content: cv };
   return new Promise((r) => cv.toBlob(r, 'image/png'));
 }
 
@@ -421,13 +431,25 @@ async function cardImage(c, format = 'story', opts = {}) {
 const VIDEO_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
 export const canRecordVideo = () => !!window.MediaRecorder && !!HTMLCanvasElement.prototype.captureStream && VIDEO_TYPES.some((m) => MediaRecorder.isTypeSupported?.(m));
 export async function cardVideo(c, format = 'story', onTick) {
-  const { bg, full } = await cardImage(c, format, { layers: true });
-  const W = full.width;
-  const H = full.height;
+  const { shapes, content } = await cardImage(c, format, { layers: true });
+  const W = content.width;
+  const H = content.height;
   const cv = document.createElement('canvas');
   cv.width = W;
   cv.height = H;
   const x = cv.getContext('2d');
+  // Fond pixel : mêmes réglages et même nombre de cellules en largeur que la carte dans l'appli (≈ 60)
+  const bd = cardBackdrop(c);
+  const paint = fieldPainter(bd.palette, bd.opts);
+  const lw = 60;
+  const cell = W / lw;
+  const lh = Math.ceil(H / cell);
+  const low = document.createElement('canvas');
+  low.width = lw;
+  low.height = lh;
+  const lg = low.getContext('2d');
+  const img = lg.createImageData(lw, lh);
+  const t = c.theme;
   const mime = VIDEO_TYPES.find((m) => MediaRecorder.isTypeSupported?.(m));
   // Chaque image est envoyée à la main à l'enregistreur (indépendant du rafraîchissement de l'écran)
   const stream = cv.captureStream(0);
@@ -437,40 +459,27 @@ export async function cardVideo(c, format = 'story', onTick) {
   const chunks = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise((r) => (rec.onstop = r));
-  let seed = (String(c.kicker || '').length + 7) * 9301;
-  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-  // Ordre d'apparition des blocs : du haut vers le bas, avec du désordre (effet « pixels qui s'allument »)
-  const B = 60;
-  const cols = Math.ceil(W / B);
-  const rows = Math.ceil(H / B);
-  const order = Array.from({ length: cols * rows }, (_, k) => (Math.floor(k / cols) / rows) * 0.65 + rnd() * 0.35);
-  const t = c.theme;
-  const colors = [t.shape, t.alt, t.fg, '#ffffff'].filter(Boolean);
-  // Pixels qui scintillent sur les bords (haut, bas, côtés) : jamais sur le texte
-  const sparks = Array.from({ length: 48 }, () => {
-    const band = rnd();
-    const px = band < 0.5 ? rnd() * W : band < 0.75 ? rnd() * 70 : W - 70 + rnd() * 60;
-    const py = band < 0.25 ? rnd() * H * 0.1 : band < 0.5 ? H * 0.9 + rnd() * H * 0.1 : rnd() * H;
-    return { x: px, y: py, s: (1 + Math.floor(rnd() * 3)) * 12, c: colors[Math.floor(rnd() * colors.length)], ph: rnd() * 6.28, sp: 0.6 + rnd() * 1.2 };
-  });
   const DUR = 10;
-  const REVEAL = 1.1;
   const draw = (tt) => {
-    x.drawImage(bg, 0, 0);
-    const p = Math.min(1, tt / REVEAL);
-    if (p >= 1) x.drawImage(full, 0, 0);
-    else for (let k = 0; k < order.length; k++) if (order[k] < p) {
-      const sx = (k % cols) * B;
-      const sy = Math.floor(k / cols) * B;
-      x.drawImage(full, sx, sy, B, B, sx, sy, B, B);
+    if (isPixelDA()) {
+      paint(img, lw, lh, tt);
+      lg.putImageData(img, 0, 0);
+      x.imageSmoothingEnabled = false;
+      x.drawImage(low, 0, 0, lw * cell, lh * cell);
+    } else {
+      // DA Spotify : fond dégradé de la carte, comme dans l'appli
+      const g = x.createLinearGradient(0, 0, W * 0.4, H);
+      g.addColorStop(0, t.bg);
+      g.addColorStop(1, t.bg2 || t.bg);
+      x.fillStyle = g;
+      x.fillRect(0, 0, W, H);
     }
-    for (const sp of sparks) {
-      const on = Math.sin(tt * 3.2 * sp.sp + sp.ph);
-      if (on < 0.2) continue;
-      x.globalAlpha = on > 0.7 ? 0.9 : 0.45; // deux niveaux : clignotement saccadé, rétro
-      x.fillStyle = sp.c;
-      x.fillRect(Math.round(sp.x), Math.round(sp.y - ((tt * 14 * sp.sp) % 40)), sp.s, sp.s);
-    }
+    x.drawImage(shapes, 0, 0);
+    // Entrée de la carte comme dans l'appli : le contenu monte en fondu
+    const p = Math.min(1, tt / 0.7);
+    const ease = 1 - Math.pow(1 - p, 3);
+    x.globalAlpha = ease;
+    x.drawImage(content, 0, (1 - ease) * 40);
     x.globalAlpha = 1;
   };
   draw(0);
@@ -598,10 +607,8 @@ export async function wrappedPage(el, params, ctx) {
     root.style.setProperty('--page', cards[i].theme.bg);
     // Fond pixel animé propre à la carte : ses couleurs, or pour les podiums, vert pour ce qui est « en direct »
     {
-      const th = cards[i].theme;
-      const k = String(cards[i].kind || '');
-      const accents = /list|number|hero/.test(k) ? ['#FFD34D'] : /live|now|friend/i.test(k) ? ['#2EF28B'] : [th.shape, th.alt];
-      pixelBackdrop(slot.querySelector('.wr-card'), [th.bg, th.bg2 || th.bg, mix(th.bg2 || th.bg, th.shape)], { accents, speed: 0.6, accentRate: 0.006 });
+      const bd = cardBackdrop(cards[i]);
+      pixelBackdrop(slot.querySelector('.wr-card'), bd.palette, bd.opts);
     }
     bars.forEach((b, k) => {
       b.className = k < i ? 'done' : k === i ? 'now' : '';
