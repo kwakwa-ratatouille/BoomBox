@@ -490,6 +490,7 @@ export const player = {
         emit('player:state');
       },
       onPaused: () => {
+        if (this._drunkHold) return; // mode bourré (iPhone) : le lecteur normal est mis en silence exprès
         // Téléphone, appli en arrière-plan : iOS met parfois le son en pause sans interruption (ouverture d'une
         // autre appli). Si ce n'est ni une pause voulue ni une vraie interruption, on relance (2 essais max).
         if (isNative && document.hidden && !this._interruptedAt && this.engine?.name === 'audio' && Date.now() - (this._userPauseAt || 0) > 2000 && (this._autoResumes || 0) < 2) {
