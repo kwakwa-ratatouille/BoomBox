@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Vidéo du récap",
+    "items": [
+      "La vidéo du récap dure maintenant 10 secondes."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1114",
     "title": "Récap en vidéo",
     "items": [

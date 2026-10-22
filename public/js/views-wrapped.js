@@ -453,7 +453,7 @@ export async function cardVideo(c, format = 'story', onTick) {
     const py = band < 0.25 ? rnd() * H * 0.1 : band < 0.5 ? H * 0.9 + rnd() * H * 0.1 : rnd() * H;
     return { x: px, y: py, s: (1 + Math.floor(rnd() * 3)) * 12, c: colors[Math.floor(rnd() * colors.length)], ph: rnd() * 6.28, sp: 0.6 + rnd() * 1.2 };
   });
-  const DUR = 6;
+  const DUR = 10;
   const REVEAL = 1.1;
   const draw = (tt) => {
     x.drawImage(bg, 0, 0);
@@ -501,7 +501,7 @@ async function exportSheet(c, format, name) {
   ov.className = 'story-save story-export';
   ov.innerHTML = `<div class="ss-box"><img src="${url}" alt="Aperçu">
     <div class="se-btns">
-      ${canRecordVideo() ? '<button class="btn primary" data-x="video">Vidéo animée (6 s)</button>' : ''}
+      ${canRecordVideo() ? '<button class="btn primary" data-x="video">Vidéo animée (10 s)</button>' : ''}
       <button class="btn white" data-x="image">${mobile ? 'Partager l’image' : 'Télécharger l’image'}</button>
       ${!mobile && window.ClipboardItem ? '<button class="btn ghost" data-x="copy">Copier l’image</button>' : ''}
       <button class="btn ghost" data-x="close">Fermer</button>
@@ -523,13 +523,13 @@ async function exportSheet(c, format, name) {
       try {
         const vid = await cardVideo(c, format, (p) => (b.textContent = `Création… ${Math.round(p * 100)} %`));
         hint.textContent = '';
-        b.textContent = 'Vidéo animée (6 s)';
+        b.textContent = 'Vidéo animée (10 s)';
         await shareFile(vid, name.replace(/\.png$/, vid.type.includes('mp4') ? '.mp4' : '.webm'));
       } catch (err) {
         hint.textContent = `Vidéo impossible : ${err.message}`;
       } finally {
         b.disabled = false;
-        if (b.textContent.startsWith('Création')) b.textContent = 'Vidéo animée (6 s)';
+        if (b.textContent.startsWith('Création')) b.textContent = 'Vidéo animée (10 s)';
       }
     }
   });
