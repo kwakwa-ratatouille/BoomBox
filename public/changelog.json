@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Mode caché plus doux",
+    "items": [
+      "🍺 Effets moins fréquents, et plus de son qui se coupe en rafale."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1351",
     "title": "Paroles animées en Story",
     "items": [

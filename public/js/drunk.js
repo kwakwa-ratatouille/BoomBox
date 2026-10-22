@@ -1,5 +1,5 @@
 // Mode bourré (caché) : le son n'est jamais constant — vitesse et hauteur qui tanguent, filtres qui balayent,
-// écho qui part en vrille, bégaiements… — et l'appli tangue avec. Effets légers pour ne pas faire ramer :
+// écho qui part en vrille — et l'appli tangue avec. Effets légers pour ne pas faire ramer :
 // transformations CSS (carte graphique) et une couche de couleur, pas de flou sur toute la page.
 // Activation : 5 appuis rapides sur le logo (PC) ou sur la pochette du lecteur plein écran (téléphone).
 import { player } from './player.js';
@@ -34,28 +34,13 @@ function setFx({ lp = 20000, hp = 20, echo = 0 } = {}) {
     n.fb.gain.setTargetAtTime(echo ? 0.62 : 0.45, t, 0.1);
   }
 }
-function stutter() {
-  const ctx = audio()?.graph?.ctx;
-  if (!ctx) return;
-  const t = ctx.currentTime;
-  for (const n of nodes()) {
-    const g = n.gain.gain;
-    const v = g.value || 1;
-    for (let k = 0; k < 10; k++) {
-      g.setValueAtTime(k % 2 ? v : 0.0001, t + k * 0.06);
-    }
-    g.setValueAtTime(v, t + 0.62);
-  }
-}
-
-// Un nouvel effet au hasard toutes les 0,6 à 1,8 s
+// Un nouvel effet au hasard toutes les 1,8 à 4,2 s (pas de bégaiement : ça faisait penser à un bug)
 const EFFECTS = [
-  () => (ev = { kind: 'slow', until: Date.now() + rnd(700, 1600) }),
-  () => (ev = { kind: 'fast', until: Date.now() + rnd(500, 1200) }),
-  () => (setFx({ lp: rnd(300, 900) }), (ev = { kind: 'muffled', until: Date.now() + rnd(900, 2000) })),
-  () => (setFx({ hp: rnd(900, 1800), lp: rnd(2500, 4000) }), (ev = { kind: 'phone', until: Date.now() + rnd(800, 1600) })),
-  () => (setFx({ echo: 0.7 }), (ev = { kind: 'echo', until: Date.now() + rnd(1200, 2400) })),
-  () => (stutter(), (ev = { kind: 'stutter', until: Date.now() + 650 })),
+  () => (ev = { kind: 'slow', until: Date.now() + rnd(1400, 2600) }),
+  () => (ev = { kind: 'fast', until: Date.now() + rnd(1000, 2000) }),
+  () => (setFx({ lp: rnd(300, 900) }), (ev = { kind: 'muffled', until: Date.now() + rnd(1500, 3000) })),
+  () => (setFx({ hp: rnd(900, 1800), lp: rnd(2500, 4000) }), (ev = { kind: 'phone', until: Date.now() + rnd(1400, 2600) })),
+  () => (setFx({ echo: 0.7 }), (ev = { kind: 'echo', until: Date.now() + rnd(1800, 3200) })),
   () => (ev = { kind: 'wave', until: Date.now() + rnd(1500, 2500) }),
   () => (ev = { kind: 'drop', until: Date.now() + 900 }),
 ];
@@ -79,7 +64,7 @@ function frame() {
 function nextEvent() {
   if (!on) return;
   if (!player.paused) EFFECTS[Math.floor(Math.random() * EFFECTS.length)]();
-  events = setTimeout(nextEvent, rnd(600, 1800));
+  events = setTimeout(nextEvent, rnd(1800, 4200));
   // L'appli a le hoquet de temps en temps
   if (Math.random() < 0.25) {
     document.documentElement.classList.add('drunk-hic');
