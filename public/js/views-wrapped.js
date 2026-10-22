@@ -542,10 +542,27 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
   const { shapes, content } = await cardImage(c, format, { layers: true });
   const W = content.width;
   const H = content.height;
+  // Téléphone : vidéo fabriquée en 720 p et 24 images/s (bien plus fluide, sans différence visible en Story)
+  const K = isNative ? 720 / W : 1;
+  const FPS = isNative ? 24 : 30;
+  const OW = Math.round(W * K);
+  const OH = Math.round(H * K);
   const cv = document.createElement('canvas');
-  cv.width = W;
-  cv.height = H;
+  cv.width = OW;
+  cv.height = OH;
   const x = cv.getContext('2d');
+  // Calques fixes mis à la taille de la vidéo une seule fois (au lieu de les redimensionner à chaque image)
+  const scaled = (src) => {
+    const o = document.createElement('canvas');
+    o.width = OW;
+    o.height = OH;
+    o.getContext('2d').drawImage(src, 0, 0, OW, OH);
+    return o;
+  };
+  const shapesS = scaled(shapes);
+  const contentS = scaled(content);
+  const both = scaled(shapes);
+  both.getContext('2d').drawImage(contentS, 0, 0);
   // Fond pixel : mêmes réglages et même nombre de cellules en largeur que la carte dans l'appli (≈ 60)
   const bd = cardBackdrop(c);
   const paint = fieldPainter(bd.palette, bd.opts);
@@ -581,32 +598,40 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
   const track = stream.getVideoTracks()[0];
   const pushFrame = track?.requestFrame ? () => track.requestFrame() : () => {};
   const videoTracks = (track?.requestFrame ? stream : cv.captureStream(30)).getVideoTracks();
-  const rec = new MediaRecorder(new MediaStream([...videoTracks, ...(withAudio ? audio.dest.stream.getAudioTracks() : [])]), { mimeType: mime, videoBitsPerSecond: 8e6 });
+  const rec = new MediaRecorder(new MediaStream([...videoTracks, ...(withAudio ? audio.dest.stream.getAudioTracks() : [])]), { mimeType: mime, videoBitsPerSecond: isNative ? 5e6 : 8e6 });
   const chunks = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise((r) => (rec.onstop = r));
   const draw = (tt) => {
+    x.setTransform(1, 0, 0, 1, 0, 0);
     if (isPixelDA()) {
       paint(img, lw, lh, tt);
       lg.putImageData(img, 0, 0);
       x.imageSmoothingEnabled = false;
-      x.drawImage(low, 0, 0, lw * cell, lh * cell);
+      x.drawImage(low, 0, 0, lw * cell * K, lh * cell * K);
+      x.imageSmoothingEnabled = true;
     } else {
       // DA Spotify : fond dégradé de la carte, comme dans l'appli
-      const g = x.createLinearGradient(0, 0, W * 0.4, H);
+      const g = x.createLinearGradient(0, 0, OW * 0.4, OH);
       g.addColorStop(0, t.bg);
       g.addColorStop(1, t.bg2 || t.bg);
       x.fillStyle = g;
-      x.fillRect(0, 0, W, H);
+      x.fillRect(0, 0, OW, OH);
     }
-    x.drawImage(shapes, 0, 0);
-    if (c.kind === 'lyrics') drawKaraoke(tt);
-    // Entrée de la carte comme dans l'appli : le contenu monte en fondu
+    // Entrée de la carte comme dans l'appli : le contenu monte en fondu ; ensuite un seul calque fixe
     const p = Math.min(1, tt / 0.7);
-    const ease = 1 - Math.pow(1 - p, 3);
-    x.globalAlpha = ease;
-    x.drawImage(content, 0, (1 - ease) * 40);
-    x.globalAlpha = 1;
+    if (p < 1) {
+      x.drawImage(shapesS, 0, 0);
+      const ease = 1 - Math.pow(1 - p, 3);
+      x.globalAlpha = ease;
+      x.drawImage(contentS, 0, (1 - ease) * 40 * K);
+      x.globalAlpha = 1;
+    } else x.drawImage(both, 0, 0);
+    if (c.kind === 'lyrics') {
+      x.setTransform(K, 0, 0, K, 0, 0);
+      drawKaraoke(tt);
+      x.setTransform(1, 0, 0, 1, 0, 0);
+    }
   };
   // ----- Paroles animées (carte « paroles ») -----
   const lyr = c.kind === 'lyrics' ? (c.lyr?.lines?.length ? c.lyr.lines : c.lines.map((tx) => ({ text: tx, chosen: true }))) : [];
@@ -642,7 +667,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
       const chosenIdx = lyr.map((l2, k) => (l2.chosen ? k : -1)).filter((k) => k >= 0);
       cur = chosenIdx[Math.min(chosenIdx.length - 1, Math.floor(tt / (DUR / chosenIdx.length)))] ?? 0;
     }
-    pos += (cur - pos) * 0.16; // défilement doux
+    pos += (cur - pos) * (1 - Math.pow(0.84, 30 / FPS)); // défilement doux (même vitesse quel que soit le nombre d'images)
     const mid = box.top + (box.bottom - box.top) * 0.18; // ligne jouée vers le haut de la zone des paroles
     x.save();
     x.beginPath();
@@ -689,7 +714,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
       draw(tt);
       pushFrame();
       onTick?.(Math.min(1, tt / DUR));
-      if (tt < DUR) setTimeout(step, 33);
+      if (tt < DUR) setTimeout(step, 1000 / FPS);
       else done();
     };
     step();

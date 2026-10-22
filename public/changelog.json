@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Vidéos plus fluides",
+    "items": [
+      "Vidéos du récap et des paroles plus fluides : calques préparés une seule fois, et sur téléphone fabrication en 720p à 24 images/s."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1453",
     "title": "Paroles en Story : jusqu’à 7 lignes",
     "items": [
