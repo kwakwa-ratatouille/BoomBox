@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Création de vidéo plus claire",
+    "items": [
+      "Export vidéo : « Préparation… » s’affiche tout de suite, puis le pourcentage pendant l’enregistrement."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1509",
     "title": "Vidéos plus fluides",
     "items": [

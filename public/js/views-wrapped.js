@@ -752,6 +752,8 @@ async function exportSheet(c, format, name) {
       const b = e.target.closest('button');
       if (b.disabled) return;
       b.disabled = true;
+      // Avant l'enregistrement : image et son à préparer (quelques secondes), puis le pourcentage
+      b.textContent = c.music && ov.querySelector('#se-sound')?.checked ? 'Préparation du son…' : 'Préparation…';
       const hint = ov.querySelector('.se-hint');
       hint.textContent = 'Création de la vidéo… reste sur cette page';
       // Le son est préparé tout de suite (pendant le clic), sinon le navigateur peut le bloquer
@@ -767,7 +769,7 @@ async function exportSheet(c, format, name) {
         hint.textContent = `Vidéo impossible : ${err.message}`;
       } finally {
         b.disabled = false;
-        if (b.textContent.startsWith('Création')) b.textContent = vidLabel;
+        if (/^(Création|Préparation)/.test(b.textContent)) b.textContent = vidLabel;
       }
     }
   });
