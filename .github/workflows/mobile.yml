@@ -7,7 +7,10 @@ name: Appli mobile
 on:
   push:
     branches: [main]
-    paths: ['public/**', 'mobile/**', 'server/**', 'scripts/**', 'resources/**', 'capacitor.config.json', 'package.json', '.github/workflows/mobile.yml']
+    # Seulement quand la partie native change : l'interface (public/, serveur embarqué) arrive déjà toute seule sur
+    # les téléphones par la mise à jour en ligne. Avant, chaque publication créait une version et SideStore
+    # pointait vers des versions déjà supprimées (« Boombox.ipa doesn't exist »).
+    paths: ['mobile/plugins/**', 'mobile/ios-app/**', 'resources/**', 'capacitor.config.json', 'package.json', '.github/workflows/mobile.yml']
   workflow_dispatch:
 
 permissions:
@@ -199,7 +202,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release list --limit 200 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' |
+          gh release list --limit 200 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[10:] | .[].tagName' |
           while read -r tag; do
             echo "Suppression de $tag"
             gh release delete "$tag" --cleanup-tag --yes || true
