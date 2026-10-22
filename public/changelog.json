@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1022.1154",
     "title": "Volume égalisé dès le début",
     "items": [
       "Égalisation du volume appliquée avant même que le son démarre (fini le début à plein volume au lancement de l’appli) ; un son pas encore analysé démarre un peu plus bas puis rejoint son niveau."
