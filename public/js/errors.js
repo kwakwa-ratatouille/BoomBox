@@ -20,7 +20,7 @@ const clean = (s, n) => String(s || '').replace(/https?:\/\/\S+/g, (u) => u.spli
 export async function reportError(message, where = 'js', stack = '') {
   try {
     message = clean(message, 500);
-    if (!message || /ResizeObserver loop|Script error\.?$|AbortError|play\(\) request was interrupted/i.test(message)) return;
+    if (!message || /ResizeObserver loop|Script error\.?$|AbortError|play\(\) request was interrupted|signal is aborted|aborted without reason|Failed to fetch|Load failed|NetworkError|network connection was lost|requête a expiré|request timed out|Internet connection appears to be offline/i.test(message)) return;
     const today = new Date().toISOString().slice(0, 10);
     const day = JSON.parse(localStorage.getItem(DAY_KEY) || '{}');
     if (day.d !== today) Object.assign(day, { d: today, n: 0 });

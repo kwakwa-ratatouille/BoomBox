@@ -419,6 +419,8 @@ export async function settings(el) {
 
     <div class="settings-row"><div><b>Qualité du son en streaming</b><p>« Auto » : passe en son plus léger si la connexion est faible (au lieu de couper). « Économie » : toujours léger. « Haute » : toujours la meilleure qualité.</p></div>
       <div class="row-flex" style="gap:8px;flex:none">${[['auto', 'Auto'], ['low', 'Économie'], ['high', 'Haute']].map(([k, l]) => html`<button class="chip ${setting('audioQuality', 'auto') === k ? 'active' : ''}" data-aq="${k}">${l}</button>`)}</div></div>
+    <div class="settings-row"><div><b>Réveil en musique</b><p>À l'heure choisie, la musique se lance en aléatoire et le volume monte doucement pendant 1 minute. Sur téléphone, une notification sonne aussi (la toucher lance la musique).</p></div>
+      <div class="row-flex" style="gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end"><input type="time" class="input" id="s-al-time" style="width:auto"><select class="input" id="s-al-src" style="width:auto;max-width:180px"></select><label class="switch"><input type="checkbox" id="s-al-on"><span></span></label></div></div>
     <div class="settings-row"><div><b>Animations</b><p>Fonds animés, bannières, logo du démarrage. Coupées : tout reste fixe (plus léger pour un vieil appareil). Réglé pour cet appareil.</p></div><label class="switch"><input type="checkbox" id="s-anim" ${animationsOff() ? '' : 'checked'}><span></span></label></div>
     <div class="settings-row"><div><b>Style de l'interface</b><p>« Boombox » : la nouvelle interface, icônes en pixel art. « DA Spotify » : l'ancienne, plus classique. Réglé pour cet appareil.</p></div>
       <div class="row-flex" style="gap:8px;flex:none"><button class="chip ${DA() === 'pixel' ? 'active' : ''}" data-da="pixel">Boombox</button><button class="chip ${DA() === 'spotify' ? 'active' : ''}" data-da="spotify">DA Spotify</button></div></div>
@@ -620,6 +622,21 @@ export async function settings(el) {
     });
     show(val);
   }
+  // Réveil en musique
+  import('./alarm.js').then(({ alarmConf, saveAlarm }) => {
+    const a = alarmConf();
+    const t = el.querySelector('#s-al-time');
+    const src = el.querySelector('#s-al-src');
+    const on = el.querySelector('#s-al-on');
+    if (!t) return;
+    t.value = a.time;
+    on.checked = a.on;
+    src.innerHTML = [['liked', 'Titres likés'], ...state.library.playlists.map((p) => [p.id, p.name])].map(([v, n]) => `<option value="${v}" ${v === a.source ? 'selected' : ''}>${String(n).replace(/[<>&]/g, '')}</option>`).join('');
+    const save = () => saveAlarm({ time: t.value || '07:30', source: src.value, on: on.checked }).then(() => on.checked && toast(`Réveil réglé à ${t.value}`));
+    t.onchange = save;
+    src.onchange = save;
+    on.onchange = save;
+  });
   el.querySelector('#s-anim')?.addEventListener('change', (e) => {
     try { localStorage.setItem('bb-anim', e.target.checked ? 'on' : 'off'); } catch {}
     document.documentElement.classList.toggle('no-anim', !e.target.checked);

@@ -448,6 +448,20 @@ async function cardImage(c, format = 'story', opts = {}) {
       x.fillText(one(it.sub, W - tx - 80, post ? 34 : 40, 600), tx, yy + im * 0.8);
       x.globalAlpha = 1;
     }
+  } else if (c.kind === 'lyrics') {
+    // Paroles : pochette + titre en haut, puis les lignes choisies en grand
+    const im = post ? 240 : 300;
+    await drawImg(c.img, 80, y + 10, im, false);
+    const tx = 80 + im + 44;
+    x.fillStyle = t.fg;
+    x.font = `900 ${post ? 50 : 60}px ${font}`;
+    x.fillText(one(c.title, W - tx - 80, post ? 50 : 60, 900), tx, y + 10 + im * 0.45);
+    x.globalAlpha = 0.75;
+    x.font = `600 ${post ? 36 : 42}px ${font}`;
+    x.fillText(one(c.artist, W - tx - 80, post ? 36 : 42, 600), tx, y + 10 + im * 0.72);
+    x.globalAlpha = 1;
+    let yy = y + im + (post ? 120 : 190);
+    for (const line of c.lines) yy = text(line, yy, post ? 66 : 84, 900, 3) + (post ? 16 : 26);
   } else if (c.kind === 'persona') {
     x.font = `${post ? 260 : 340}px serif`;
     x.fillText(c.emoji, 70, y + (post ? 270 : 360));
@@ -544,7 +558,8 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
       const dest = ac.createMediaStreamDestination();
       const gain = ac.createGain();
       gain.connect(dest);
-      audio = { buf, dest, gain, offset: Math.max(0, Math.min(buf.duration * 0.35, buf.duration - DUR - 0.5)) };
+      const at = c.musicAt != null ? Math.max(0, c.musicAt - 0.6) : buf.duration * 0.35;
+      audio = { buf, dest, gain, offset: Math.max(0, Math.min(at, buf.duration - DUR - 0.5)) };
     } catch {
       audio = null; // son indisponible : vidéo sans musique
     }
@@ -726,6 +741,20 @@ async function themeSummaryFromCover(c) {
   const th = await coverTheme(c.img).catch(() => null);
   if (th) c.theme = { ...th, shapeSet: c.theme?.shapeSet || 'blobs' };
   return c;
+}
+
+// Story de paroles : couleurs de la pochette, fond animé, et le passage du son qui correspond aux lignes choisies
+export async function shareLyricsStory(track, lines, at = null) {
+  const seed = Math.floor(Date.now() / 1000);
+  const artist = (track.artists || []).map((a) => a.name).join(', ');
+  const c = {
+    kind: 'lyrics', kicker: pickFrom(['🎤 En boucle dans ma tête', '🎧 Ce passage…', '💬 Les mots justes', '🔁 Je l’ai en tête', '🔥 Ce son'], seed),
+    title: track.title, artist, lines, img: track.thumb, music: track, musicAt: at,
+    theme: { bg: '#130a24', bg2: '#2a1650', fg: '#ffffff', shape: '#b07cf7', alt: '#2ef28b', shapeSet: pickFrom(['blobs', 'rings', 'waves'], seed) },
+    style: pickFrom(['waves', 'plasma', 'rings', 'stars'], seed),
+  };
+  await themeSummaryFromCover(c);
+  return exportSheet(c, 'story', `boombox-paroles-${String(track.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30)}.png`);
 }
 
 // Ton récap (stats sur 7 jours, 30 jours, tout…) : même fenêtre d'export que le récap animé (vidéo ou image).

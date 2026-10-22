@@ -137,6 +137,8 @@ export async function streamHandler(req, res) {
   if (!/^[\w-]{11}$/.test(id)) return res.status(400).end();
   // Déjà téléchargé (analyse automix, écoute précédente) : lecture immédiate depuis le disque
   const local = path.join(AUDIO_DIR, `${id}.m4a`);
+  // Nouvel essai après une erreur de lecture : la copie du disque est peut-être abîmée, on la supprime
+  if (req.query.fresh && fs.existsSync(local)) fs.rmSync(local, { force: true });
   if (fs.existsSync(local)) {
     fs.utimes(local, new Date(), new Date(), () => {}); // « récemment utilisé » pour le nettoyage du cache
     return res.sendFile(local, { headers: { 'content-type': 'audio/mp4' } });

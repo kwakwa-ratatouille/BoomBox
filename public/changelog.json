@@ -1,5 +1,19 @@
 [
   {
+    "version": "next",
+    "title": "Paroles en Story, réveil et surprises",
+    "items": [
+      "Partager des paroles : bouton « Partager des paroles » au-dessus des paroles, choisis 1 à 4 lignes, puis image ou vidéo Story avec le passage exact du son.",
+      "Réveil en musique (Paramètres) : ta playlist se lance à l’heure choisie, volume qui monte en douceur ; notification sur téléphone.",
+      "Téléphone : « Télécharger sur le téléphone » dans le menu d’un son (Plus) ; les pochettes des sons téléchargés sont gardées pour s’afficher hors ligne.",
+      "Données mobiles : plafond de 300 Mo par jour pour les téléchargements automatiques.",
+      "iPhone : la musique reprend toute seule après un vocal (nécessite la nouvelle version de l’appli).",
+      "Un son abîmé sur le PC est retéléchargé automatiquement au lieu d’être sauté.",
+      "Il y a peut-être un mode caché… 🍺"
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1314",
     "title": "Fin du plantage après mise à jour",
     "items": [

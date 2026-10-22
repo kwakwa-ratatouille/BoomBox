@@ -1656,6 +1656,8 @@ async function boot() {
   setTimeout(() => localStorage.removeItem("boombox.booting"), 4000); // démarrage réussi
 
   setTimeout(showWhatsNew, 1500);
+  import('./alarm.js').then((m) => m.startAlarm()).catch(() => {}); // réveil en musique
+  import('./drunk.js').then((m) => m.setupDrunkTrigger()).catch(() => {}); // mode caché
   // Appli mobile : l'interface a bien démarré ; on cherche une version plus récente en ligne (sans réinstaller l'appli)
   if (isNative) {
     webUpdateConfirm();

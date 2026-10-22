@@ -4,6 +4,9 @@ import { state, on, setting, saveSettings, ls, getStatsFull } from './state.js';
 import { isNative, localApi } from './native.js';
 import { toast } from './ui.js';
 
+// Petite taille de pochette (comme les listes de sons) : moins de place sur le téléphone
+const sizedThumb = (u) => (/googleusercontent\.com|ggpht\.com/.test(u) ? u.replace(/=w\d+-h\d+/, '=w226-h226').replace(/=s\d+/, '=s226') : /i\.ytimg\.com/.test(u) ? u.replace(/\/(hq|sd|maxres)default\.jpg/, '/mqdefault.jpg') : u);
+
 export const offline = {
   ready: false,
   media: null,
@@ -15,6 +18,7 @@ export const offline = {
     if (!isNative) return;
     this.media = (await localApi()).media;
     this.ready = true;
+    this.loadCovers();
     this.refreshSet();
     document.body.classList.toggle('offline', !this.media.net.connected);
     this.media.net.listeners.add((n) => {
@@ -29,6 +33,47 @@ export const offline = {
   refreshSet() {
     this.downloaded = new Set(Object.keys(this.media.audioIndex));
     window.__bbOffline = this.downloaded;
+    window.__bbOfflineKept = (id) => this.isTrackKept(id);
+  },
+
+  // ---------- Pochettes gardées sur le téléphone (affichées même hors ligne, et plus vite) ----------
+  // Une petite image (≈ 15 Ko) par son téléchargé, dans Data/covers ; index des pochettes en mémoire locale.
+  covers: {},
+  coverKey(url) {
+    let h = 0;
+    for (const ch of String(url)) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
+    return (h >>> 0).toString(36);
+  },
+  async loadCovers() {
+    const fsys = window.Capacitor?.Plugins?.Filesystem;
+    if (!fsys) return;
+    const keys = JSON.parse(localStorage.getItem('boombox.covers') || '[]');
+    const { uri } = await fsys.getUri({ path: 'covers', directory: 'DATA' }).catch(() => ({}));
+    if (!uri) return;
+    for (const k of keys) this.covers[k] = window.Capacitor.convertFileSrc(`${uri}/${k}.jpg`);
+    window.__bbCoverSrc = (u) => (u && this.covers[this.coverKey(u)]) || null;
+  },
+  async saveCover(url) {
+    const fsys = window.Capacitor?.Plugins?.Filesystem;
+    if (!fsys || !url || url.startsWith('data:') || url.startsWith('/')) return;
+    const k = this.coverKey(url);
+    if (this.covers[k]) return;
+    try {
+      const blob = await (await fetch(await this.media.imageBlobUrl(url))).blob();
+      if (blob.size > 400000) return;
+      const b64 = await new Promise((ok, ko) => {
+        const r = new FileReader();
+        r.onload = () => ok(String(r.result).split(',')[1]);
+        r.onerror = ko;
+        r.readAsDataURL(blob);
+      });
+      const { uri } = await fsys.writeFile({ path: `covers/${k}.jpg`, data: b64, directory: 'DATA', recursive: true });
+      this.covers[k] = window.Capacitor.convertFileSrc(uri);
+      const keys = JSON.parse(localStorage.getItem('boombox.covers') || '[]');
+      keys.push(k);
+      localStorage.setItem('boombox.covers', JSON.stringify(keys.slice(-5000)));
+      window.__bbCoverSrc ??= (u) => (u && this.covers[this.coverKey(u)]) || null;
+    } catch {}
   },
 
   limitBytes() {
@@ -52,6 +97,8 @@ export const offline = {
     for (const p of state.library.playlists) if (offPl.includes(p.id)) p.tracks.forEach((t) => ids.set(t.id, t));
     // Likes téléchargés automatiquement (par défaut) : écoute possible PC éteint, dans la limite d'espace
     if (setting('offlineLiked', true)) state.library.liked.forEach((t) => ids.set(t.id, t));
+    // Sons téléchargés un par un (menu du son → Télécharger sur le téléphone)
+    setting('offlineTracks', []).forEach((t) => t?.id && ids.set(t.id, t));
     return ids;
   },
 
@@ -65,9 +112,27 @@ export const offline = {
     }
     if (setting('offlineWifiOnly', true) && !this.media.net.wifi) return;
     const want = this.wanted();
+    this._want = want;
     for (const id of Object.keys(this.media.audioIndex)) if (!want.has(id) && this.media.audioIndex[id].keep) this.media.unkeep(id);
     this.queue = [...want.keys()].filter((id) => !this.media.isDownloaded(id));
     this.pump();
+    this.backfillCovers();
+  },
+
+  // Pochettes des sons déjà téléchargés : récupérées tranquillement en Wi-Fi (une toutes les 0,3 s)
+  async backfillCovers() {
+    if (this._coversRunning || !this.media.net.wifi || !this._want) return;
+    this._coversRunning = true;
+    try {
+      for (const [id, t] of this._want) {
+        if (!this.media.net.wifi) break;
+        if (!t?.thumb || !this.media.isDownloaded(id) || this.covers[this.coverKey(sizedThumb(t.thumb))]) continue;
+        await this.saveCover(sizedThumb(t.thumb));
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    } finally {
+      this._coversRunning = false;
+    }
   },
 
   async pump() {
@@ -83,9 +148,22 @@ export const offline = {
         toast('Limite d’espace atteinte : augmente-la dans les Paramètres pour tout télécharger');
         break;
       }
+      // Données mobiles : plafond de sécurité de 300 Mo par jour pour les téléchargements automatiques (même si
+      // « Wi-Fi seulement » est désactivé, et même en cas de bug qui relancerait les téléchargements en boucle)
+      const cell = !this.media.net.wifi;
+      const today = new Date().toISOString().slice(0, 10);
+      const used = JSON.parse(localStorage.getItem('boombox.cellBytes') || '{}');
+      if (used.d !== today) Object.assign(used, { d: today, n: 0 });
+      if (cell && used.n > 300 * 1024 * 1024) {
+        toast('300 Mo téléchargés sur les données mobiles aujourd’hui : la suite attendra le Wi-Fi');
+        break;
+      }
       const id = this.queue.shift();
       try {
-        await this.media.downloadAudio(id, { keep: true });
+        const got = await this.media.downloadAudio(id, { keep: true });
+        if (cell) localStorage.setItem('boombox.cellBytes', JSON.stringify({ d: today, n: used.n + (got?.size || 5e6) }));
+        const t = this._want?.get(id);
+        if (t?.thumb) this.saveCover(sizedThumb(t.thumb));
         done++;
         fails = 0;
         this.refreshSet();
@@ -100,6 +178,22 @@ export const offline = {
   },
 
   isPlaylistOffline: (id) => setting('offlinePlaylists', []).includes(id),
+  isTrackKept: (id) => setting('offlineTracks', []).some((t) => t?.id === id),
+
+  async toggleTrack(track) {
+    const list = setting('offlineTracks', []);
+    const on = !list.some((t) => t?.id === track.id);
+    const slim = { id: track.id, title: track.title, artists: (track.artists || []).map((a) => ({ name: a.name, id: a.id || null })), thumb: track.thumb || null, duration: track.duration || 0 };
+    await saveSettings({ offlineTracks: on ? [...list, slim].slice(-500) : list.filter((t) => t?.id !== track.id) });
+    if (on) {
+      toast('Téléchargement du son…');
+      // Tout de suite, même hors Wi-Fi : c'est une demande explicite
+      this.media?.downloadAudio(track.id, { keep: true }).then(() => (this.refreshSet(), document.dispatchEvent(new Event('offline-progress')), toast('Son téléchargé : écoute possible hors ligne'))).catch((e) => toast(`Téléchargement impossible : ${e.message}`));
+    } else {
+      this.media?.unkeep?.(track.id);
+      toast('Son retiré des téléchargements');
+    }
+  },
 
   async togglePlaylist(id) {
     const list = setting('offlinePlaylists', []);

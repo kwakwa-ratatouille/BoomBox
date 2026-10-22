@@ -54,9 +54,10 @@ export function mountLyrics(el, track) {
       el.innerHTML = '<p class="muted" style="padding:24px 0">Pas de paroles disponibles pour ce titre.</p>';
       return;
     }
-    el.innerHTML = (l.source ? `<div class="lyrics-source">Paroles : ${esc(l.source)}${l.synced ? '' : ' · non synchronisées'}</div>` : '')
+    el.innerHTML = `<div class="lyrics-source">${l.source ? `Paroles : ${esc(l.source)}${l.synced ? '' : ' · non synchronisées'}` : ''}<button class="lyr-share" type="button">Partager des paroles</button></div>`
       + `<div class="lyrics ${l.synced ? '' : 'plain'}">${l.lines.map((x, i) => `<p data-i="${i}">${esc(x.text)}</p>`).join('')}</div>`
       + (l.synced ? '<button class="lyr-resync hidden" type="button">↻ Revenir au son</button>' : '');
+    el.querySelector('.lyr-share').onclick = (e) => (e.stopPropagation(), pickLyricLines(track, l));
     if (l.synced) {
       // Paroles déplacées à la main : un bouton les recale sur le passage en cours du son
       el.querySelector('.lyr-resync').onclick = (e) => {
@@ -180,4 +181,33 @@ export function openKaraoke() {
 export function closeKaraoke() {
   kara?.();
   kara = null;
+}
+// Choix de 1 à 4 lignes de paroles, puis image ou vidéo Story (même DA que le récap, avec le passage du son)
+function pickLyricLines(track, l) {
+  const lines = l.lines.map((x, i) => ({ ...x, i })).filter((x) => x.text.trim() && x.text.trim() !== '♪');
+  const picked = new Set();
+  const ov = document.createElement('div');
+  ov.className = 'story-save lyr-pick';
+  ov.innerHTML = `<div class="ss-box"><h3 style="margin:0 0 4px">Choisis 1 à 4 lignes</h3><p class="muted" style="margin:0 0 10px;font-size:13px">Touche les lignes à mettre dans ta Story</p>
+    <div class="lp-list">${lines.map((x) => `<button class="lp-line" data-i="${x.i}">${esc(x.text)}</button>`).join('')}</div>
+    <div class="se-btns"><button class="btn primary" data-x="go" disabled>Créer la Story</button><button class="btn ghost" data-x="close">Annuler</button></div></div>`;
+  document.body.appendChild(ov);
+  const go = ov.querySelector('[data-x=go]');
+  ov.addEventListener('click', (e) => {
+    if (e.target === ov || e.target.closest('[data-x=close]')) return ov.remove();
+    const b = e.target.closest('.lp-line');
+    if (b) {
+      const i = Number(b.dataset.i);
+      if (picked.has(i)) picked.delete(i);
+      else if (picked.size < 4) picked.add(i);
+      b.classList.toggle('on', picked.has(i));
+      go.disabled = !picked.size;
+      return;
+    }
+    if (e.target.closest('[data-x=go]') && picked.size) {
+      const chosen = [...picked].sort((a, b2) => a - b2).map((i) => l.lines[i]);
+      ov.remove();
+      import('./views-wrapped.js').then((m) => m.shareLyricsStory(track, chosen.map((x) => x.text), l.synced ? chosen[0].t : null));
+    }
+  });
 }

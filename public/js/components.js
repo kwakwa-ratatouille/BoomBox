@@ -17,6 +17,9 @@ export function registerList(tracks, context, extra = {}) {
 
 // ---------- Pochettes ----------
 // Demande la taille d'image adaptée à l'affichage (évite de charger des images 544 px pour une miniature de 40 px).
+// Clé de la pochette gardée sur le téléphone (même calcul que offline.js)
+const sizedSmall = (u) => (/googleusercontent\.com|ggpht\.com/.test(u) ? u.replace(/=w\d+-h\d+/, '=w226-h226').replace(/=s\d+/, '=s226') : /i\.ytimg\.com/.test(u) ? u.replace(/\/(hq|sd|maxres)default\.jpg/, '/mqdefault.jpg') : u);
+
 export function sized(url, px = 300) {
   if (!url || url.startsWith('data:')) return url;
   if (/googleusercontent\.com|ggpht\.com/.test(url)) return url.replace(/=w\d+-h\d+/, `=w${px}-h${px}`).replace(/=s\d+/, `=s${px}`);
@@ -25,7 +28,7 @@ export function sized(url, px = 300) {
 }
 
 export function cover(item, cls = '', px = 300) {
-  if (item?.thumb) return html`<div class="cover ${cls}"><img src="${sized(item.thumb, px)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`;
+  if (item?.thumb) return html`<div class="cover ${cls}"><img src="${(px <= 300 && window.__bbCoverSrc?.(sizedSmall(item.thumb))) || sized(item.thumb, px)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`;
   return html`<div class="cover ${cls}">${icon('music')}</div>`;
 }
 
@@ -374,6 +377,7 @@ export function trackMenu(track, x, y, { playlistId, index } = {}) {
         ? { label: 'Proposer à nouveau ce titre', icon: 'check', action: () => toggleBan(track) }
         : { label: 'Ne plus proposer ce titre', icon: 'close', action: async () => { await toggleBan(track); if (player.track?.id === track.id && !player.remoteSender) player.next(); } },
       onPc && !track.local && { label: 'Télécharger sur le PC', icon: 'import', action: () => import('./views-local.js').then((m) => m.downloadToPc([track])) },
+      window.Capacitor?.isNativePlatform?.() && !track.local && { label: window.__bbOfflineKept?.(track.id) ? 'Retirer du téléphone' : 'Télécharger sur le téléphone', icon: window.__bbOfflineKept?.(track.id) ? 'trash' : 'import', action: () => import('./offline.js').then((m) => m.offline.toggleTrack(track)) },
       !track.local && { label: 'Copier le lien YouTube', icon: 'link', action: () => navigator.clipboard?.writeText(`https://music.youtube.com/watch?v=${track.id}`).then(() => toast('Lien copié')) },
     ] },
   ]);
