@@ -110,7 +110,7 @@ export const offline = {
       this._smartAt = Date.now();
       this.refreshSmart().then(() => this.sync()).catch(() => {});
     }
-    // Par défaut : aussi en 4G/5G (sinon les sons ne sont pas prêts hors connexion) ; plafond de 300 Mo/jour plus bas
+    // Par défaut : aussi en 4G/5G (sinon les sons ne sont pas prêts hors connexion)
     if (setting('offlineWifiOnly', false) && !this.media.net.wifi) return;
     const want = this.wanted();
     this._want = want;
@@ -149,20 +149,9 @@ export const offline = {
         toast('Limite d’espace atteinte : augmente-la dans les Paramètres pour tout télécharger');
         break;
       }
-      // Données mobiles : plafond de sécurité de 300 Mo par jour pour les téléchargements automatiques (même si
-      // « Wi-Fi seulement » est désactivé, et même en cas de bug qui relancerait les téléchargements en boucle)
-      const cell = !this.media.net.wifi;
-      const today = new Date().toISOString().slice(0, 10);
-      const used = JSON.parse(localStorage.getItem('boombox.cellBytes') || '{}');
-      if (used.d !== today) Object.assign(used, { d: today, n: 0 });
-      if (cell && used.n > 300 * 1024 * 1024) {
-        toast('300 Mo téléchargés sur les données mobiles aujourd’hui : la suite attendra le Wi-Fi');
-        break;
-      }
       const id = this.queue.shift();
       try {
-        const got = await this.media.downloadAudio(id, { keep: true });
-        if (cell) localStorage.setItem('boombox.cellBytes', JSON.stringify({ d: today, n: used.n + (got?.size || 5e6) }));
+        await this.media.downloadAudio(id, { keep: true });
         const t = this._want?.get(id);
         if (t?.thumb) this.saveCover(sizedThumb(t.thumb));
         done++;

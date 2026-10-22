@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Téléchargements sans limite",
+    "items": [
+      "Plus de limite de téléchargement sur les données mobiles."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1344",
     "title": "Téléchargements aussi en 4G/5G",
     "items": [
