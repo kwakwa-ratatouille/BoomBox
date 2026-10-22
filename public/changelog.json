@@ -1,5 +1,16 @@
 [
   {
+    "version": "next",
+    "title": "Musique en arrière-plan sur iPhone",
+    "items": [
+      "iPhone : la musique ne se met plus en pause en verrouillant le téléphone ou en ouvrant une autre appli, et ouvrir Boombox ne coupe plus le son (nouvelle version de l’appli dans SideStore).",
+      "Tes écoutes sur iPhone écran verrouillé sont maintenant comptées : le récap du jour se remplit.",
+      "Mode caché sur iPhone : plus de saccades.",
+      "Récap : animation plus fluide, et vidéo en Full HD sur téléphone."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1629",
     "title": "Rappel SideStore",
     "items": [

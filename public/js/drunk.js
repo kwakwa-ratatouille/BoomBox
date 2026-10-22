@@ -10,6 +10,9 @@ let wobble = 0;
 let events = 0;
 let pill = null;
 let ev = null; // effet en cours : { kind, until }
+const NATIVE = !!window.Capacitor?.isNativePlatform?.();
+let lastRate = 1;
+let lastRateAt = 0;
 
 const audio = () => player.engines?.audio;
 const els = () => audio()?.els || [];
@@ -41,7 +44,7 @@ const EFFECTS = [
   () => (setFx({ lp: rnd(300, 900) }), (ev = { kind: 'muffled', until: Date.now() + rnd(1500, 3000) })),
   () => (setFx({ hp: rnd(900, 1800), lp: rnd(2500, 4000) }), (ev = { kind: 'phone', until: Date.now() + rnd(1400, 2600) })),
   () => (setFx({ echo: 0.7 }), (ev = { kind: 'echo', until: Date.now() + rnd(1800, 3200) })),
-  () => (ev = { kind: 'wave', until: Date.now() + rnd(1500, 2500) }),
+  () => (ev = { kind: NATIVE ? 'slow' : 'wave', until: Date.now() + rnd(1500, 2500) }),
   () => (ev = { kind: 'drop', until: Date.now() + 900 }),
 ];
 
@@ -58,7 +61,17 @@ function frame() {
     ev = null;
     setFx();
   }
-  setRate(r);
+  // iPhone : chaque changement de vitesse fait recharger le son (saccades) → seulement aux changements d'effet,
+  // au plus toutes les 1,2 s et sans tangage continu
+  if (NATIVE) {
+    const target = ev && Date.now() < ev.until ? r / (1 + Math.sin(wobble) * 0.06 + Math.sin(wobble * 2.7) * 0.03) : 1;
+    const rounded = Math.round(target * 10) / 10;
+    if (rounded !== lastRate && Date.now() - lastRateAt > 1200) {
+      lastRate = rounded;
+      lastRateAt = Date.now();
+      setRate(rounded);
+    }
+  } else setRate(r);
   setTimeout(frame, 90);
 }
 function nextEvent() {

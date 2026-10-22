@@ -690,6 +690,7 @@ export const player = {
     this._logged = false;
     this._heard = 0; // secondes réellement écoutées de ce son (pour les stats)
     this._heardAt = 0;
+    this._heardPos = null;
     this._fallbackTried = null;
     this._retryTried = null;
     this.buffering = true;
@@ -1109,7 +1110,9 @@ export const player = {
     // Stats : un son compte comme écouté après 30 s d'écoute réelle (moitié du son s'il dure moins d'une minute),
     // sans compter les pauses, les chargements, ni l'avance rapide ou un mix qui le démarre en plein milieu
     const now = performance.now();
-    if (!this.paused && !this.buffering && this._heardAt) this._heard += Math.min(1, (now - this._heardAt) / 1000);
+    const dp = t - (this._heardPos ?? t);
+    if (!this.paused && dp > 0 && dp < Math.max(5, ((now - (this._heardAt || now)) / 1000) * 2 + 2)) this._heard += dp / (this.rate || 1);
+    this._heardPos = t;
     this._heardAt = now;
     const d = this.duration();
     if (!this._logged && this._heard >= (d && d < 60 ? d / 2 : 30)) {
@@ -1240,13 +1243,8 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
   const kick = () => {
     const el = player.engine?.name === 'audio' ? player.engine.a : null;
     if (!el || player.paused || !player.track) return;
-    player._userPauseAt = 0;
-    const silentRestart = !el.paused;
-    if (silentRestart) {
-      player._interruptedAt = Date.now(); // empêche la relance automatique de onPaused pendant le court arrêt
-      el.pause();
-    }
-    el.play().catch(() => {}).finally(() => (player._interruptedAt = 0));
+    if (!el.paused) return; // il joue déjà : on n'y touche pas
+    el.play().catch(() => {});
   };
   P.addListener('audioInterruption', ({ phase, resume }) => {
     if (phase === 'began') {

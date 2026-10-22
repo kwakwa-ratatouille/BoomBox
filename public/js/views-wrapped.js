@@ -228,7 +228,7 @@ function cardBackdrop(c) {
   const th = c.theme;
   const k = String(c.kind || '');
   const accents = /list|number|hero/.test(k) ? ['#FFD34D'] : /live|now|friend/i.test(k) ? ['#2EF28B'] : [th.shape, th.alt];
-  return { palette: [th.bg, th.bg2 || th.bg, mix(th.bg2 || th.bg, th.shape)], opts: { style: c.style || 'waves', accents, speed: c.style === 'rain' ? 0.9 : 0.6, accentRate: 0.006 } };
+  return { palette: [th.bg, th.bg2 || th.bg, mix(th.bg2 || th.bg, th.shape)], opts: { style: c.style || 'waves', accents, speed: c.style === 'rain' ? 0.9 : 0.6, accentRate: 0.006, fps: 15 } };
 }
 
 // Couleur à mi-chemin entre deux couleurs (« #rrggbb »)
@@ -573,8 +573,8 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
   const { shapes, content } = await cardImage(c, format, { layers: true });
   const W = content.width;
   const H = content.height;
-  // Téléphone : vidéo fabriquée en 720 p et 24 images/s (bien plus fluide, sans différence visible en Story)
-  const K = isNative ? 720 / W : 1;
+  // Full HD partout ; téléphone à 24 images/s (calques préparés une seule fois : reste léger)
+  const K = 1;
   const FPS = isNative ? 24 : 30;
   const OW = Math.round(W * K);
   const OH = Math.round(H * K);
@@ -632,7 +632,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
   const track = stream.getVideoTracks()[0];
   const pushFrame = track?.requestFrame ? () => track.requestFrame() : () => {};
   const videoTracks = (track?.requestFrame ? stream : cv.captureStream(30)).getVideoTracks();
-  const rec = new MediaRecorder(new MediaStream([...videoTracks, ...(withAudio ? audio.dest.stream.getAudioTracks() : [])]), { mimeType: mime, videoBitsPerSecond: isNative ? 5e6 : 8e6 });
+  const rec = new MediaRecorder(new MediaStream([...videoTracks, ...(withAudio ? audio.dest.stream.getAudioTracks() : [])]), { mimeType: mime, videoBitsPerSecond: 8e6 });
   const chunks = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise((r) => (rec.onstop = r));

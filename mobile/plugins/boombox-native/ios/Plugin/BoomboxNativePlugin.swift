@@ -19,7 +19,13 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
     override public func load() {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default, options: [])
-        try? session.setActive(true)
+        // La page de l'appli continue de tourner en arrière-plan (sinon iOS l'endort : musique en pause au
+        // verrouillage ou en ouvrant une autre appli, écoutes non comptées)
+        DispatchQueue.main.async { [weak self] in
+            if #available(iOS 17.0, *) {
+                self?.bridge?.webView?.configuration.preferences.inactiveSchedulingPolicy = .none
+            }
+        }
         // Casque, écouteurs ou enceinte Bluetooth déconnecté : on prévient l'appli pour mettre en pause
         NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
             guard let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
@@ -36,13 +42,12 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
                 self?.notifyListeners("audioInterruption", data: ["phase": "began"])
             } else {
                 let opts = AVAudioSession.InterruptionOptions(rawValue: (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0)
-                try? AVAudioSession.sharedInstance().setActive(true)
+                if opts.contains(.shouldResume) { try? AVAudioSession.sharedInstance().setActive(true) }
                 self?.notifyListeners("audioInterruption", data: ["phase": "ended", "resume": opts.contains(.shouldResume)])
             }
         }
         // Retour sur l'appli : session audio réactivée (une autre appli a pu la prendre sans la rendre)
         NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            try? AVAudioSession.sharedInstance().setActive(true)
             self?.notifyListeners("audioActive", data: [:])
         }
         // Commande Siri reçue pendant que l'appli tourne : transmise tout de suite au JavaScript
