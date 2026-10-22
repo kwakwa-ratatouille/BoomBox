@@ -5,7 +5,7 @@ import { pixelBackdrop, accentPalette } from './pixel-bg.js';
 import { html, raw, icon, plural, esc } from './ui.js';
 import { getStatsFull } from './state.js';
 import { cover, card, trackList, rememberTracks } from './components.js';
-import { storyFrom } from './views-wrapped.js';
+import { shareStatsStory } from './views-wrapped.js';
 import { shareStory } from './story.js';
 import { toast } from './ui.js';
 
@@ -62,10 +62,11 @@ export async function statsPage(el, params, ctx) {
   const maxA = s.topArtists[0]?.count || 1;
   const periodLabel = PERIODS.find(([d]) => d === days)?.[1].toLowerCase();
   // Partage de ces stats en image Story (Insta…)
-  const share = async () => {
-    toast('Création de l’image…');
+  // Titre de la carte selon la période choisie
+  const share = () => {
     const label = PERIODS.find(([d]) => d === days)?.[1] || '';
-    shareStory(await storyFrom(s, { label: `Mes stats · ${label}` }), `boombox-stats-${days}j.png`);
+    const title = /tout/i.test(label) ? 'Mes stats Boombox' : /7/.test(label) ? 'Ma semaine sur Boombox' : /30/.test(label) ? 'Mon mois sur Boombox' : /3 mois/.test(label) ? 'Mes 3 mois sur Boombox' : /an/.test(label) ? 'Mon année sur Boombox' : `Mes stats · ${label}`;
+    return shareStatsStory(s, { title, name: `boombox-stats-${days}j.png` });
   };
 
   el.innerHTML = String(html`<div class="page stats-page">

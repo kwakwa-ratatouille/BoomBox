@@ -19,6 +19,9 @@ const DESIGNS = {
     { bg: '#c9f2ff', bg2: '#e2d4ff', fg: '#0d2a3a', shape: '#7ad3ff', alt: '#ffc6e4' },
     { bg: '#fff1b8', bg2: '#ffc9a8', fg: '#3a2200', shape: '#ff9f6b', alt: '#c9b6ff' },
     { bg: '#d2ffe0', bg2: '#c8e7ff', fg: '#0f3324', shape: '#64e3a1', alt: '#ffd1f0' },
+    // Soirée : la journée se termine en couleurs sombres
+    { bg: '#1a0b2e', bg2: '#4a1d5e', fg: '#ffe6f2', shape: '#ff7eb6', alt: '#ffd166' },
+    { bg: '#0c1b33', bg2: '#1f3b6e', fg: '#e8f1ff', shape: '#7ad3ff', alt: '#ffb4a2' },
   ] },
   // Semaine : club, fond sombre, néons, anneaux et rayures
   week: { shapes: ['rings', 'stripes', 'grid'], palettes: [
@@ -27,6 +30,9 @@ const DESIGNS = {
     { bg: '#140010', bg2: '#3a0030', fg: '#ffffff', shape: '#ff5c39', alt: '#ff2bd6' },
     { bg: '#03140f', bg2: '#08362a', fg: '#c6ff4d', shape: '#c6ff4d', alt: '#22f0ff' },
     { bg: '#0f0a24', bg2: '#2a1a5e', fg: '#ffffff', shape: '#b07cf7', alt: '#ffd23f' },
+    { bg: '#000000', bg2: '#1a1a1a', fg: '#ffd34d', shape: '#ffd34d', alt: '#ff4d8d' },
+    { bg: '#0a0020', bg2: '#00264d', fg: '#9ffcff', shape: '#00e5ff', alt: '#ff3cac' },
+    { bg: '#1b0000', bg2: '#4d0a0a', fg: '#ffd9c2', shape: '#ff6b3d', alt: '#ffd34d' },
   ] },
   // Mois : affiche bicolore, couleurs franches, carrés et vagues
   month: { shapes: ['squares', 'waves', 'half'], palettes: [
@@ -36,6 +42,8 @@ const DESIGNS = {
     { bg: '#0f8a5f', bg2: '#0f8a5f', fg: '#fff6d6', shape: '#ffb800', alt: '#ff6ad5' },
     { bg: '#b07cf7', bg2: '#b07cf7', fg: '#14002e', shape: '#ff4d8d', alt: '#f5d33f' },
     { bg: '#ff6ad5', bg2: '#ff6ad5', fg: '#1a0013', shape: '#2b2bff', alt: '#fff36b' },
+    { bg: '#101820', bg2: '#101820', fg: '#fee715', shape: '#fee715', alt: '#ff4d8d' },
+    { bg: '#1d0b3b', bg2: '#1d0b3b', fg: '#ffffff', shape: '#2ef28b', alt: '#b07cf7' },
   ] },
   // Année : le grand Wrapped, dégradés vifs et toutes les formes
   year: { shapes: ['blobs', 'rings', 'stripes', 'squares', 'waves', 'sun'], palettes: [
@@ -46,6 +54,9 @@ const DESIGNS = {
     { bg: '#f5d33f', bg2: '#ff9f2e', fg: '#1a1400', shape: '#7c3aed', alt: '#ff4d8d' },
     { bg: '#111111', bg2: '#2a2a2a', fg: '#ffffff', shape: '#b07cf7', alt: '#22d3ee' },
     { bg: '#22d3ee', bg2: '#7c3aed', fg: '#04212a', shape: '#ff4d8d', alt: '#fff36b' },
+    { bg: '#0b0618', bg2: '#3b0d5c', fg: '#ffffff', shape: '#ff2bd6', alt: '#ffd34d' },
+    { bg: '#000000', bg2: '#161616', fg: '#ffd34d', shape: '#ffd34d', alt: '#b07cf7' },
+    { bg: '#03140f', bg2: '#0c3b2e', fg: '#d6ff7a', shape: '#2ef28b', alt: '#ff9f2e' },
   ] },
 };
 // Graine de la période (jour, n° de semaine, mois, année) : change les couleurs et les formes d'une fois sur l'autre
@@ -120,8 +131,49 @@ function chooser(el) {
   });
 }
 
+// ---------- Variété : textes, emojis et fond animé de chaque carte ----------
+// La graine de la période choisit les tournures : le récap ne dit pas deux fois la même chose de la même façon.
+const pickFrom = (list, seed, k = 0) => list[Math.abs(seed * 7 + k * 13) % list.length];
+function vary(cards, s, { seed, tag, p, favHour }) {
+  const Tag = tag[0].toUpperCase() + tag.slice(1);
+  // Comparaison amusante pour les minutes
+  const m = s.minutes || 0;
+  const fun = m >= 600 ? `de quoi regarder ${Math.round(m / 110)} films 🎬` : m >= 120 ? `plus de ${Math.floor(m / 60)} heures dans les oreilles 🎧` : m >= 30 ? `l'équivalent de ${Math.max(1, Math.round(m / 3.3))} sons d'affilée 🔁` : 'un bon début 🌱';
+  const hourEmoji = favHour >= 21 || favHour < 5 ? '🌙' : favHour < 11 ? '☀️' : favHour < 17 ? '🌤️' : '🌆';
+  cards.forEach((c, i) => {
+    const k = i;
+    if (c.kind === 'intro') {
+      c.sub = pickFrom(['Prêt·e ? On y va.', 'Monte le son 🔊', 'Installe-toi, ça commence 🎬', 'Ta bande-son, en chiffres ✨', 'Respire. On lance le récap 🚀'], seed, k);
+      c.style = 'rings';
+    } else if (c.kind === 'number' && c.unit === 'minutes') {
+      c.kicker = pickFrom([`${Tag}, tu as écouté`, `${Tag}, le compteur affiche`, `Temps passé en musique ${tag}`, `${Tag}, tes oreilles ont tourné`], seed, k);
+      c.sub = `${c.sub} · ${fun}`;
+      c.style = 'plasma';
+    } else if (c.kind === 'hero' && c.round) {
+      c.kicker = pickFrom(['Ton artiste n°1', 'Ton n°1 incontesté 👑', 'Celui qui a tout raflé 🏆', 'Ton coup de cœur absolu 💘'], seed, k);
+      c.style = 'rings';
+    } else if (c.kind === 'hero') {
+      c.kicker = pickFrom([c.kicker, `${c.kicker} 🔥`, 'Le son qui a tourné en boucle 🔁', 'Ton hymne du moment 🎶'], seed, k);
+      c.style = 'plasma';
+    } else if (c.kind === 'list') {
+      c.kicker = /artistes/.test(c.kicker)
+        ? pickFrom(['Tes artistes préférés', 'Ton podium 🏅', 'Ton top 5 artistes ⭐', 'Ceux qui t’ont suivi partout 👣'], seed, k)
+        : pickFrom(['Tes titres préférés', 'Ta playlist idéale 💿', 'Ton top 5 sons 🎧', 'Les sons qui t’ont marqué 💥'], seed, k);
+      c.style = pickFrom(['waves', 'plasma'], seed, k);
+    } else if (c.kind === 'number' && c.unit === 'h') {
+      c.kicker = `Ton moment préféré ${hourEmoji}`;
+      c.style = favHour >= 21 || favHour < 5 ? 'stars' : 'waves';
+    } else if (c.kind === 'number') {
+      c.kicker = pickFrom(['Tes découvertes', 'Nouveaux venus dans tes oreilles 🌱', 'Tu as élargi ton horizon 🧭'], seed, k);
+      c.style = 'rain';
+    } else if (c.kind === 'persona') {
+      c.style = /fidèle/i.test(p.name) ? 'hearts' : /noctambule/i.test(p.name) ? 'stars' : 'rings';
+    } else if (c.kind === 'summary') c.style = 'waves';
+  });
+}
+
 // ---------- Les cartes (données) ----------
-function buildCards(s, range, period) {
+function buildCards(s, range, period, seedOverride = null) {
   const p = persona(s);
   const favHour = s.hours.indexOf(Math.max(...s.hours));
   const favDay = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'][s.weekdays.indexOf(Math.max(...s.weekdays))];
@@ -141,8 +193,10 @@ function buildCards(s, range, period) {
     { kind: 'persona', kicker: "Ton profil d'auditeur", emoji: p.emoji, big: p.name, sub: p.text },
     { kind: 'summary', kicker: `${range.label.replace(/^Ton |^Ta |^Mes /, (m) => (m === 'Ta ' ? 'Ma ' : m === 'Mes ' ? 'Mes ' : 'Mon '))} sur Boombox`, stats: [['Minutes', fmtN(s.minutes)], ['Artistes', fmtN(s.uniqueArtists)], ['Titres', fmtN(s.uniqueTracks)]], artists: s.topArtists.slice(0, 5).map((a) => a.artist.name), tracks: s.topTracks.slice(0, 5).map((t) => t.track.title), img: a1?.thumb, persona: `${p.emoji} ${p.name}` },
   ].filter(Boolean);
-  const theme = themesFor(period, periodSeed(period, range.since || Date.now()));
+  const seed = seedOverride ?? periodSeed(period, range.since || Date.now());
+  const theme = themesFor(period, seed);
   cards.forEach((c, i) => (c.theme = theme(i)));
+  vary(cards, s, { seed, tag, p, favHour });
   return { cards, p, t1 };
 }
 
@@ -165,7 +219,7 @@ function cardBackdrop(c) {
   const th = c.theme;
   const k = String(c.kind || '');
   const accents = /list|number|hero/.test(k) ? ['#FFD34D'] : /live|now|friend/i.test(k) ? ['#2EF28B'] : [th.shape, th.alt];
-  return { palette: [th.bg, th.bg2 || th.bg, mix(th.bg2 || th.bg, th.shape)], opts: { accents, speed: 0.6, accentRate: 0.006 } };
+  return { palette: [th.bg, th.bg2 || th.bg, mix(th.bg2 || th.bg, th.shape)], opts: { style: c.style || 'waves', accents, speed: c.style === 'rain' ? 0.9 : 0.6, accentRate: 0.006 } };
 }
 
 // Couleur à mi-chemin entre deux couleurs (« #rrggbb »)
@@ -279,6 +333,23 @@ async function cardImage(c, format = 'story', opts = {}) {
     shapesLayer.width = W;
     shapesLayer.height = H;
     drawShapes(shapesLayer.getContext('2d'), t, W, H);
+  } else if (isPixelDA()) {
+    // Même fond pixel que dans l'appli et la vidéo, à un instant de l'animation
+    const bd = cardBackdrop(c);
+    const lw = 60;
+    const cell = W / lw;
+    const lh = Math.ceil(H / cell);
+    const low = document.createElement('canvas');
+    low.width = lw;
+    low.height = lh;
+    const lg = low.getContext('2d');
+    const img = lg.createImageData(lw, lh);
+    fieldPainter(bd.palette, bd.opts)(img, lw, lh, 2.5);
+    lg.putImageData(img, 0, 0);
+    x.imageSmoothingEnabled = false;
+    x.drawImage(low, 0, 0, lw * cell, lh * cell);
+    x.imageSmoothingEnabled = true;
+    drawShapes(x, t, W, H);
   } else {
     const g = x.createLinearGradient(0, 0, W * 0.4, H);
     g.addColorStop(0, t.bg);
@@ -545,6 +616,18 @@ async function exportSheet(c, format, name) {
 }
 
 // Image Story du résumé (utilisée aussi par la page des stats)
+// Ton récap (stats sur 7 jours, 30 jours, tout…) : même fenêtre d'export que le récap animé (vidéo ou image).
+// Couleurs, fond animé et tournures changent à chaque export.
+export async function shareStatsStory(s, { title, name }) {
+  const seed = Math.floor(Date.now() / 1000);
+  const period = ['year', 'week', 'month', 'day'][seed % 4];
+  const { cards } = buildCards(s, { label: title, tag: 'en ce moment', name: title }, period, seed);
+  const c = cards.find((x) => x.kind === 'summary');
+  c.kicker = title;
+  c.style = pickFrom(['waves', 'plasma', 'rings', 'stars', 'rain'], seed);
+  return exportSheet(c, 'story', name);
+}
+
 export async function storyFrom(s, range) {
   const { cards } = buildCards(s, { label: range.label, tag: range.tag, name: range.label }, 'other');
   return cardImage(cards.find((c) => c.kind === 'summary'), 'story');
