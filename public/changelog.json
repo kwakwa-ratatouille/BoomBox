@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Son des vidéos plus rapide",
+    "items": [
+      "Vidéos du récap et des paroles : seul le passage utile du son est récupéré (quelques secondes au lieu du son entier), et la vidéo attend toujours le son si tu l’as demandé."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1514",
     "title": "Préparation du son visible",
     "items": [

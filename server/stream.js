@@ -2,7 +2,7 @@ import { isLocalId, localPath } from './localfiles.js';
 import { isScId, scUrl, setScBin } from './soundcloud.js';
 // Lecture audio directe via yt-dlp (optionnel). Permet la lecture écran éteint sur téléphone
 // et les contrôles sur l'écran de verrouillage. Sans yt-dlp, l'app utilise le lecteur YouTube intégré.
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -193,6 +193,29 @@ export async function streamHandler(req, res) {
 // lecture instantanée ensuite, et beaucoup moins de requêtes à YouTube. On s'arrête avant de remplir le cache
 // (90 % de 4 Go) pour garder de la place aux écoutes du moment.
 const pre = { queue: [], done: 0, failed: 0, running: false };
+// Extrait de quelques secondes d'un son, découpé par ffmpeg : depuis le fichier du disque s'il existe, sinon
+// directement dans le flux YouTube (ffmpeg saute au bon endroit, sans télécharger tout le son). Sortie AAC (ADTS).
+export async function clipHandler(req, res) {
+  const { id } = req.params;
+  const start = Math.max(0, Number(req.query.start) || 0);
+  const dur = Math.min(40, Math.max(1, Number(req.query.dur) || 10));
+  if (!/^[\w-]{11}$/.test(id)) return res.status(400).end();
+  const local = path.join(AUDIO_DIR, `${id}.m4a`);
+  let input = fs.existsSync(local) ? local : null;
+  if (!input) {
+    try {
+      input = await resolveUrl(id);
+    } catch {
+      return res.status(502).end();
+    }
+  }
+  const ff = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-ss', String(start), '-t', String(dur), '-i', input, '-vn', '-c:a', 'aac', '-b:a', '160k', '-f', 'adts', 'pipe:1'], { windowsHide: true });
+  res.setHeader('content-type', 'audio/aac');
+  ff.stdout.pipe(res);
+  ff.on('error', () => res.headersSent ? res.end() : res.status(501).end());
+  req.on('close', () => ff.kill('SIGKILL'));
+}
+
 export function predownload(ids) {
   const have = new Set(fs.existsSync(AUDIO_DIR) ? fs.readdirSync(AUDIO_DIR).map((f) => f.replace(/\.m4a$/, '')) : []);
   pre.queue = ids.filter((id) => /^[\w-]{11}$/.test(id) && !have.has(id));
