@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Paroles en Story : jusqu’à 7 lignes",
+    "items": [
+      "Story de paroles : jusqu’à 7 lignes, texte qui ne bouge plus quand il défile, et ligne jouée placée plus haut."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1450",
     "title": "Vidéo de paroles calée sur le passage",
     "items": [

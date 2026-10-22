@@ -626,6 +626,9 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
     out.push(line);
     return out.slice(0, 3);
   };
+  // Mise en page calculée une seule fois, à taille fixe (le texte ne bouge plus quand il défile)
+  const lyrSize = format === 'post' ? 62 : 74;
+  const lyrBlocks = lyr.map((l2, k) => ({ k, size: lyrSize, r: rows(l2.text, lyrSize) }));
   function drawKaraoke(tt) {
     const box = c._lyrBox;
     if (!box || !lyr.length) return;
@@ -640,19 +643,13 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
       cur = chosenIdx[Math.min(chosenIdx.length - 1, Math.floor(tt / (DUR / chosenIdx.length)))] ?? 0;
     }
     pos += (cur - pos) * 0.16; // défilement doux
-    const mid = box.top + (box.bottom - box.top) * 0.42;
-    const big = format === 'post' ? 70 : 86;
-    const small = format === 'post' ? 50 : 60;
+    const mid = box.top + (box.bottom - box.top) * 0.18; // ligne jouée vers le haut de la zone des paroles
     x.save();
     x.beginPath();
     x.rect(0, box.top, W, box.bottom - box.top);
     x.clip();
     // Position de chaque ligne : la ligne « pos » est au milieu, les autres au-dessus / en dessous
-    const blocks = lyr.map((l2, k) => {
-      const d = Math.abs(k - pos);
-      const size = d < 1 ? big - (big - small) * d : small;
-      return { k, size, r: rows(l2.text, size) };
-    });
+    const blocks = lyrBlocks;
     const hOf = (b) => b.r.length * b.size * 1.1 + 34;
     let base = Math.floor(pos);
     let yAt = mid - (pos - base) * hOf(blocks[base] || blocks[0]);
@@ -662,7 +659,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
     for (let k = base - 1; k >= 0; k--) ys[k] = ys[k + 1] - hOf(blocks[k]);
     blocks.forEach((b) => {
       const d = Math.abs(b.k - pos);
-      x.globalAlpha = Math.max(0, d < 1 ? 1 - d * 0.65 : 0.35 - (d - 1) * 0.12);
+      x.globalAlpha = Math.max(0, d < 1 ? 1 - d * 0.62 : 0.38 - (d - 1) * 0.1);
       if (x.globalAlpha <= 0.02) return;
       x.fillStyle = t.fg;
       x.font = `900 ${b.size}px ${font}`;
