@@ -13,12 +13,13 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "getInfo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setVoicePlaylists", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "takeVoiceCommand", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "takeVoiceCommand", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setAudioMode", returnType: CAPPluginReturnPromise)
     ]
 
     override public func load() {
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default, options: [])
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         // La page de l'appli continue de tourner en arrière-plan (sinon iOS l'endort : musique en pause au
         // verrouillage ou en ouvrant une autre appli, écoutes non comptées)
         DispatchQueue.main.async { [weak self] in
@@ -56,6 +57,15 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
             UserDefaults.standard.removeObject(forKey: "boombox.voice")
             self?.notifyListeners("voice", data: ["url": url])
         }
+    }
+
+    // mix = true : Boombox cohabite avec les autres sons ; false : lecture normale (commandes écran verrouillé)
+    @objc func setAudioMode(_ call: CAPPluginCall) {
+        let mix = call.getBool("mix") ?? false
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: mix ? [.mixWithOthers] : [])
+        if !mix { try? session.setActive(true) }
+        call.resolve()
     }
 
     // Noms des playlists, pour que Siri les reconnaisse (« lance Culture G sur Boombox »)

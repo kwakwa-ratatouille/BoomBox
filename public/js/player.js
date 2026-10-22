@@ -474,6 +474,11 @@ export const player = {
     const handlers = {
       onEnded: () => this._onEnded(),
       onPlaying: () => {
+        // iPhone : Boombox prend la main sur le son seulement quand une lecture démarre vraiment
+        if (isNative && !this._audioOwned) {
+          this._audioOwned = true;
+          window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: false }).catch?.(() => {});
+        }
         if (this.rate !== 1) this.engine.setRate(this.rate);
         this._failStreak = 0;
         this._offlineSkips = 0;

@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Lancer Boombox ne coupe plus le son",
+    "items": [
+      "iPhone : ouvrir Boombox ne coupe plus la musique en cours ; Boombox prend la main sur le son seulement quand tu lances une lecture (nouvelle version de l’appli dans SideStore)."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1846",
     "title": "Mode caché refait sur iPhone",
     "items": [
