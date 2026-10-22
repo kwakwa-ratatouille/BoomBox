@@ -6,6 +6,7 @@ import { getStatsFull, createPlaylist, listeningYears } from './state.js';
 import { ctl } from './player.js';
 import { loadImg, shareStory, pixelDeco, shareFile, copyImage } from './story.js';
 import { pixelBackdrop, fieldPainter, isPixelDA } from './pixel-bg.js';
+import { isNative, localApi } from './native.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('fr-FR');
 
@@ -197,6 +198,14 @@ function buildCards(s, range, period, seedOverride = null) {
   const theme = themesFor(period, seed);
   cards.forEach((c, i) => (c.theme = theme(i)));
   vary(cards, s, { seed, tag, p, favHour });
+  // Musique de la vidéo : ton titre n°1 pour la carte « titre », le son le plus écouté de l'artiste pour les cartes
+  // artiste, sinon ton titre n°1
+  const topOf = (name) => s.topTracks.find((x) => (x.track.artists || []).some((a) => a.name === name))?.track;
+  cards.forEach((c) => {
+    if (c.kind === 'hero' && c.round) c.music = topOf(c.big) || t1?.track;
+    else if (c.kind === 'list' && /artistes/i.test(c.kicker + (c.items?.[0]?.round ? ' artistes' : ''))) c.music = topOf(c.items?.[0]?.title) || t1?.track;
+    else c.music = t1?.track || null;
+  });
   return { cards, p, t1 };
 }
 
@@ -501,7 +510,12 @@ async function cardImage(c, format = 'story', opts = {}) {
 // Le contenu apparaît en gros pixels (comme un écran rétro qui s'allume), puis des pixels scintillent sur les bords.
 const VIDEO_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
 export const canRecordVideo = () => !!window.MediaRecorder && !!HTMLCanvasElement.prototype.captureStream && VIDEO_TYPES.some((m) => MediaRecorder.isTypeSupported?.(m));
-export async function cardVideo(c, format = 'story', onTick) {
+// Son d'un titre (fichier du téléphone, ou flux du PC) décodé pour être mis dans la vidéo
+async function musicBuffer(track, ac) {
+  const data = isNative ? await (await localApi()).media.audioBuffer(track.id) : await (await fetch(`/api/stream/${track.id}`)).arrayBuffer();
+  return ac.decodeAudioData(data);
+}
+export async function cardVideo(c, format = 'story', onTick, { music = null, ac = null } = {}) {
   const { shapes, content } = await cardImage(c, format, { layers: true });
   const W = content.width;
   const H = content.height;
@@ -521,16 +535,32 @@ export async function cardVideo(c, format = 'story', onTick) {
   const lg = low.getContext('2d');
   const img = lg.createImageData(lw, lh);
   const t = c.theme;
-  const mime = VIDEO_TYPES.find((m) => MediaRecorder.isTypeSupported?.(m));
+  const DUR = 10;
+  // Musique : extrait pris vers le tiers du son (souvent le refrain), fondu d'entrée et de sortie
+  let audio = null;
+  if (music && ac) {
+    try {
+      const buf = await musicBuffer(music, ac);
+      const dest = ac.createMediaStreamDestination();
+      const gain = ac.createGain();
+      gain.connect(dest);
+      audio = { buf, dest, gain, offset: Math.max(0, Math.min(buf.duration * 0.35, buf.duration - DUR - 0.5)) };
+    } catch {
+      audio = null; // son indisponible : vidéo sans musique
+    }
+  }
+  const withAudio = !!audio;
+  const types = withAudio ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', ...VIDEO_TYPES] : VIDEO_TYPES;
+  const mime = types.find((m) => MediaRecorder.isTypeSupported?.(m));
   // Chaque image est envoyée à la main à l'enregistreur (indépendant du rafraîchissement de l'écran)
   const stream = cv.captureStream(0);
   const track = stream.getVideoTracks()[0];
   const pushFrame = track?.requestFrame ? () => track.requestFrame() : () => {};
-  const rec = new MediaRecorder(track?.requestFrame ? stream : cv.captureStream(30), { mimeType: mime, videoBitsPerSecond: 8e6 });
+  const videoTracks = (track?.requestFrame ? stream : cv.captureStream(30)).getVideoTracks();
+  const rec = new MediaRecorder(new MediaStream([...videoTracks, ...(withAudio ? audio.dest.stream.getAudioTracks() : [])]), { mimeType: mime, videoBitsPerSecond: 8e6 });
   const chunks = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise((r) => (rec.onstop = r));
-  const DUR = 10;
   const draw = (tt) => {
     if (isPixelDA()) {
       paint(img, lw, lh, tt);
@@ -554,6 +584,18 @@ export async function cardVideo(c, format = 'story', onTick) {
     x.globalAlpha = 1;
   };
   draw(0);
+  if (withAudio) {
+    await ac.resume().catch(() => {});
+    const src = ac.createBufferSource();
+    src.buffer = audio.buf;
+    src.connect(audio.gain);
+    const now = ac.currentTime + 0.05;
+    audio.gain.gain.setValueAtTime(0, now);
+    audio.gain.gain.linearRampToValueAtTime(1, now + 0.6);
+    audio.gain.gain.setValueAtTime(1, now + DUR - 1.2);
+    audio.gain.gain.linearRampToValueAtTime(0, now + DUR);
+    src.start(now, audio.offset, DUR + 0.2);
+  }
   rec.start(250);
   const t0 = performance.now();
   await new Promise((done) => {
@@ -582,6 +624,7 @@ async function exportSheet(c, format, name) {
   ov.innerHTML = `<div class="ss-box"><img src="${url}" alt="Aperçu">
     <div class="se-btns">
       ${canRecordVideo() ? '<button class="btn primary" data-x="video">Vidéo animée (10 s)</button>' : ''}
+      ${canRecordVideo() && c.music ? `<label class="se-music"><input type="checkbox" id="se-sound" checked> Avec le son : <b>${String(c.music.title).replace(/[<>&]/g, '')}</b></label>` : ''}
       <button class="btn white" data-x="image">${mobile ? 'Partager l’image' : 'Télécharger l’image'}</button>
       ${!mobile && window.ClipboardItem ? '<button class="btn ghost" data-x="copy">Copier l’image</button>' : ''}
       <button class="btn ghost" data-x="close">Fermer</button>
@@ -600,8 +643,12 @@ async function exportSheet(c, format, name) {
       b.disabled = true;
       const hint = ov.querySelector('.se-hint');
       hint.textContent = 'Création de la vidéo… reste sur cette page';
+      // Le son est préparé tout de suite (pendant le clic), sinon le navigateur peut le bloquer
+      const sound = ov.querySelector('#se-sound')?.checked && c.music;
+      const ac = sound ? new (window.AudioContext || window.webkitAudioContext)() : null;
       try {
-        const vid = await cardVideo(c, format, (p) => (b.textContent = `Création… ${Math.round(p * 100)} %`));
+        const vid = await cardVideo(c, format, (p) => (b.textContent = `Création… ${Math.round(p * 100)} %`), { music: sound ? c.music : null, ac });
+        ac?.close().catch(() => {});
         hint.textContent = '';
         b.textContent = 'Vidéo animée (10 s)';
         await shareFile(vid, name.replace(/\.png$/, vid.type.includes('mp4') ? '.mp4' : '.webm'));
@@ -689,6 +736,7 @@ export async function shareStatsStory(s, { title, name }) {
   const { cards } = buildCards(s, { label: title, tag: 'en ce moment', name: title }, period, seed);
   const c = cards.find((x) => x.kind === 'summary');
   c.kicker = title;
+  c.music = s.topTracks[0]?.track || null;
   c.style = pickFrom(['waves', 'plasma', 'rings', 'stars', 'rain'], seed);
   await themeSummaryFromCover(c);
   return exportSheet(c, 'story', name);

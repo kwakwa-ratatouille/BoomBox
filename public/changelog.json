@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Vidéo avec musique",
+    "items": [
+      "Vidéo du récap : la musique la plus liée à la carte est ajoutée (ton titre n°1, ou le son le plus écouté de l’artiste affiché), extrait de 10 s avec fondu. Case « Avec le son » pour l’enlever."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1154",
     "title": "Volume égalisé dès le début",
     "items": [

@@ -2131,3 +2131,5 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .story-export .ss-box img { max-height: 58vh; width: auto; }
 .se-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
 .se-hint { margin: 10px 0 0; font-size: 13px; min-height: 1em; }
+.se-music { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center; font-size: 13px; color: var(--muted); }
+.se-music b { color: var(--text); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
