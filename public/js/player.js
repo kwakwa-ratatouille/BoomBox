@@ -476,6 +476,7 @@ export const player = {
       onPlaying: () => {
         if (this.rate !== 1) this.engine.setRate(this.rate);
         this._failStreak = 0;
+        this._offlineSkips = 0;
         this._prepareAutomix();
         this._prepareNormalize();
         // Audio direct : on prépare le titre suivant pour qu'il démarre sans attendre
@@ -1037,6 +1038,17 @@ export const player = {
       emit('player:state');
       this.engine.load(t.id, at > 1 ? at : 0, true, true);
       return;
+    }
+    // Hors connexion, son pas téléchargé : on le dit clairement et on passe au suivant (sans compter un échec)
+    if (isNative && /non téléchargé|Hors ligne/i.test(String(code))) {
+      this._offlineSkips = (this._offlineSkips || 0) + 1;
+      if (this._offlineSkips > Math.min(40, this.list.length || 1)) {
+        this._offlineSkips = 0;
+        this.pause();
+        return toast('Hors connexion : aucun son téléchargé dans cette liste. Reconnecte-toi pour les télécharger.', { timeout: 8000 });
+      }
+      if (this._offlineSkips === 1) toast(`Hors connexion : « ${t.title} » n’est pas téléchargé, je passe aux sons téléchargés`, { timeout: 5000 });
+      return void setTimeout(() => this.next(), 150);
     }
     // Invité qui écoute la Jam : on ne part pas sur sa propre playlist, la Jam continue chez l'hôte
     if (this._followsJam()) return toast(`« ${t.title} » ne peut pas être lu sur cet appareil (${code}).`);

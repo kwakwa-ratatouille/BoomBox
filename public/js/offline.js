@@ -110,7 +110,8 @@ export const offline = {
       this._smartAt = Date.now();
       this.refreshSmart().then(() => this.sync()).catch(() => {});
     }
-    if (setting('offlineWifiOnly', true) && !this.media.net.wifi) return;
+    // Par défaut : aussi en 4G/5G (sinon les sons ne sont pas prêts hors connexion) ; plafond de 300 Mo/jour plus bas
+    if (setting('offlineWifiOnly', false) && !this.media.net.wifi) return;
     const want = this.wanted();
     this._want = want;
     for (const id of Object.keys(this.media.audioIndex)) if (!want.has(id) && this.media.audioIndex[id].keep) this.media.unkeep(id);

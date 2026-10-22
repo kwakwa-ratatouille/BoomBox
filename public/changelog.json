@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Téléchargements aussi en 4G/5G",
+    "items": [
+      "Téléphone : les sons se téléchargent maintenant aussi en 4G/5G par défaut (au plus 300 Mo par jour), pour être prêts hors connexion.",
+      "Hors connexion : un son pas téléchargé est signalé clairement et l’appli passe directement aux sons téléchargés."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1330",
     "title": "Paroles en Story, réveil et surprises",
     "items": [
