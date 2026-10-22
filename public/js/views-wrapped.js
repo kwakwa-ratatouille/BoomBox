@@ -531,7 +531,7 @@ async function cardImage(c, format = 'story', opts = {}) {
 
 // ---------- Vidéo animée de la carte (format Story 1080×1920 ou post 1080×1350), 6 secondes ----------
 // Le contenu apparaît en gros pixels (comme un écran rétro qui s'allume), puis des pixels scintillent sur les bords.
-const VIDEO_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+const VIDEO_TYPES = ['video/mp4;codecs=avc1.640028', 'video/mp4;codecs=avc1.4D0028', 'video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
 export const canRecordVideo = () => !!window.MediaRecorder && !!HTMLCanvasElement.prototype.captureStream && VIDEO_TYPES.some((m) => MediaRecorder.isTypeSupported?.(m));
 // Son d'un titre (fichier du téléphone, ou flux du PC) décodé pour être mis dans la vidéo
 // PC : seulement le passage utile (découpé par le serveur, rapide même pour un son jamais écouté) ;
@@ -625,14 +625,14 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
     }
   }
   const withAudio = !!audio;
-  const types = withAudio ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', ...VIDEO_TYPES] : VIDEO_TYPES;
+  const types = withAudio ? ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.4D0028,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', ...VIDEO_TYPES] : VIDEO_TYPES;
   const mime = types.find((m) => MediaRecorder.isTypeSupported?.(m));
   // Chaque image est envoyée à la main à l'enregistreur (indépendant du rafraîchissement de l'écran)
   const stream = cv.captureStream(0);
   const track = stream.getVideoTracks()[0];
   const pushFrame = track?.requestFrame ? () => track.requestFrame() : () => {};
   const videoTracks = (track?.requestFrame ? stream : cv.captureStream(30)).getVideoTracks();
-  const rec = new MediaRecorder(new MediaStream([...videoTracks, ...(withAudio ? audio.dest.stream.getAudioTracks() : [])]), { mimeType: mime, videoBitsPerSecond: 8e6 });
+  const rec = new MediaRecorder(new MediaStream([...videoTracks, ...(withAudio ? audio.dest.stream.getAudioTracks() : [])]), { mimeType: mime, videoBitsPerSecond: 20e6, audioBitsPerSecond: 192000 });
   const chunks = [];
   rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise((r) => (rec.onstop = r));
