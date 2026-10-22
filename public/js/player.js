@@ -681,6 +681,7 @@ export const player = {
   _load(track, { autoplay = true, start = 0, crossfade = 0, mix = null } = {}) {
     if (!track) return;
     this.track = track;
+    if (!crossfade && !mix) this._presetNorm(track.id);
     this._played.add(track.id);
     this._xfading = false;
     this._mixPlan = null;
@@ -715,6 +716,7 @@ export const player = {
   },
   play() {
     if (!this.track) return;
+    if (this.engine.name === 'audio' && this._normSetFor !== this.track.id) this._presetNorm(); // relance de l'appli, reprise en cours de son
     this.engine.play();
     this.paused = false;
     emit('player:state');
@@ -862,6 +864,20 @@ export const player = {
   _gainFor(id) {
     return this._normOn() || this._automixOn() ? automix.gain(id) : 1;
   },
+  // Avant même que le son démarre : niveau égalisé déjà appliqué (sinon le début partait à plein volume,
+  // surtout au lancement de l'appli). Son pas encore analysé : il démarre un peu plus bas, puis rejoint son niveau.
+  _presetNorm(id = this.track?.id) {
+    if (!id || !this._normOn()) return;
+    const e = this.engines.audio;
+    if (e.fade) return; // pendant un fondu enchaîné, on ne touche pas au son qui part
+    if (!e.graph && !isNative) e.enableGraph();
+    automix.ensure([id]);
+    const g = automix.get(id) ? automix.gain(id) : 0.7;
+    this._normSetFor = id;
+    clearInterval(e._normTimer);
+    e.norm = e.norm.map(() => g);
+    e.els.forEach((_, i) => e._apply(i));
+  },
   _prepareNormalize() {
     if (!this._normOn() || !this.track) return;
     const e = this.engines.audio;
@@ -869,8 +885,10 @@ export const player = {
     if (!e.graph && !isNative) e.enableGraph();
     const cur = this.track.id;
     automix.ensure([cur, this._nextTrack()?.id].filter(Boolean));
-    if (automix.get(cur)) e.setNorm(automix.gain(cur), true);
-    this._unsubNorm ??= automix.onAnalyzed((id) => id === this.track?.id && this._normOn() && this.engines.audio.setNorm(automix.gain(id), true));
+    // Début du son : niveau appliqué d'un coup ; en cours d'écoute : glissé en douceur
+    const early = () => (this.engine.time?.() || 0) < 3;
+    if (automix.get(cur)) e.setNorm(automix.gain(cur), !early());
+    this._unsubNorm ??= automix.onAnalyzed((id) => id === this.track?.id && this._normOn() && this.engines.audio.setNorm(automix.gain(id), !early()));
   },
   setNormalize(on) {
     if (on) this._prepareNormalize();
