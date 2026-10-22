@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1022.1629",
     "title": "Rappel SideStore",
     "items": [
       "iPhone : notification la veille de l’expiration de Boombox, puis 3 h avant (même appli fermée) ; la toucher ouvre SideStore."
