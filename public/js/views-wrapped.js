@@ -616,6 +616,71 @@ async function exportSheet(c, format, name) {
 }
 
 // Image Story du résumé (utilisée aussi par la page des stats)
+// ---------- Palette tirée de la pochette (carte résumé) ----------
+// On lit vraiment les pixels de la pochette : couleurs les plus présentes (regroupées par teinte proche) et couleur
+// la plus vive. Fond = teinte principale assombrie, formes = couleur vive, texte = blanc ou foncé selon le fond.
+const hexOf = (c) => '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+const lum = ([r, g, b]) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+const satOf = ([r, g, b]) => (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+const mixRgb = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+export async function coverTheme(url) {
+  const img = await loadImg(url);
+  if (!img) return null;
+  const N = 48;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const x = cv.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0, N, N);
+  let data;
+  try {
+    data = x.getImageData(0, 0, N, N).data;
+  } catch {
+    return null; // image protégée (CORS) : on garde le thème habituel
+  }
+  // Regroupement par couleurs proches (4 bits par canal), avec la moyenne réelle de chaque groupe
+  const buckets = new Map();
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const key = (r >> 4) << 8 | (g >> 4) << 4 | (b >> 4);
+    const k = buckets.get(key) || { n: 0, r: 0, g: 0, b: 0 };
+    k.n++; k.r += r; k.g += g; k.b += b;
+    buckets.set(key, k);
+  }
+  const groups = [...buckets.values()].map((k) => ({ n: k.n, c: [k.r / k.n, k.g / k.n, k.b / k.n] })).sort((a, b) => b.n - a.n);
+  // Teinte principale : la plus présente en ignorant les blancs et noirs extrêmes (bords, fonds unis)
+  const mid = groups.filter((g) => lum(g.c) > 0.06 && lum(g.c) < 0.92 && g.n >= N * N * 0.01);
+  const dom = (mid[0] || groups[0]).c;
+  // Couleur vive : saturée et lumineuse, bien présente dans l'image
+  const vivid = groups.filter((g) => g.n >= N * N * 0.008 && lum(g.c) > 0.15).sort((a, b) => satOf(b.c) * (0.4 + lum(b.c)) * Math.sqrt(b.n) - satOf(a.c) * (0.4 + lum(a.c)) * Math.sqrt(a.n))[0]?.c || dom;
+  // Deuxième couleur : la plus présente qui ne ressemble ni à la principale ni à la vive
+  const far = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) > 70;
+  const second = (mid.find((g) => far(g.c, dom) && far(g.c, vivid)) || {}).c || mixRgb(vivid, [255, 255, 255], 0.4);
+  const base = satOf(dom) < 0.12 && satOf(vivid) > 0.2 ? mixRgb(dom, vivid, 0.3) : dom; // pochette grise : une pointe de sa couleur
+  // Fond à une luminosité choisie (sombre mais pas noir), dans la teinte de la pochette
+  const toLum = (c, target) => {
+    const l = lum(c) || 0.001;
+    return l > target ? mixRgb(c, [0, 0, 0], 1 - target / l) : mixRgb(c, mixRgb(vivid, [255, 255, 255], 0.2), Math.min(0.6, (target - l) / Math.max(0.05, lum(vivid) - l)));
+  };
+  const bg = toLum(base, 0.07);
+  const bg2 = toLum(base, 0.17);
+  const dark = lum(bg) < 0.45;
+  return {
+    bg: hexOf(bg),
+    bg2: hexOf(bg2),
+    fg: dark ? '#ffffff' : '#12091f',
+    shape: hexOf(satOf(vivid) > 0.15 ? vivid : mixRgb(vivid, [255, 255, 255], 0.35)),
+    alt: hexOf(second),
+    fromCover: true,
+  };
+}
+// Applique la palette de la pochette à la carte résumé (garde ses formes)
+async function themeSummaryFromCover(c) {
+  if (!c?.img) return c;
+  const th = await coverTheme(c.img).catch(() => null);
+  if (th) c.theme = { ...th, shapeSet: c.theme?.shapeSet || 'blobs' };
+  return c;
+}
+
 // Ton récap (stats sur 7 jours, 30 jours, tout…) : même fenêtre d'export que le récap animé (vidéo ou image).
 // Couleurs, fond animé et tournures changent à chaque export.
 export async function shareStatsStory(s, { title, name }) {
@@ -625,12 +690,13 @@ export async function shareStatsStory(s, { title, name }) {
   const c = cards.find((x) => x.kind === 'summary');
   c.kicker = title;
   c.style = pickFrom(['waves', 'plasma', 'rings', 'stars', 'rain'], seed);
+  await themeSummaryFromCover(c);
   return exportSheet(c, 'story', name);
 }
 
 export async function storyFrom(s, range) {
   const { cards } = buildCards(s, { label: range.label, tag: range.tag, name: range.label }, 'other');
-  return cardImage(cards.find((c) => c.kind === 'summary'), 'story');
+  return cardImage(await themeSummaryFromCover(cards.find((c) => c.kind === 'summary')), 'story');
 }
 
 export async function wrappedPage(el, params, ctx) {
@@ -650,6 +716,7 @@ export async function wrappedPage(el, params, ctx) {
     return;
   }
   const { cards, t1 } = buildCards(s, range, period);
+  themeSummaryFromCover(cards.find((c) => c.kind === 'summary'));
   let i = 0;
   let timer = null;
   let paused = false;
