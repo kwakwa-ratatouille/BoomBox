@@ -1778,6 +1778,7 @@ async function handleLaunchLink() {
 async function checkExpiry() {
   const info = await nativeInfo();
   if (!info?.expiration) return;
+  scheduleExpiryReminders(Date.parse(info.expiration));
   const days = Math.floor((Date.parse(info.expiration) - Date.now()) / 86400e3);
   if (days > 2) return;
   const b = document.createElement('div');
@@ -1786,6 +1787,22 @@ async function checkExpiry() {
   b.querySelector('button').onclick = () => (location.href = 'sidestore://');
   b.querySelectorAll('button')[1].onclick = () => b.remove();
   document.body.appendChild(b);
+}
+
+// iPhone : notifications programmées (même appli fermée) la veille de l'expiration, puis 3 h avant.
+// Reprogrammées à chaque lancement : après un renouvellement, la nouvelle date remplace l'ancienne.
+async function scheduleExpiryReminders(exp) {
+  const LN = window.Capacitor?.getPlatform?.() === 'ios' && window.Capacitor.Plugins?.LocalNotifications;
+  if (!LN || !exp) return;
+  const ids = [880011, 880012];
+  await LN.cancel({ notifications: ids.map((id) => ({ id })) }).catch(() => {});
+  const items = [
+    { id: ids[0], at: exp - 24 * 3600e3, title: 'Boombox expire demain', body: 'Ouvre SideStore et actualise Boombox pour continuer à l’utiliser.' },
+    { id: ids[1], at: exp - 3 * 3600e3, title: 'Boombox expire dans 3 h', body: 'Actualise-le maintenant dans SideStore (Mes apps → Actualiser).' },
+  ].filter((n) => n.at > Date.now() + 60e3);
+  if (!items.length) return;
+  await LN.requestPermissions?.().catch(() => {});
+  await LN.schedule({ notifications: items.map((n) => ({ id: n.id, title: n.title, body: n.body, schedule: { at: new Date(n.at), allowWhileIdle: true }, extra: { url: 'sidestore://' } })) }).catch(() => {});
 }
 
 // ======================= ESPACE (lien entre appareils) =======================

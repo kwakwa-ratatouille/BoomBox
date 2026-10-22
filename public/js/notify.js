@@ -71,6 +71,7 @@ export function setupNotificationTaps() {
   const P = LN();
   P?.addListener?.('localNotificationActionPerformed', (e) => {
     const url = e?.notification?.extra?.url;
-    if (url) location.hash = url;
+    if (url && /^[a-z]+:\/\//i.test(url)) location.href = url; // ex. rappel d'expiration → SideStore
+    else if (url) location.hash = url;
   });
 }
