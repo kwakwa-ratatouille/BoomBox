@@ -4,7 +4,7 @@
 import { html, icon, plural, toast } from './ui.js';
 import { getStatsFull, createPlaylist, listeningYears } from './state.js';
 import { ctl } from './player.js';
-import { loadImg, shareStory, pixelDeco } from './story.js';
+import { loadImg, shareStory, pixelDeco, shareFile, copyImage } from './story.js';
 import { pixelBackdrop } from './pixel-bg.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('fr-FR');
@@ -253,7 +253,7 @@ function drawShapes(x, t, W, H) {
 }
 
 // ---------- Image exportée (canvas) : la même carte, en Story 1080×1920 ou en post 1080×1350 ----------
-async function cardImage(c, format = 'story') {
+async function cardImage(c, format = 'story', opts = {}) {
   await document.fonts?.ready;
   const W = 1080;
   const H = format === 'post' ? 1350 : 1920;
@@ -270,7 +270,15 @@ async function cardImage(c, format = 'story') {
   x.fillStyle = g;
   x.fillRect(0, 0, W, H);
   drawShapes(x, t, W, H);
-  pixelDeco(x, W, H, String(c.kicker || '').length + (c.num || 0));  const wrap = (text, maxW, size, weight = 900) => {
+  pixelDeco(x, W, H, String(c.kicker || '').length + (c.num || 0));
+  // Vidéo : on garde le fond seul (sans le texte) pour faire apparaître le contenu par-dessus
+  let bgLayer = null;
+  if (opts.layers) {
+    bgLayer = document.createElement('canvas');
+    bgLayer.width = W;
+    bgLayer.height = H;
+    bgLayer.getContext('2d').drawImage(cv, 0, 0);
+  }  const wrap = (text, maxW, size, weight = 900) => {
     x.font = `${weight} ${size}px ${font}`;
     const out = [];
     for (const para of String(text).split('\n')) {
@@ -404,7 +412,127 @@ async function cardImage(c, format = 'story') {
   x.fillStyle = t.fg;
   x.font = `800 40px ${font}`;
   x.fillText('Boombox', 160, H - 92);
+  if (opts.layers) return { bg: bgLayer, full: cv };
   return new Promise((r) => cv.toBlob(r, 'image/png'));
+}
+
+// ---------- Vidéo animée de la carte (format Story 1080×1920 ou post 1080×1350), 6 secondes ----------
+// Le contenu apparaît en gros pixels (comme un écran rétro qui s'allume), puis des pixels scintillent sur les bords.
+const VIDEO_TYPES = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+export const canRecordVideo = () => !!window.MediaRecorder && !!HTMLCanvasElement.prototype.captureStream && VIDEO_TYPES.some((m) => MediaRecorder.isTypeSupported?.(m));
+export async function cardVideo(c, format = 'story', onTick) {
+  const { bg, full } = await cardImage(c, format, { layers: true });
+  const W = full.width;
+  const H = full.height;
+  const cv = document.createElement('canvas');
+  cv.width = W;
+  cv.height = H;
+  const x = cv.getContext('2d');
+  const mime = VIDEO_TYPES.find((m) => MediaRecorder.isTypeSupported?.(m));
+  // Chaque image est envoyée à la main à l'enregistreur (indépendant du rafraîchissement de l'écran)
+  const stream = cv.captureStream(0);
+  const track = stream.getVideoTracks()[0];
+  const pushFrame = track?.requestFrame ? () => track.requestFrame() : () => {};
+  const rec = new MediaRecorder(track?.requestFrame ? stream : cv.captureStream(30), { mimeType: mime, videoBitsPerSecond: 8e6 });
+  const chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  const stopped = new Promise((r) => (rec.onstop = r));
+  let seed = (String(c.kicker || '').length + 7) * 9301;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  // Ordre d'apparition des blocs : du haut vers le bas, avec du désordre (effet « pixels qui s'allument »)
+  const B = 60;
+  const cols = Math.ceil(W / B);
+  const rows = Math.ceil(H / B);
+  const order = Array.from({ length: cols * rows }, (_, k) => (Math.floor(k / cols) / rows) * 0.65 + rnd() * 0.35);
+  const t = c.theme;
+  const colors = [t.shape, t.alt, t.fg, '#ffffff'].filter(Boolean);
+  // Pixels qui scintillent sur les bords (haut, bas, côtés) : jamais sur le texte
+  const sparks = Array.from({ length: 48 }, () => {
+    const band = rnd();
+    const px = band < 0.5 ? rnd() * W : band < 0.75 ? rnd() * 70 : W - 70 + rnd() * 60;
+    const py = band < 0.25 ? rnd() * H * 0.1 : band < 0.5 ? H * 0.9 + rnd() * H * 0.1 : rnd() * H;
+    return { x: px, y: py, s: (1 + Math.floor(rnd() * 3)) * 12, c: colors[Math.floor(rnd() * colors.length)], ph: rnd() * 6.28, sp: 0.6 + rnd() * 1.2 };
+  });
+  const DUR = 6;
+  const REVEAL = 1.1;
+  const draw = (tt) => {
+    x.drawImage(bg, 0, 0);
+    const p = Math.min(1, tt / REVEAL);
+    if (p >= 1) x.drawImage(full, 0, 0);
+    else for (let k = 0; k < order.length; k++) if (order[k] < p) {
+      const sx = (k % cols) * B;
+      const sy = Math.floor(k / cols) * B;
+      x.drawImage(full, sx, sy, B, B, sx, sy, B, B);
+    }
+    for (const sp of sparks) {
+      const on = Math.sin(tt * 3.2 * sp.sp + sp.ph);
+      if (on < 0.2) continue;
+      x.globalAlpha = on > 0.7 ? 0.9 : 0.45; // deux niveaux : clignotement saccadé, rétro
+      x.fillStyle = sp.c;
+      x.fillRect(Math.round(sp.x), Math.round(sp.y - ((tt * 14 * sp.sp) % 40)), sp.s, sp.s);
+    }
+    x.globalAlpha = 1;
+  };
+  draw(0);
+  rec.start(250);
+  const t0 = performance.now();
+  await new Promise((done) => {
+    const step = () => {
+      const tt = (performance.now() - t0) / 1000;
+      draw(tt);
+      pushFrame();
+      onTick?.(Math.min(1, tt / DUR));
+      if (tt < DUR) setTimeout(step, 33);
+      else done();
+    };
+    step();
+  });
+  rec.stop();
+  await stopped;
+  return new Blob(chunks, { type: mime.split(';')[0] });
+}
+
+// ---------- Fenêtre d'export : aperçu + vidéo animée, image, copie ----------
+async function exportSheet(c, format, name) {
+  const img = await cardImage(c, format);
+  const url = URL.createObjectURL(img);
+  const mobile = window.Capacitor?.isNativePlatform?.() || /iphone|ipad|android/i.test(navigator.userAgent);
+  const ov = document.createElement('div');
+  ov.className = 'story-save story-export';
+  ov.innerHTML = `<div class="ss-box"><img src="${url}" alt="Aperçu">
+    <div class="se-btns">
+      ${canRecordVideo() ? '<button class="btn primary" data-x="video">Vidéo animée (6 s)</button>' : ''}
+      <button class="btn white" data-x="image">${mobile ? 'Partager l’image' : 'Télécharger l’image'}</button>
+      ${!mobile && window.ClipboardItem ? '<button class="btn ghost" data-x="copy">Copier l’image</button>' : ''}
+      <button class="btn ghost" data-x="close">Fermer</button>
+    </div><p class="muted se-hint"></p></div>`;
+  document.body.appendChild(ov);
+  const close = () => (ov.remove(), URL.revokeObjectURL(url));
+  ov.addEventListener('click', async (e) => {
+    if (e.target === ov) return close();
+    const act = e.target.closest('[data-x]')?.dataset.x;
+    if (act === 'close') return close();
+    if (act === 'image') return shareFile(img, name);
+    if (act === 'copy') return copyImage(img);
+    if (act === 'video') {
+      const b = e.target.closest('button');
+      if (b.disabled) return;
+      b.disabled = true;
+      const hint = ov.querySelector('.se-hint');
+      hint.textContent = 'Création de la vidéo… reste sur cette page';
+      try {
+        const vid = await cardVideo(c, format, (p) => (b.textContent = `Création… ${Math.round(p * 100)} %`));
+        hint.textContent = '';
+        b.textContent = 'Vidéo animée (6 s)';
+        await shareFile(vid, name.replace(/\.png$/, vid.type.includes('mp4') ? '.mp4' : '.webm'));
+      } catch (err) {
+        hint.textContent = `Vidéo impossible : ${err.message}`;
+      } finally {
+        b.disabled = false;
+        if (b.textContent.startsWith('Création')) b.textContent = 'Vidéo animée (6 s)';
+      }
+    }
+  });
 }
 
 // Image Story du résumé (utilisée aussi par la page des stats)
@@ -509,8 +637,7 @@ export async function wrappedPage(el, params, ctx) {
     if (w === 'pause') return setPaused(!paused);
     if (w === 'story' || w === 'post') {
       setPaused(true);
-      toast('Création de l’image…');
-      return shareStory(await cardImage(cards[i], w), `boombox-${period}-${i + 1}${w === 'post' ? '-post' : ''}.png`);
+      return exportSheet(cards[i], w, `boombox-${period}-${i + 1}${w === 'post' ? '-post' : ''}.png`);
     }
     if (w === 'save') {
       const pl = await createPlaylist(`Mes titres ${range.name}`, s.topTracks.map((t) => t.track), `Tes titres les plus écoutés ${range.tag}, d'après ton récap Boombox.`);

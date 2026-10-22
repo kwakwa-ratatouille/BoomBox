@@ -2127,3 +2127,7 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 /* Nombre de lectures sous le nom du son : seulement sur téléphone (sur PC il a sa colonne) */
 .t-plays-m { display: none; }
 @media (max-width: 768px) { .t-plays-m { display: inline; } }
+/* Export du récap : aperçu, puis vidéo animée / image / copie */
+.story-export .ss-box img { max-height: 58vh; width: auto; }
+.se-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+.se-hint { margin: 10px 0 0; font-size: 13px; min-height: 1em; }

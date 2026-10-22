@@ -125,7 +125,7 @@ app.get('/api/audio-file/:id', audioFileHandler);
 // Proxy d'images (pochettes) : permet au navigateur d'en lire les pixels pour extraire la couleur dominante.
 app.get('/api/img', wrap(async (req, res) => {
   const u = new URL(String(req.query.u || ''));
-  if (!/(^|\.)(ytimg\.com|googleusercontent\.com|ggpht\.com|scdn\.co|spotifycdn\.com|dzcdn\.net)$/.test(u.hostname)) return res.status(400).end();
+  if (!/(^|\.)(ytimg\.com|googleusercontent\.com|ggpht\.com|scdn\.co|spotifycdn\.com|dzcdn\.net|sndcdn\.com)$/.test(u.hostname)) return res.status(400).end();
   const r = await fetch(u);
   if (!r.ok) return res.status(r.status).end();
   res.setHeader('content-type', r.headers.get('content-type') || 'image/jpeg');

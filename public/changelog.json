@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Récap en vidéo",
+    "items": [
+      "Récap : nouvelle fenêtre d’export avec aperçu — vidéo animée de 6 s au format Story (MP4 1080×1920), image, et « Copier l’image » sur PC.",
+      "Les pochettes SoundCloud apparaissent enfin sur les images du récap.",
+      "Téléphone : partage direct vers Instagram, Snap… avec la prochaine version de l’appli."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1038",
     "title": "Écoutes des sons d’un album",
     "items": [

@@ -19,6 +19,7 @@
     "@capacitor/filesystem": "^6.0.2",
     "@capacitor/local-notifications": "^6.1.3",
     "@capacitor/network": "^6.0.2",
+    "@capacitor/share": "^6.0.4",
     "bgutils-js": "^4.0.3",
     "boombox-native": "file:mobile/plugins/boombox-native",
     "express": "^5.3.0",

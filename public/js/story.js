@@ -142,10 +142,30 @@ export async function makeStory(data) {
 }
 
 // Partage l'image (feuille de partage du téléphone → Insta…) ou la télécharge sur PC
-export async function shareStory(blob, name = 'boombox-recap.png') {
-  if (!blob) return toast('Image impossible à créer');
-  const file = new File([blob], name, { type: 'image/png' });
-  if (navigator.canShare?.({ files: [file] })) {
+// Partage d'une image ou d'une vidéo :
+//  1. appli iPhone / Android avec le module de partage natif → feuille de partage (Instagram, Snap, Photos…)
+//  2. navigateur qui sait partager des fichiers → feuille de partage
+//  3. sinon : téléchargement sur PC, ou image affichée en grand sur téléphone (appui long pour l'enregistrer)
+export async function shareFile(blob, name) {
+  if (!blob) return toast('Fichier impossible à créer');
+  const P = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins;
+  if (P?.Share && P?.Filesystem) {
+    try {
+      const b64 = await new Promise((ok, ko) => {
+        const r = new FileReader();
+        r.onload = () => ok(String(r.result).split(',')[1]);
+        r.onerror = ko;
+        r.readAsDataURL(blob);
+      });
+      const { uri } = await P.Filesystem.writeFile({ path: `share/${name}`, data: b64, directory: 'CACHE', recursive: true });
+      await P.Share.share({ files: [uri], title: 'Mon récap Boombox' });
+      return;
+    } catch (e) {
+      if (/cancel|annul/i.test(e?.message || '')) return;
+    }
+  }
+  const file = new File([blob], name, { type: blob.type || 'image/png' });
+  if (navigator.canShare?.({ files: [file] }) && /iphone|ipad|android/i.test(navigator.userAgent)) {
     try {
       await navigator.share({ files: [file], title: 'Mon récap Boombox' });
       return;
@@ -153,15 +173,31 @@ export async function shareStory(blob, name = 'boombox-recap.png') {
       if (e?.name === 'AbortError') return;
     }
   }
-  // Appli iPhone / Android (et navigateurs mobiles sans partage) : le téléchargement ne marche pas ; on affiche
-  // l'image en grand, un appui long permet de l'enregistrer dans Photos ou de la partager (Instagram…)
-  if (window.Capacitor?.isNativePlatform?.() || /iphone|ipad|android/i.test(navigator.userAgent)) return showImage(blob);
+  if (window.Capacitor?.isNativePlatform?.() || /iphone|ipad|android/i.test(navigator.userAgent)) {
+    if (blob.type.startsWith('image/')) return showImage(blob);
+    return toast('Mets à jour l’appli (SideStore) pour partager la vidéo', { timeout: 6000 });
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  toast('Image enregistrée : publie-la en Story depuis ton téléphone');
+  toast(blob.type.startsWith('video/') ? 'Vidéo enregistrée dans Téléchargements' : 'Image enregistrée dans Téléchargements');
+}
+
+// Copier l'image (PC) : à coller directement dans un message, Discord, Insta web…
+export async function copyImage(blob) {
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    toast('Image copiée');
+  } catch {
+    toast('Copie impossible ici : utilise « Télécharger »');
+  }
+}
+
+export async function shareStory(blob, name = 'boombox-recap.png') {
+  if (!blob) return toast('Image impossible à créer');
+  return shareFile(blob, name);
 }
 
 function showImage(blob) {
