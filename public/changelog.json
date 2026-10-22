@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Vidéo de paroles calée sur le passage",
+    "items": [
+      "Story de paroles : la vidéo dure exactement le passage choisi (de ta 1re ligne à la fin de la dernière), avec le son de ce passage, synchronisé."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1416",
     "title": "Mode caché plus doux",
     "items": [

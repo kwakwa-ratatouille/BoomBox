@@ -558,7 +558,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
   const lg = low.getContext('2d');
   const img = lg.createImageData(lw, lh);
   const t = c.theme;
-  const DUR = 10;
+  const DUR = c.duration || 10;
   // Musique : extrait pris vers le tiers du son (souvent le refrain), fondu d'entrée et de sortie
   let audio = null;
   if (music && ac) {
@@ -704,6 +704,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
 
 // ---------- Fenêtre d'export : aperçu + vidéo animée, image, copie ----------
 async function exportSheet(c, format, name) {
+  const vidLabel = `Vidéo animée (${Math.round(c.duration || 10)} s)`;
   const img = await cardImage(c, format);
   const url = URL.createObjectURL(img);
   const mobile = window.Capacitor?.isNativePlatform?.() || /iphone|ipad|android/i.test(navigator.userAgent);
@@ -711,7 +712,7 @@ async function exportSheet(c, format, name) {
   ov.className = 'story-save story-export';
   ov.innerHTML = `<div class="ss-box"><img src="${url}" alt="Aperçu">
     <div class="se-btns">
-      ${canRecordVideo() ? '<button class="btn primary" data-x="video">Vidéo animée (10 s)</button>' : ''}
+      ${canRecordVideo() ? `<button class="btn primary" data-x="video">${vidLabel}</button>` : ''}
       ${canRecordVideo() && c.music ? `<label class="se-music"><input type="checkbox" id="se-sound" checked> Avec le son : <b>${String(c.music.title).replace(/[<>&]/g, '')}</b></label>` : ''}
       <button class="btn white" data-x="image">${mobile ? 'Partager l’image' : 'Télécharger l’image'}</button>
       ${!mobile && window.ClipboardItem ? '<button class="btn ghost" data-x="copy">Copier l’image</button>' : ''}
@@ -738,13 +739,13 @@ async function exportSheet(c, format, name) {
         const vid = await cardVideo(c, format, (p) => (b.textContent = `Création… ${Math.round(p * 100)} %`), { music: sound ? c.music : null, ac });
         ac?.close().catch(() => {});
         hint.textContent = '';
-        b.textContent = 'Vidéo animée (10 s)';
+        b.textContent = vidLabel;
         await shareFile(vid, name.replace(/\.png$/, vid.type.includes('mp4') ? '.mp4' : '.webm'));
       } catch (err) {
         hint.textContent = `Vidéo impossible : ${err.message}`;
       } finally {
         b.disabled = false;
-        if (b.textContent.startsWith('Création')) b.textContent = 'Vidéo animée (10 s)';
+        if (b.textContent.startsWith('Création')) b.textContent = vidLabel;
       }
     }
   });
@@ -816,13 +817,23 @@ async function themeSummaryFromCover(c) {
   return c;
 }
 
+// Durée de la vidéo de paroles : de la 1re ligne choisie jusqu'au début de la ligne qui suit la dernière (le passage
+// exact du son), entre 5 et 30 s ; paroles non synchronisées : 10 s
+function lyricsDuration(lyr, at) {
+  if (!lyr?.synced || at == null) return 10;
+  const ls2 = lyr.lines;
+  const last = ls2.map((l2, k) => (l2.chosen ? k : -1)).filter((k) => k >= 0).pop();
+  const end = ls2[last + 1]?.t ?? (ls2[last]?.t ?? at) + 4;
+  return Math.max(5, Math.min(30, end - at + 1.2));
+}
+
 // Story de paroles : couleurs de la pochette, fond animé, et le passage du son qui correspond aux lignes choisies
 export async function shareLyricsStory(track, lines, at = null, lyr = null) {
   const seed = Math.floor(Date.now() / 1000);
   const artist = (track.artists || []).map((a) => a.name).join(', ');
   const c = {
     kind: 'lyrics', kicker: pickFrom(['🎤 En boucle dans ma tête', '🎧 Ce passage…', '💬 Les mots justes', '🔁 Je l’ai en tête', '🔥 Ce son'], seed),
-    title: track.title, artist, lines, img: track.thumb, music: track, musicAt: at, lyr,
+    title: track.title, artist, lines, img: track.thumb, music: track, musicAt: at, lyr, duration: lyricsDuration(lyr, at),
     theme: { bg: '#130a24', bg2: '#2a1650', fg: '#ffffff', shape: '#b07cf7', alt: '#2ef28b', shapeSet: pickFrom(['blobs', 'rings', 'waves'], seed) },
     style: pickFrom(['waves', 'plasma', 'rings', 'stars'], seed),
   };
