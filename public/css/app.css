@@ -2124,3 +2124,6 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 /* Swipe aussi sur les lignes de la file d'attente */
 .q-item.swiping { position: relative; z-index: 2; background: var(--panel); will-change: transform; }
 .q-item.swiped { animation: swipedFlash 0.6s ease; }
+/* Nombre de lectures sous le nom du son : seulement sur téléphone (sur PC il a sa colonne) */
+.t-plays-m { display: none; }
+@media (max-width: 768px) { .t-plays-m { display: inline; } }

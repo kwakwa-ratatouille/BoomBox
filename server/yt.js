@@ -1,4 +1,4 @@
-import { scFind } from './soundcloud.js';
+import { scFind, scPlayCounts } from './soundcloud.js';
 // Accès à YouTube / YouTube Music via youtubei.js (pas de clé API nécessaire).
 import { Innertube, Log } from 'youtubei.js';
 import fs from 'node:fs';
@@ -385,7 +385,7 @@ export async function newReleases() {
 }
 
 export async function album(id) {
-  return cached(`al:${id}`, 6 * 60 * 60e3, async () => {
+  return cached(`al2:${id}`, 6 * 60 * 60e3, async () => {
     const yt = await getYt();
     const al = await yt.music.getAlbum(id);
     const h = al.header || {};
@@ -399,7 +399,11 @@ export async function album(id) {
     const thumb = thumbOf(h) || thumbOf(al.background);
     const albumRef = { id, name: txt(h.title) };
     const items = collectItems(al.contents);
-    let tracks = items.map((i) => normTrack(i, { artists, album: albumRef, thumb }));
+    let tracks = items.map((i) => {
+      const t = normTrack(i, { artists, album: albumRef, thumb });
+      if (t) t.plays = playsOf(i) || undefined; // « 12 M lectures » affiché par YouTube Music
+      return t;
+    });
     // Titres « non disponibles » sur YouTube Music en France (droits) : avant, ils disparaissaient de l'album.
     // On les remplace par leur version YouTube (clip ou audio mis en ligne), retrouvée par titre + artiste.
     const missing = tracks.map((t, k) => (t ? null : k)).filter((k) => k != null);
@@ -424,6 +428,10 @@ export async function album(id) {
         } catch {}
       };
       for (let k = 0; k < missing.length; k += 4) await Promise.all(missing.slice(k, k + 4).map(fill));
+      // Écoutes des sons remplacés par leur version SoundCloud (comptées chez SoundCloud)
+      const scIds = tracks.filter((t) => t?.fromSoundcloud).map((t) => t.id);
+      const counts = scIds.length ? await scPlayCounts(scIds).catch(() => ({})) : {};
+      tracks.forEach((t) => t?.fromSoundcloud && counts[t.id] && (t.plays = counts[t.id]));
     }
     tracks = tracks
       .filter(Boolean)

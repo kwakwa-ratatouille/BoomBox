@@ -142,3 +142,12 @@ async function scApi(url) {
   }
   throw new Error('SoundCloud refuse la demande');
 }
+
+// Nombre d'écoutes de sons SoundCloud (« 1,2 M »), pour les sons d'album remplacés par leur version SoundCloud
+export async function scPlayCounts(ids) {
+  const nums = ids.map((id) => parseInt(String(id).replace(/^sc_/, ''), 36)).filter(Boolean);
+  if (!nums.length) return {};
+  const list = await scApi(`https://api-v2.soundcloud.com/tracks?ids=${nums.slice(0, 50).join(',')}`).catch(() => []);
+  const fmt = new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 });
+  return Object.fromEntries((list || []).filter((t) => t.playback_count != null).map((t) => [scId(t.id), fmt.format(t.playback_count)]));
+}

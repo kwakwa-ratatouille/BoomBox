@@ -139,7 +139,7 @@ function trackRow(t, i, listId, o) {
       ${o.coverArt ? cover(t, '', 96) : ''}
       <div class="t-text">
         <span class="t-title">${dl ? html`<span class="dl-dot" title="Téléchargé">${icon('import', 12)}</span>` : ''}${t.title}</span>
-        <span class="t-artists">${t.video ? html`<span class="tag">CLIP</span>` : ''}${o.counts?.[t.id] ? html`<span class="t-count">${o.counts[t.id]} écoute${o.counts[t.id] > 1 ? 's' : ''}</span> • ` : ''}${artistLinks(t)}</span>
+        <span class="t-artists">${o.plays && (t.playsSpotify || t.plays) ? html`<span class="t-plays-m">${t.playsSpotify ? t.playsSpotify.toLocaleString('fr-FR') : t.plays} lectures • </span>` : ''}${t.video ? html`<span class="tag">CLIP</span>` : ''}${o.counts?.[t.id] ? html`<span class="t-count">${o.counts[t.id]} écoute${o.counts[t.id] > 1 ? 's' : ''}</span> • ` : ''}${artistLinks(t)}</span>
       </div>
     </div>
     ${o.plays ? html`<span class="t-album t-plays" title="${t.playsSpotify ? 'Écoutes sur Spotify' : t.plays ? 'Lectures sur YouTube Music (arrondi)' : ''}">${t.playsSpotify ? t.playsSpotify.toLocaleString('fr-FR') : t.plays || ''}</span>` : o.album ? html`<span class="t-album">${t.album?.id ? html`<a class="link" href="#/album/${t.album.id}">${t.album.name}</a>` : t.album?.name || ''}</span>` : ''}

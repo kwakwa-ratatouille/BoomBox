@@ -989,7 +989,7 @@ export async function album(el, { id }, ctx) {
         <button class="act-btn" id="al-save" title="Enregistrer comme playlist">${icon('plus')}</button>
         <button class="act-btn" id="al-more">${icon('more')}</button>
       </div>
-      ${trackList(a.tracks, { context: actx, album: false, coverArt: false })}
+      ${trackList(a.tracks, { context: actx, album: false, coverArt: false, plays: a.tracks.some((t) => t.plays) })}
     </div>`);
   heroColor(el, a.thumb);
   wireListActions(el, () => a.tracks, actx);

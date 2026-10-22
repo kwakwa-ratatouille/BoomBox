@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Écoutes des sons d’un album",
+    "items": [
+      "Albums : le nombre d’écoutes de chaque son (colonne « Lectures » sur PC, sous le titre sur téléphone). Pour les sons bloqués sur YouTube Music et joués depuis SoundCloud, ce sont les écoutes SoundCloud."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.0918",
     "title": "Albums SoundCloud",
     "items": [
