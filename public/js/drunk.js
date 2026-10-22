@@ -65,8 +65,9 @@ function frame() {
   // au plus toutes les 1,2 s et sans tangage continu
   if (NATIVE) {
     const target = ev && Date.now() < ev.until ? r / (1 + Math.sin(wobble) * 0.06 + Math.sin(wobble * 2.7) * 0.03) : 1;
-    const rounded = Math.round(target * 10) / 10;
-    if (rounded !== lastRate && Date.now() - lastRateAt > 1200) {
+    // 3 vitesses seulement, changement au plus toutes les 1,5 s
+    const rounded = target < 0.92 ? 0.8 : target > 1.08 ? 1.25 : 1;
+    if (rounded !== lastRate && Date.now() - lastRateAt > 1500) {
       lastRate = rounded;
       lastRateAt = Date.now();
       setRate(rounded);
@@ -88,14 +89,15 @@ function nextEvent() {
 export function startDrunk() {
   if (on) return;
   on = true;
-  document.documentElement.classList.add('drunk');
+  // iPhone : version allégée (le grand voile qui tourne et la déformation de toute l'appli faisaient planter iOS)
+  document.documentElement.classList.add('drunk', ...(NATIVE ? ['drunk-lite'] : []));
   pill = document.createElement('button');
   pill.className = 'drunk-pill';
   pill.textContent = '🍺 Mode bourré · toucher pour arrêter';
   pill.onclick = stopDrunk;
   document.body.appendChild(pill);
   const veil = document.createElement('div');
-  veil.className = 'drunk-veil';
+  veil.className = NATIVE ? 'drunk-veil lite' : 'drunk-veil';
   document.body.appendChild(veil);
   toast('🍺 Santé ! Mode bourré activé');
   frame();
@@ -113,7 +115,7 @@ export function stopDrunk() {
     el.preservesPitch = el.webkitPreservesPitch = el.mozPreservesPitch = true;
   }
   audio()?.els?.forEach((_, i) => audio()._apply?.(i)); // volume normal
-  document.documentElement.classList.remove('drunk', 'drunk-hic');
+  document.documentElement.classList.remove('drunk', 'drunk-lite', 'drunk-hic');
   pill?.remove();
   document.querySelector('.drunk-veil')?.remove();
   toast('Mode bourré terminé, bois de l’eau 💧');

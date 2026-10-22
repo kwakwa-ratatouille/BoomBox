@@ -2164,3 +2164,10 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
   .wr-share { padding: 9px 12px; font-size: 13px; white-space: nowrap; }
   .wr-body { padding-bottom: 16px; }
 }
+/* Mode bourré sur iPhone : version légère (pas de grand calque qui tourne, pas de déformation de toute l'appli) */
+.drunk-lite #app, .drunk-lite #fullplayer { animation: drunkSwayLite 6s ease-in-out infinite; will-change: auto; }
+@keyframes drunkSwayLite { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(1.2deg); } 70% { transform: rotate(-1.2deg); } }
+.drunk-lite.drunk-hic #app, .drunk-lite.drunk-hic #fullplayer { animation: drunkHicLite 0.4s steps(3) 1 !important; }
+@keyframes drunkHicLite { 0% { transform: translateY(0); } 40% { transform: translateY(-10px); } 100% { transform: none; } }
+.drunk-veil.lite { inset: 0; background: #ff2bd6; opacity: 0.06; animation: drunkTint 6s ease-in-out infinite; will-change: auto; }
+@keyframes drunkTint { 0%, 100% { background: #ff2bd6; } 33% { background: #22f0ff; } 66% { background: #c6ff4d; } }
