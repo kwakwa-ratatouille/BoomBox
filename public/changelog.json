@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Fin du plantage après mise à jour",
+    "items": [
+      "iPhone : les mises à jour de l’interface sont rangées là où l’appli les cherche au démarrage. Fini le plantage en boucle au relancement après une mise à jour."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1022.1224",
     "title": "Vidéo avec musique",
     "items": [

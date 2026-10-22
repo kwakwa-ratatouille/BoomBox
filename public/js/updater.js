@@ -7,6 +7,10 @@ import { firebaseConfig } from './firebase-config.js';
 import { loadJsZip } from './spotify-data.js';
 
 const BASE = `https://${firebaseConfig.projectId}.web.app/`;
+// Dossier des interfaces téléchargées : Capacitor (iOS), au démarrage à froid, ne garde que le NOM du dossier mémorisé
+// et le cherche dans Library/NoCloud/ionic_built_snapshots/. Les versions doivent donc être rangées exactement là,
+// sinon l'appli ne trouve pas son interface au lancement suivant et plante en boucle (corrigé ici).
+const SNAP_DIR = 'NoCloud/ionic_built_snapshots';
 const K = { pending: 'boombox.web.pending', tries: 'boombox.web.tries', prev: 'boombox.web.prev', ready: 'boombox.web.ready' };
 const ls = {
   get: (k) => localStorage.getItem(k),
@@ -44,6 +48,24 @@ export async function webUpdateBoot() {
     return;
   }
   if (ls.get(K.pending)) ls.set(K.tries, String(tries + 1));
+  // Interface lancée depuis l'ancien emplacement (Documents/web) : au prochain démarrage à froid, Capacitor ne la
+  // trouverait pas (plantage en boucle). On la copie dans le dossier attendu et on mémorise ce chemin.
+  try {
+    const cur = (await wv.getServerBasePath())?.path || '';
+    const m = cur.match(/\/Documents\/web\/([^/]+)\/?$/);
+    const { Filesystem } = plugins();
+    if (m && Filesystem) {
+      const v = m[1];
+      const to = `${SNAP_DIR}/${v}`;
+      const exists = await Filesystem.stat({ path: `${to}/index.html`, directory: 'LIBRARY' }).then(() => true).catch(() => false);
+      if (!exists) await Filesystem.copy({ from: `web/${v}`, directory: 'DATA', to, toDirectory: 'LIBRARY' });
+      const { uri } = await Filesystem.getUri({ path: to, directory: 'LIBRARY' });
+      await wv.setServerBasePath({ path: uri.replace(/^file:\/\//, '') });
+      await wv.persistServerBasePath();
+    }
+  } catch (e) {
+    console.warn('Déplacement de l’interface :', e?.message || e);
+  }
 }
 
 // À appeler quand l'appli a bien démarré (profil chargé, interface affichée)
@@ -70,7 +92,7 @@ export async function checkWebUpdate({ onReady } = {}) {
     // Interface qui demande un appli native plus récente : il faudra passer par SideStore
     const nativeBuild = Number((await App?.getInfo?.().catch(() => null))?.build || 1);
     if ((m.minNative || 1) > nativeBuild) return onReady?.(null, 'native');
-    const dir = `web/${m.version}`;
+    const dir = `${SNAP_DIR}/${m.version}`;
     const zipPath = `web/${m.version}.zip`;
     await Filesystem.downloadFile({ url: BASE + m.url, path: zipPath, directory: 'DATA', recursive: true });
     const { data } = await Filesystem.readFile({ path: zipPath, directory: 'DATA' });
@@ -79,18 +101,24 @@ export async function checkWebUpdate({ onReady } = {}) {
     const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
     for (const name of names) {
       const b64 = await zip.files[name].async('base64');
-      await Filesystem.writeFile({ path: `${dir}/${name}`, data: b64, directory: 'DATA', recursive: true });
+      await Filesystem.writeFile({ path: `${dir}/${name}`, data: b64, directory: 'LIBRARY', recursive: true });
     }
     await Filesystem.deleteFile({ path: zipPath, directory: 'DATA' }).catch(() => {});
     if (!names.includes('index.html')) throw new Error('archive incomplète');
-    const { uri } = await Filesystem.getUri({ path: dir, directory: 'DATA' });
+    const { uri } = await Filesystem.getUri({ path: dir, directory: 'LIBRARY' });
     ls.set(K.ready, JSON.stringify({ version: m.version, path: uri.replace(/^file:\/\//, '') }));
     // Ménage : on ne garde que la version prête et celle en cours
     const keep = new Set([m.version, cur.version]);
-    const list = await Filesystem.readdir({ path: 'web', directory: 'DATA' }).catch(() => ({ files: [] }));
+    const list = await Filesystem.readdir({ path: SNAP_DIR, directory: 'LIBRARY' }).catch(() => ({ files: [] }));
     for (const f of list.files || []) {
       const n = typeof f === 'string' ? f : f.name;
-      if (!keep.has(n)) await Filesystem.rmdir({ path: `web/${n}`, directory: 'DATA', recursive: true }).catch(() => {});
+      if (!keep.has(n)) await Filesystem.rmdir({ path: `${SNAP_DIR}/${n}`, directory: 'LIBRARY', recursive: true }).catch(() => {});
+    }
+    // Anciennes versions rangées au mauvais endroit (Documents/web) : supprimées, sauf celle en cours d'utilisation
+    const old = await Filesystem.readdir({ path: 'web', directory: 'DATA' }).catch(() => ({ files: [] }));
+    for (const f of old.files || []) {
+      const n = typeof f === 'string' ? f : f.name;
+      if (n !== cur.version) await Filesystem.rmdir({ path: `web/${n}`, directory: 'DATA', recursive: true }).catch(() => {});
     }
     onReady?.(m.version);
     ls.del('boombox.web.lastError');
