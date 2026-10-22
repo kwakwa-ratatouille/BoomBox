@@ -142,12 +142,48 @@ const scId = (n) => 'sc_' + Number(n).toString(36).padStart(8, '0');
 const scNum = (id) => parseInt(String(id).replace(/^sc_/, ''), 36);
 async function scSearch(env, q) {
   if (!q) return [];
-  const r = await scApi(env, `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&limit=15`);
-  return (r.collection || []).filter((t) => t.streamable !== false).map((t) => ({
+  const [r, album] = await Promise.all([
+    scApi(env, `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(q)}&limit=15`),
+    scAlbumTracks(q, (u) => scApi(env, u)).catch(() => []),
+  ]);
+  const seen = new Set(album.map((t) => t.id));
+  return [...album, ...(r.collection || []).filter((t) => t.streamable !== false && !seen.has(scId(t.id))).map((t) => ({
     id: scId(t.id), title: t.title, artists: [{ name: t.user?.username || 'SoundCloud' }], album: null,
     duration: Math.round((t.full_duration || t.duration || 0) / 1000), thumb: (t.artwork_url || t.user?.avatar_url || '').replace('-large', '-t500x500') || null, soundcloud: true,
+  }))];
+}
+
+// ---------- Albums SoundCloud (sets) ----------
+const scWords = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(Boolean);
+async function scAlbumTracks(q, api) {
+  const qw = new Set(scWords(q));
+  if (qw.size < 2) return [];
+  const r = await api(`https://api-v2.soundcloud.com/search/playlists?q=${encodeURIComponent(q)}&limit=8`).catch(() => null);
+  // Meilleur album : la plupart des mots de son titre sont dans la recherche
+  const best = (r?.collection || [])
+    .map((p) => {
+      const tw = scWords(p.title);
+      return { p, score: tw.length ? tw.filter((w) => qw.has(w)).length / tw.length : 0 };
+    })
+    .filter((x) => x.score >= 0.75)
+    .sort((a, b) => b.score - a.score)[0]?.p;
+  if (!best) return [];
+  const full = await api(`https://api-v2.soundcloud.com/playlists/${best.id}`).catch(() => null);
+  let tracks = full?.tracks || [];
+  // Les sons au-delà des premiers ne sont que des numéros : on demande le reste
+  const missing = tracks.filter((t) => !t.title).map((t) => t.id);
+  if (missing.length) {
+    const more = await api(`https://api-v2.soundcloud.com/tracks?ids=${missing.slice(0, 50).join(',')}`).catch(() => []);
+    const byId = new Map((more || []).map((t) => [t.id, t]));
+    tracks = tracks.map((t) => (t.title ? t : byId.get(t.id))).filter(Boolean);
+  }
+  const art = (best.artwork_url || '').replace('-large', '-t500x500') || null;
+  return tracks.filter((t) => t.streamable !== false).map((t) => ({
+    id: 'sc_' + Number(t.id).toString(36).padStart(8, '0'), title: t.title, artists: [{ name: t.user?.username || best.user?.username || 'SoundCloud' }],
+    album: { name: best.title }, duration: Math.round((t.full_duration || t.duration || 0) / 1000), thumb: (t.artwork_url || '').replace('-large', '-t500x500') || art, soundcloud: true,
   }));
 }
+
 async function scStream(env, id) {
   const num = scNum(id);
   if (!num) throw new Error('Son SoundCloud invalide');

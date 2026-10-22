@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Albums SoundCloud",
+    "items": [
+      "Recherche : les albums SoundCloud sont trouvés (ex. « kidashhh FUCK OLD ME pt2 ») et leurs sons passent en tête.",
+      "Recherche : si YouTube Music ne trouve rien, les résultats SoundCloud s’affichent quand même au lieu de « Aucun résultat »."
+    ],
+    "date": "2026-10-22"
+  },
+  {
     "version": "2026.1021.2247",
     "title": "Un seul appui",
     "items": [

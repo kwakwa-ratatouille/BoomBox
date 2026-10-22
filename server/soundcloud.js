@@ -75,9 +75,70 @@ export async function scResolve(url) {
 // Recherche SoundCloud (onglet « SoundCloud » de la recherche) : sons publics, sans les remix en premier
 export async function scSearch(q, n = 15) {
   if (!BIN) return [];
-  const out = await ytdlp(BIN, ['--flat-playlist', '--dump-json', '--no-warnings', `scsearch${n}:${String(q).slice(0, 100)}`]).catch(() => '');
-  return out.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l)).map((h) => {
+  const [out, album] = await Promise.all([
+    ytdlp(BIN, ['--flat-playlist', '--dump-json', '--no-warnings', `scsearch${n}:${String(q).slice(0, 100)}`]).catch(() => ''),
+    scAlbumTracks(String(q).slice(0, 100), scApi).catch(() => []),
+  ]);
+  const found = out.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l)).map((h) => {
     const thumb = (h.thumbnails || []).slice().sort((a, b) => (b.width || 0) - (a.width || 0))[0]?.url || null;
     return { id: scId(h.id), title: h.title, artists: [{ name: h.uploader || 'SoundCloud' }], album: null, duration: Math.round(h.duration || 0), thumb, soundcloud: true };
   });
+  // Sons de l'album trouvé d'abord, puis les autres résultats (sans doublons)
+  const seen = new Set(album.map((t) => t.id));
+  return [...album, ...found.filter((t) => !seen.has(t.id))];
+}
+
+// ---------- Albums SoundCloud (sets) ----------
+const SC_UA = { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' };
+const scWords = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[^a-z0-9]+/).filter(Boolean);
+async function scAlbumTracks(q, api) {
+  const qw = new Set(scWords(q));
+  if (qw.size < 2) return [];
+  const r = await api(`https://api-v2.soundcloud.com/search/playlists?q=${encodeURIComponent(q)}&limit=8`).catch(() => null);
+  // Meilleur album : la plupart des mots de son titre sont dans la recherche
+  const best = (r?.collection || [])
+    .map((p) => {
+      const tw = scWords(p.title);
+      return { p, score: tw.length ? tw.filter((w) => qw.has(w)).length / tw.length : 0 };
+    })
+    .filter((x) => x.score >= 0.75)
+    .sort((a, b) => b.score - a.score)[0]?.p;
+  if (!best) return [];
+  const full = await api(`https://api-v2.soundcloud.com/playlists/${best.id}`).catch(() => null);
+  let tracks = full?.tracks || [];
+  // Les sons au-delà des premiers ne sont que des numéros : on demande le reste
+  const missing = tracks.filter((t) => !t.title).map((t) => t.id);
+  if (missing.length) {
+    const more = await api(`https://api-v2.soundcloud.com/tracks?ids=${missing.slice(0, 50).join(',')}`).catch(() => []);
+    const byId = new Map((more || []).map((t) => [t.id, t]));
+    tracks = tracks.map((t) => (t.title ? t : byId.get(t.id))).filter(Boolean);
+  }
+  const art = (best.artwork_url || '').replace('-large', '-t500x500') || null;
+  return tracks.filter((t) => t.streamable !== false).map((t) => ({
+    id: 'sc_' + Number(t.id).toString(36).padStart(8, '0'), title: t.title, artists: [{ name: t.user?.username || best.user?.username || 'SoundCloud' }],
+    album: { name: best.title }, duration: Math.round((t.full_duration || t.duration || 0) / 1000), thumb: (t.artwork_url || '').replace('-large', '-t500x500') || art, soundcloud: true,
+  }));
+}
+
+// Identifiant public du lecteur web de SoundCloud (lu dans ses scripts, gardé 12 h)
+let scCid = null;
+let scCidAt = 0;
+async function scClientId(fresh = false) {
+  if (scCid && !fresh && Date.now() - scCidAt < 12 * 3600e3) return scCid;
+  const home = await (await fetch('https://soundcloud.com/', { headers: SC_UA })).text();
+  const scripts = [...home.matchAll(/<script crossorigin src="([^"]+\.js)"/g)].map((m) => m[1]).reverse();
+  for (const src of scripts) {
+    const m = (await (await fetch(src, { headers: SC_UA })).text()).match(/client_id\s*[:=]\s*"([a-zA-Z0-9]{32})"/);
+    if (m) return ((scCidAt = Date.now()), (scCid = m[1]));
+  }
+  throw new Error('SoundCloud indisponible');
+}
+async function scApi(url) {
+  for (let i = 0; i < 2; i++) {
+    const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}client_id=${await scClientId(i > 0)}`, { headers: SC_UA, signal: AbortSignal.timeout(10000) });
+    if (r.status === 401 || r.status === 403) continue;
+    if (!r.ok) throw new Error(`SoundCloud ${r.status}`);
+    return r.json();
+  }
+  throw new Error('SoundCloud refuse la demande');
 }

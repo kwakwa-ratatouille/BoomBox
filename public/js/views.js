@@ -477,13 +477,15 @@ export async function search(el, params, ctx) {
 
   if (type !== 'all') {
     const items = res.items || [];
-    if (!items.length) return (out.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-search.png" alt=""><h2>Aucun résultat pour « ${q} »</h2><p>Vérifie l'orthographe ou essaie d'autres mots-clés.</p></div>`));
+    if (!items.length && type !== 'song') return (out.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-search.png" alt=""><h2>Aucun résultat pour « ${q} »</h2><p>Vérifie l'orthographe ou essaie d'autres mots-clés.</p></div>`));
     if (type === 'song' || type === 'video') {
       const tracks = items.map(({ type: _t, ...t }) => t);
-      out.innerHTML = String(trackList(tracks, { context: { type: 'search', name: `Recherche « ${q} »` }, album: type === 'song' }));
+      out.innerHTML = tracks.length ? String(trackList(tracks, { context: { type: 'search', name: `Recherche « ${q} »` }, album: type === 'song' })) : String(html`<p class="muted sc-wait">Rien sur YouTube Music, recherche sur SoundCloud…</p>`);
       // Titres : aussi ceux de SoundCloud (sons bloqués sur YouTube Music, ex. PNL)
       if (type === 'song') api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).then((list) => {
-        if (!ctx.alive() || !list.length) return;
+        if (!ctx.alive()) return;
+        if (!list.length) return !tracks.length && (out.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-search.png" alt=""><h2>Aucun résultat pour « ${q} »</h2></div>`));
+        out.querySelector('.sc-wait')?.remove();
         rememberTracks(list);
         out.insertAdjacentHTML('beforeend', String(html`<section class="section" style="margin-top:24px"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(list.slice(0, 8), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false })}</section>`));
       }).catch(() => {});
@@ -496,7 +498,16 @@ export async function search(el, params, ctx) {
 
   const songs = res.songs.map(({ type: _t, ...t }) => t);
   const top = res.top;
-  if (!top && !songs.length) return (out.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-search.png" alt=""><h2>Aucun résultat pour « ${q} »</h2></div>`));
+  // Rien sur YouTube Music : on attend SoundCloud avant de dire qu'il n'y a rien
+  if (!top && !songs.length) {
+    out.innerHTML = String(html`<p class="muted">Rien sur YouTube Music, recherche sur SoundCloud…</p>`);
+    const list = await api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).catch(() => []);
+    if (!ctx.alive()) return;
+    if (!list.length) return (out.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-search.png" alt=""><h2>Aucun résultat pour « ${q} »</h2></div>`));
+    rememberTracks(list);
+    out.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Sur SoundCloud</h2></div>${trackList(list, { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: true })}</section>`);
+    return;
+  }
   rememberTracks([...songs, ...res.videos]);
   if (top && (top.type === 'song' || top.type === 'video')) rememberTracks([top]);
   const topHtml = top
