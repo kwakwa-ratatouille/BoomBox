@@ -460,8 +460,17 @@ async function cardImage(c, format = 'story', opts = {}) {
     x.font = `600 ${post ? 36 : 42}px ${font}`;
     x.fillText(one(c.artist, W - tx - 80, post ? 36 : 42, 600), tx, y + 10 + im * 0.72);
     x.globalAlpha = 1;
-    let yy = y + im + (post ? 120 : 190);
-    for (const line of c.lines) yy = text(line, yy, post ? 66 : 84, 900, 3) + (post ? 16 : 26);
+    const top = y + im + (post ? 110 : 170);
+    const bottom = H - (post ? 170 : 210); // le logo Boombox reste visible
+    c._lyrBox = { top: top - (post ? 60 : 80), bottom };
+    if (!opts.layers) {
+      // Taille de texte la plus grande qui tient dans la zone
+      let size = post ? 66 : 84;
+      const height = (sz) => c.lines.reduce((h, l2) => h + Math.min(3, wrap(l2, W - 160, sz, 900).length) * sz * 1.08 + (post ? 16 : 26), 0);
+      while (size > 40 && height(size) > bottom - top) size -= 4;
+      let yy = top;
+      for (const line of c.lines) yy = text(line, yy, size, 900, 3) + (post ? 16 : 26);
+    }
   } else if (c.kind === 'persona') {
     x.font = `${post ? 260 : 340}px serif`;
     x.fillText(c.emoji, 70, y + (post ? 270 : 360));
@@ -591,6 +600,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
       x.fillRect(0, 0, W, H);
     }
     x.drawImage(shapes, 0, 0);
+    if (c.kind === 'lyrics') drawKaraoke(tt);
     // Entrée de la carte comme dans l'appli : le contenu monte en fondu
     const p = Math.min(1, tt / 0.7);
     const ease = 1 - Math.pow(1 - p, 3);
@@ -598,6 +608,69 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
     x.drawImage(content, 0, (1 - ease) * 40);
     x.globalAlpha = 1;
   };
+  // ----- Paroles animées (carte « paroles ») -----
+  const lyr = c.kind === 'lyrics' ? (c.lyr?.lines?.length ? c.lyr.lines : c.lines.map((tx) => ({ text: tx, chosen: true }))) : [];
+  const synced = !!(c.lyr?.synced && c.musicAt != null && lyr.every((l2) => l2.t != null));
+  const font = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  const firstChosen = Math.max(0, lyr.findIndex((l2) => l2.chosen));
+  let pos = firstChosen;
+  const rows = (txt, size) => {
+    x.font = `900 ${size}px ${font}`;
+    const out = [];
+    let line = '';
+    for (const w of String(txt).split(' ')) {
+      const test = line ? `${line} ${w}` : w;
+      if (x.measureText(test).width > W - 160 && line) (out.push(line), (line = w));
+      else line = test;
+    }
+    out.push(line);
+    return out.slice(0, 3);
+  };
+  function drawKaraoke(tt) {
+    const box = c._lyrBox;
+    if (!box || !lyr.length) return;
+    // Ligne en cours : d'après le temps du son (paroles synchronisées), sinon une ligne choisie toutes les ~2 s
+    let cur;
+    if (synced) {
+      const songT = Math.max(0, c.musicAt - 0.6) + tt;
+      cur = 0;
+      lyr.forEach((l2, k) => l2.t <= songT + 0.15 && (cur = k));
+    } else {
+      const chosenIdx = lyr.map((l2, k) => (l2.chosen ? k : -1)).filter((k) => k >= 0);
+      cur = chosenIdx[Math.min(chosenIdx.length - 1, Math.floor(tt / (DUR / chosenIdx.length)))] ?? 0;
+    }
+    pos += (cur - pos) * 0.16; // défilement doux
+    const mid = box.top + (box.bottom - box.top) * 0.42;
+    const big = format === 'post' ? 70 : 86;
+    const small = format === 'post' ? 50 : 60;
+    x.save();
+    x.beginPath();
+    x.rect(0, box.top, W, box.bottom - box.top);
+    x.clip();
+    // Position de chaque ligne : la ligne « pos » est au milieu, les autres au-dessus / en dessous
+    const blocks = lyr.map((l2, k) => {
+      const d = Math.abs(k - pos);
+      const size = d < 1 ? big - (big - small) * d : small;
+      return { k, size, r: rows(l2.text, size) };
+    });
+    const hOf = (b) => b.r.length * b.size * 1.1 + 34;
+    let base = Math.floor(pos);
+    let yAt = mid - (pos - base) * hOf(blocks[base] || blocks[0]);
+    const ys = [];
+    ys[base] = yAt;
+    for (let k = base + 1; k < blocks.length; k++) ys[k] = ys[k - 1] + hOf(blocks[k - 1]);
+    for (let k = base - 1; k >= 0; k--) ys[k] = ys[k + 1] - hOf(blocks[k]);
+    blocks.forEach((b) => {
+      const d = Math.abs(b.k - pos);
+      x.globalAlpha = Math.max(0, d < 1 ? 1 - d * 0.65 : 0.35 - (d - 1) * 0.12);
+      if (x.globalAlpha <= 0.02) return;
+      x.fillStyle = t.fg;
+      x.font = `900 ${b.size}px ${font}`;
+      b.r.forEach((row, j) => x.fillText(row, 80, ys[b.k] + b.size + j * b.size * 1.1));
+    });
+    x.restore();
+    x.globalAlpha = 1;
+  }
   draw(0);
   if (withAudio) {
     await ac.resume().catch(() => {});
@@ -744,12 +817,12 @@ async function themeSummaryFromCover(c) {
 }
 
 // Story de paroles : couleurs de la pochette, fond animé, et le passage du son qui correspond aux lignes choisies
-export async function shareLyricsStory(track, lines, at = null) {
+export async function shareLyricsStory(track, lines, at = null, lyr = null) {
   const seed = Math.floor(Date.now() / 1000);
   const artist = (track.artists || []).map((a) => a.name).join(', ');
   const c = {
     kind: 'lyrics', kicker: pickFrom(['🎤 En boucle dans ma tête', '🎧 Ce passage…', '💬 Les mots justes', '🔁 Je l’ai en tête', '🔥 Ce son'], seed),
-    title: track.title, artist, lines, img: track.thumb, music: track, musicAt: at,
+    title: track.title, artist, lines, img: track.thumb, music: track, musicAt: at, lyr,
     theme: { bg: '#130a24', bg2: '#2a1650', fg: '#ffffff', shape: '#b07cf7', alt: '#2ef28b', shapeSet: pickFrom(['blobs', 'rings', 'waves'], seed) },
     style: pickFrom(['waves', 'plasma', 'rings', 'stars'], seed),
   };

@@ -205,9 +205,14 @@ function pickLyricLines(track, l) {
       return;
     }
     if (e.target.closest('[data-x=go]') && picked.size) {
-      const chosen = [...picked].sort((a, b2) => a - b2).map((i) => l.lines[i]);
+      const idx = [...picked].sort((a, b2) => a - b2);
+      const chosen = idx.map((i) => l.lines[i]);
+      // Lignes autour (2 avant, 2 après) : elles défilent dans la vidéo, plus pâles
+      const from = Math.max(0, idx[0] - 2);
+      const to = Math.min(l.lines.length - 1, idx[idx.length - 1] + 2);
+      const around = l.lines.slice(from, to + 1).map((x, k) => ({ text: x.text, t: x.t, chosen: idx.includes(from + k) })).filter((x) => x.text.trim());
       ov.remove();
-      import('./views-wrapped.js').then((m) => m.shareLyricsStory(track, chosen.map((x) => x.text), l.synced ? chosen[0].t : null));
+      import('./views-wrapped.js').then((m) => m.shareLyricsStory(track, chosen.map((x) => x.text), l.synced ? chosen[0].t : null, { lines: around, synced: !!l.synced }));
     }
   });
 }

@@ -2157,3 +2157,10 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .drunk-pill { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 9999; padding: 8px 16px; border-radius: 999px; background: #ffd34d; color: #1a1400; font-weight: 800; font-size: 13px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); animation: drunkPill 1.2s ease-in-out infinite; }
 @keyframes drunkPill { 50% { transform: translateX(-50%) rotate(-3deg) scale(1.05); } }
 @media (prefers-reduced-motion: reduce) { .drunk #app, .drunk #fullplayer, .drunk-veil { animation: none; } }
+@media (max-width: 640px) {
+  .wr { justify-content: flex-start; }
+  .wr-stage { height: calc(100% - 62px - env(safe-area-inset-bottom)); flex: none; }
+  .wr-actions { position: static; flex-wrap: nowrap; gap: 6px; padding: 8px 8px max(8px, env(safe-area-inset-bottom)); }
+  .wr-share { padding: 9px 12px; font-size: 13px; white-space: nowrap; }
+  .wr-body { padding-bottom: 16px; }
+}
