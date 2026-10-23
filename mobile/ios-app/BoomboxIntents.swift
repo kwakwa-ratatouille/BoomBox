@@ -1,6 +1,6 @@
 // Commandes Siri natives de Boombox (App Intents, iOS 16+). Ajouté à l'appli iPhone par la compilation GitHub.
 // « Dis Siri, mets Ninho sur Boombox » · « Dis Siri, mets Culture G sur Boombox » · « Dis Siri, mets Jefe sur Boombox »
-// « Dis Siri, cherche sur Boombox » (Siri demande quoi) · « Dis Siri, lance une jam sur Boombox »
+// « Dis Siri, mets un son sur Boombox » (Siri demande lequel ; « cherche » partait sur une recherche web) · « Dis Siri, lance une jam sur Boombox »
 // « Dis Siri, pause / suivant / précédent sur Boombox »
 // L'appli s'ouvre et exécute la commande (lien boombox:// transmis au JavaScript par le module natif).
 import AppIntents
@@ -170,12 +170,11 @@ struct BoomboxShortcuts: AppShortcutsProvider {
             "Lance \(\.$item) sur \(.applicationName)",
             "Joue \(\.$item) sur \(.applicationName)",
             "\(.applicationName) \(\.$item)",
-            "Mets un son sur \(.applicationName)",
         ], shortTitle: "Mettre", systemImageName: "music.note")
         AppShortcut(intent: SearchPlayIntent(), phrases: [
-            "Cherche sur \(.applicationName)",
-            "Cherche un son sur \(.applicationName)",
-            "Trouve un son sur \(.applicationName)",
+            "Mets un son sur \(.applicationName)",
+            "Joue un son sur \(.applicationName)",
+            "Demande un son à \(.applicationName)",
         ], shortTitle: "Chercher", systemImageName: "magnifyingglass")
         AppShortcut(intent: StartPartyIntent(), phrases: [
             "Lance une jam sur \(.applicationName)",

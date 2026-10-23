@@ -133,8 +133,10 @@ function watchChunks() {
   setTimeout(tick, 300);
 }
 
-// Boutons « tout en haut / tout en bas » sur les longues listes (playlists, titres likés…), gros et faciles à viser.
-// En bas : les paquets pas encore dessinés sont posés vides à leur hauteur, puis remplis en arrivant à l'écran.
+// Barre de défilement à glisser sur les longues listes (playlists, titres likés…) : un gros curseur sur une ligne
+// verticale à droite. On l'attrape avec le pouce et la liste suit ; une bulle montre le numéro du son.
+// Les paquets pas encore dessinés sont posés vides à leur hauteur (remplis en arrivant à l'écran) pour que tout
+// le défilement soit possible d'un coup.
 const scroller = (el) => {
   for (let n = el?.parentElement; n && n !== document.body; n = n.parentElement) {
     const o = getComputedStyle(n).overflowY;
@@ -142,51 +144,86 @@ const scroller = (el) => {
   }
   return document.scrollingElement;
 };
-let jumpBox = null;
-function jumpTo(bottom) {
-  const wrap = [...document.querySelectorAll('[data-list-wrap]')].sort((a, b) => b.querySelectorAll('.track').length - a.querySelectorAll('.track').length)[0];
-  if (!wrap) return;
-  const sc = scroller(wrap);
-  if (!bottom) return sc.scrollTo({ top: 0, behavior: 'auto' });
+const longList = () => [...document.querySelectorAll('[data-list-wrap]')].find((w) => w.querySelectorAll('.track').length >= 30);
+function fillList(wrap) {
   const more = wrap.querySelector('.tl-more');
   const p = more && chunkLists.get(more.dataset.more);
-  if (p) {
-    let html = '';
-    for (; p.next < p.tracks.length; p.next += CHUNK) html += `<div class="tl-chunk" data-list="${more.dataset.more}" data-from="${p.next}" data-empty="1" style="height:${Math.min(CHUNK, p.tracks.length - p.next) * 56}px"></div>`;
-    more.insertAdjacentHTML('beforebegin', html);
-    more.remove();
-  }
-  // Les vrais sons n'ont pas tout à fait la hauteur estimée : on se recale en bas une fois dessinés
-  const toEnd = () => sc.scrollTo({ top: sc.scrollTop + wrap.getBoundingClientRect().bottom - sc.getBoundingClientRect().bottom + 24, behavior: 'auto' });
-  toEnd();
-  [60, 200, 450].forEach((ms) => setTimeout(() => (updateChunks(), toEnd()), ms));
+  if (!p) return;
+  let html = '';
+  for (; p.next < p.tracks.length; p.next += CHUNK) html += `<div class="tl-chunk" data-list="${more.dataset.more}" data-from="${p.next}" data-empty="1" style="height:${Math.min(CHUNK, p.tracks.length - p.next) * 56}px"></div>`;
+  more.insertAdjacentHTML('beforebegin', html);
+  more.remove();
 }
-function updateJump() {
-  const wrap = [...document.querySelectorAll('[data-list-wrap]')].find((w) => w.querySelectorAll('.track').length >= 30);
-  if (!wrap) return jumpBox?.classList.remove('show');
-  if (!jumpBox) {
-    jumpBox = document.createElement('div');
-    jumpBox.className = 'jump-btns';
-    jumpBox.innerHTML = `<button type="button" data-jump="0" class="up" aria-label="Tout en haut">${icon('chevronDown', 26)}</button><button type="button" data-jump="1" aria-label="Tout en bas">${icon('chevronDown', 26)}</button>`;
-    jumpBox.onclick = (e) => { const b = e.target.closest('[data-jump]'); if (b) jumpTo(b.dataset.jump === '1'); };
-    document.body.appendChild(jumpBox);
+// Le curseur suit toute la page (la liste en occupe presque toute la hauteur) : 0 en haut, 1 en bas
+const maxScroll = (sc) => Math.max(1, sc.scrollHeight - sc.clientHeight);
+let rail = null;
+function updateRail() {
+  const wrap = longList();
+  if (!wrap) return rail?.classList.remove('show');
+  if (!rail) {
+    rail = document.createElement('div');
+    rail.className = 'list-rail';
+    rail.innerHTML = '<div class="rail-thumb" role="scrollbar" aria-label="Faire défiler la liste"><span class="rail-tip"></span></div>';
+    document.body.appendChild(rail);
+    const thumb = rail.firstElementChild;
+    thumb.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const w = longList();
+      if (!w) return;
+      fillList(w);
+      const sc = scroller(w);
+      thumb.setPointerCapture(e.pointerId);
+      rail.classList.add('drag');
+      const move = (ev) => {
+        const r = rail.getBoundingClientRect();
+        const k = Math.max(0, Math.min(1, (ev.clientY - r.top - thumb.offsetHeight / 2) / (r.height - thumb.offsetHeight)));
+        sc.scrollTop = k * maxScroll(sc);
+        clearTimeout(rail._fill);
+        rail._fill = setTimeout(updateChunks, 60); // sons dessinés à l'endroit où on s'arrête
+        place(k, w);
+      };
+      const up = () => {
+        rail.classList.remove('drag');
+        thumb.removeEventListener('pointermove', move);
+        setTimeout(updateChunks, 30);
+        hideSoon();
+      };
+      thumb.addEventListener('pointermove', move);
+      thumb.addEventListener('pointerup', up, { once: true });
+      thumb.addEventListener('pointercancel', up, { once: true });
+      move(e);
+    });
   }
   const sc = scroller(wrap);
-  const top = sc.scrollTop < 300;
-  const end = wrap.getBoundingClientRect().bottom <= sc.getBoundingClientRect().bottom + 40 && !wrap.querySelector('.tl-more');
-  jumpBox.classList.toggle('show', !(top && end));
-  // Caché 3 s après le dernier défilement (ne gêne pas les boutons ⋯ des sons)
-  clearTimeout(jumpBox._hide);
-  jumpBox._hide = setTimeout(() => !jumpBox.matches(':hover') && jumpBox.classList.remove('show'), 3000);
-  jumpBox.querySelector('[data-jump="0"]').disabled = top;
-  jumpBox.querySelector('[data-jump="1"]').disabled = end;
+  place(Math.min(1, sc.scrollTop / maxScroll(sc)), wrap);
+  rail.classList.add('show');
+  hideSoon();
+}
+function place(k, wrap) {
+  const thumb = rail.firstElementChild;
+  thumb.style.transform = `translateY(${k * (rail.clientHeight - thumb.offsetHeight)}px)`;
+  const total = chunkLists.get(wrap.dataset.listWrap)?.tracks.length || wrap.querySelectorAll('.track').length;
+  // Numéro du son au milieu de l'écran (d'après le paquet qui s'y trouve, même pas encore dessiné)
+  const sc = scroller(wrap);
+  const mid = sc.getBoundingClientRect().top + sc.clientHeight / 2;
+  let at = Math.round(k * total);
+  const ch = [...wrap.querySelectorAll('.tl-chunk')].find((c) => { const r = c.getBoundingClientRect(); return r.top <= mid && r.bottom >= mid; });
+  if (ch) {
+    const r = ch.getBoundingClientRect();
+    const count = Math.min(CHUNK, total - Number(ch.dataset.from));
+    at = Number(ch.dataset.from) + Math.floor(((mid - r.top) / r.height) * count) + 1;
+  }
+  thumb.firstElementChild.textContent = `${Math.max(1, Math.min(total, at || 1))} / ${total}`;
+}
+function hideSoon() {
+  clearTimeout(rail._hide);
+  rail._hide = setTimeout(() => !rail.classList.contains('drag') && rail.classList.remove('show'), 2500);
 }
 {
   let t = 0;
-  const soon = () => t || (t = setTimeout(() => ((t = 0), updateJump()), 120));
+  const soon = () => t || (t = setTimeout(() => ((t = 0), rail?.classList.contains('drag') || updateRail()), 100));
   document.addEventListener('scroll', soon, { capture: true, passive: true });
-  addEventListener('hashchange', () => setTimeout(updateJump, 400));
-  setTimeout(() => new MutationObserver(soon).observe(document.getElementById('view') || document.body, { childList: true }), 0);
+  addEventListener('hashchange', () => rail?.classList.remove('show'));
 }
 
 function trackRow(t, i, listId, o) {

@@ -63,6 +63,9 @@ jobs:
       - name: Commandes Siri (App Intents)
         run: |
           cp mobile/ios-app/BoomboxIntents.swift ios/App/App/BoomboxIntents.swift
+          # Au lancement : Siri apprend les noms (playlists, artistes, sons). Sans ça, « mets X sur Boombox » ne marchait pas
+          perl -0pi -e 's/(didFinishLaunchingWithOptions[^\{]*\{)/$1\n        if #available(iOS 16.0, *) { BoomboxShortcutsRefresher.shared.start() }/' ios/App/App/AppDelegate.swift
+          grep -q BoomboxShortcutsRefresher ios/App/App/AppDelegate.swift || { echo "::error::AppDelegate non modifié"; exit 1; }
           gem install xcodeproj --no-document --user-install >/dev/null 2>&1 || true
           ruby -e 'Gem.paths = { "GEM_HOME" => Gem.user_dir, "GEM_PATH" => [Gem.user_dir, *Gem.path] }; require "xcodeproj"; p = Xcodeproj::Project.open("ios/App/App.xcodeproj"); t = p.targets.find { |x| x.name == "App" }; g = p.main_group["App"]; f = g.files.find { |x| x.path == "BoomboxIntents.swift" } || g.new_file("BoomboxIntents.swift"); t.add_file_references([f]) unless t.source_build_phase.files_references.include?(f); p.save'
       - name: Synchronisation Capacitor

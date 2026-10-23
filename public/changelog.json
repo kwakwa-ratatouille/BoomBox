@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Barre à glisser et Siri réparé",
+    "items": [
+      "Longues listes : les boutons haut/bas sont remplacés par un curseur à glisser sur une ligne à droite. Une bulle montre le numéro du son où tu t’arrêtes.",
+      "Siri : « mets Ninho sur Boombox » ne marchait pas, car Siri n’apprenait jamais les noms de tes artistes, playlists et sons. C’est corrigé (nouvelle version de l’appli).",
+      "Siri : « cherche sur Boombox » lançait une recherche sur internet. La phrase devient « Dis Siri, mets un son sur Boombox » : Siri te demande lequel."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1724",
     "title": "Aller tout en haut ou tout en bas d’une playlist",
     "items": [
