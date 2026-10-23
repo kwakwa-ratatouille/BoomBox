@@ -1891,6 +1891,14 @@ function onboarding() {
           <input class="input" id="ob-rec-name" placeholder="Ton nom" maxlength="40" autocomplete="username">
           <input class="input" id="ob-rec-code" type="password" placeholder="Ton code secret" maxlength="64" autocomplete="current-password">
           <button class="btn primary" id="ob-rec-go">Retrouver ma bibliothèque</button>
+          <button type="button" class="btn ghost sm" id="ob-forgot" style="align-self:flex-start">Code oublié ?</button>
+        </form>
+        <form id="ob-recq" class="hidden" style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+          <p class="muted" style="margin:0">Réponds à ta question de secours :</p>
+          <input class="input" id="ob-q-name" placeholder="Ton nom" maxlength="40">
+          <select class="input" id="ob-q-q"></select>
+          <input class="input" id="ob-q-a" placeholder="Ta réponse" maxlength="80" autocomplete="off">
+          <button class="btn primary" id="ob-q-go">Retrouver ma bibliothèque</button>
         </form>
       </div>
       <p class="muted" id="ob-err" style="color:var(--danger);margin-top:16px"></p>
@@ -1926,6 +1934,30 @@ function onboarding() {
       }
     };
     $('#ob-join').onclick = () => $('#ob-join-box').classList.remove('hidden');
+    $('#ob-forgot').onclick = async () => {
+      const { QUESTIONS } = await import('./recovery.js');
+      $('#ob-q-q').innerHTML = QUESTIONS.map((q) => `<option>${esc(q)}</option>`).join('');
+      $('#ob-q-name').value = $('#ob-rec-name').value;
+      $('#ob-recq').classList.remove('hidden');
+      $('#ob-q-a').focus();
+    };
+    $('#ob-recq').onsubmit = async (e) => {
+      e.preventDefault();
+      const b = $('#ob-q-go');
+      b.disabled = true;
+      b.textContent = 'Recherche…';
+      try {
+        const { recoverByQuestion } = await import('./recovery.js');
+        await recoverByQuestion($('#ob-q-name').value, $('#ob-q-q').value, $('#ob-q-a').value, state.device.name);
+        box.classList.add('hidden');
+        resolve();
+      } catch (er) {
+        err(er);
+      } finally {
+        b.disabled = false;
+        b.textContent = 'Retrouver ma bibliothèque';
+      }
+    };
     $('#ob-rec').onsubmit = async (e) => {
       e.preventDefault();
       const b = $('#ob-rec-go');

@@ -11,6 +11,16 @@ const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 export const MIN_CODE = 6;
+// Question de secours (code oublié) : même principe, la question et la réponse remplacent le code
+export const QUESTIONS = [
+  'Le nom de ton premier animal',
+  'Ta ville de naissance',
+  'Le prénom de ton meilleur ami d’enfance',
+  'Ton premier album acheté ou écouté en boucle',
+  'Le nom de ton école primaire',
+  'Le surnom que te donnait ta famille',
+];
+const answerSecret = (q, answer) => `question:${QUESTIONS.indexOf(q)}|${norm(answer)}`;
 
 async function derive(name, code) {
   const base = await crypto.subtle.importKey('raw', enc.encode(`${norm(name)}|${String(code).trim()}`), 'PBKDF2', false, ['deriveBits', 'deriveKey']);
@@ -20,36 +30,46 @@ async function derive(name, code) {
   return { id, key };
 }
 
-// Enregistre (ou remplace) le code de récupération de cet espace
-export async function saveRecovery(name, code) {
-  if (!norm(name)) throw new Error('Indique ton nom');
-  if (String(code).trim().length < MIN_CODE) throw new Error(`Le code doit faire au moins ${MIN_CODE} caractères`);
+// Un accès chiffré : (nom, secret) → document « recovery/<adresse> ». slot : 'recoveryId' (code) ou 'recoveryQ' (question)
+async function storeAccess(name, secretText, slot) {
   const sid = cloud.spaceId;
   const secret = (await getDoc(doc(db, 'spaces', sid, 'private', 'secret'))).data()?.value;
   if (!secret) throw new Error('Espace introuvable');
-  const { id, key } = await derive(name, code);
+  const { id, key } = await derive(name, secretText);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify({ sid, secret })));
-  const old = localStorage.getItem('boombox.recoveryId');
+  const old = localStorage.getItem(`boombox.${slot}`);
   await setDoc(doc(db, 'recovery', id), { data: b64(data), iv: b64(iv), by: cloud.uid, at: Date.now() });
   if (old && old !== id) deleteDoc(doc(db, 'recovery', old)).catch(() => {});
-  localStorage.setItem('boombox.recoveryId', id);
+  localStorage.setItem(`boombox.${slot}`, id);
 }
+
+// Enregistre (ou remplace) le code de récupération, et la question de secours si elle est remplie
+export async function saveRecovery(name, code, question = null, answer = '') {
+  if (!norm(name)) throw new Error('Indique ton nom');
+  if (String(code).trim().length < MIN_CODE) throw new Error(`Le code doit faire au moins ${MIN_CODE} caractères`);
+  if (question && norm(answer).length < 3) throw new Error('Réponse trop courte (3 lettres minimum)');
+  await storeAccess(name, code, 'recoveryId');
+  if (question) await storeAccess(name, answerSecret(question, answer), 'recoveryQ');
+}
+export const hasQuestion = () => !!localStorage.getItem('boombox.recoveryQ');
 
 export const hasRecovery = () => !!localStorage.getItem('boombox.recoveryId');
 
+// Code oublié : nom + question + réponse (majuscules, accents et espaces ignorés dans la réponse)
+export const recoverByQuestion = (name, question, answer, deviceName) => recover(name, answerSecret(question, answer), deviceName, 'Nom, question ou réponse incorrects');
+
 // Nouvel appareil : nom + code → on rejoint l'espace
-export async function recover(name, code, deviceName) {
+export async function recover(name, code, deviceName, wrongMsg = 'Nom ou code incorrect') {
   const { id, key } = await derive(name, code);
   const snap = await getDoc(doc(db, 'recovery', id)).catch(() => null);
-  if (!snap?.exists()) throw new Error('Nom ou code incorrect');
+  if (!snap?.exists()) throw new Error(wrongMsg);
   const r = snap.data();
   let inv;
   try {
     inv = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(r.iv) }, key, unb64(r.data))));
   } catch {
-    throw new Error('Nom ou code incorrect');
+    throw new Error(wrongMsg);
   }
   await cloud.joinSpace(inv.sid, inv.secret, deviceName);
-  localStorage.setItem('boombox.recoveryId', id);
 }

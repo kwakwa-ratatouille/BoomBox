@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Question de secours et recherche plus compacte",
+    "items": [
+      "Code oublié ? Ajoute une question de secours dans Paramètres → « Récupérer ma bibliothèque sans lien ». Sur un nouvel appareil, « Code oublié ? » te permet de tout retrouver avec ton nom et ta réponse. C’est chiffré comme le code.",
+      "Recherche sur téléphone : onglets sur une seule ligne qui défile, meilleur résultat sur une ligne, artistes plus petits, et seulement 2 résultats SoundCloud et 3 profils Spotify (« Tout afficher » pour le reste)."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.2312",
     "title": "Retrouver sa bibliothèque avec son nom et un code",
     "items": [

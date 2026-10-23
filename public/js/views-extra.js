@@ -719,13 +719,16 @@ export async function settings(el) {
     }
   })();
   el.querySelector('#s-recovery').onclick = async () => {
-    const { saveRecovery, MIN_CODE } = await import('./recovery.js');
+    const { saveRecovery, MIN_CODE, QUESTIONS } = await import('./recovery.js');
     const ok = await modal({
       title: 'Code de récupération',
       body: `<p class="muted" style="margin-top:0">Retiens bien ces deux infos : sans elles (ni lien), ta bibliothèque ne pourra pas être retrouvée.</p>
         <label class="muted" style="font-size:13px">Ton nom</label><input class="input" id="rc-name" value="${esc(state.profile.name || '')}" maxlength="40" style="width:100%;margin:4px 0 12px">
         <label class="muted" style="font-size:13px">Code secret (au moins ${MIN_CODE} caractères, lettres et chiffres)</label><input class="input" id="rc-code" type="password" autocomplete="new-password" maxlength="64" style="width:100%;margin:4px 0 12px">
         <label class="muted" style="font-size:13px">Retape le code</label><input class="input" id="rc-code2" type="password" autocomplete="new-password" maxlength="64" style="width:100%;margin-top:4px">
+        <p class="muted" style="font-size:13px;margin:16px 0 4px"><b>Question de secours</b> (si tu oublies le code)</p>
+        <select class="input" id="rc-q" style="width:100%;margin-bottom:8px"><option value="">Pas de question</option>${QUESTIONS.map((q) => `<option>${esc(q)}</option>`).join('')}</select>
+        <input class="input" id="rc-a" placeholder="Ta réponse" maxlength="80" autocomplete="off" style="width:100%">
         <p id="rc-err" style="color:var(--danger);min-height:1em;margin-bottom:0"></p>`,
       actions: [{ label: 'Annuler' }, {
         label: 'Enregistrer',
@@ -738,7 +741,7 @@ export async function settings(el) {
           if (code.trim().length >= MIN_CODE && /^\d+$/.test(code.trim()) && code.trim().length < 8) return (errEl.textContent = 'Que des chiffres : mets-en au moins 8, ou ajoute des lettres'), false;
           errEl.textContent = 'Enregistrement…';
           try {
-            await saveRecovery(name, code);
+            await saveRecovery(name, code, w.querySelector('#rc-q').value || null, w.querySelector('#rc-a').value);
             return true;
           } catch (e) {
             errEl.textContent = e.message;

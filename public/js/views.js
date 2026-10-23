@@ -547,12 +547,12 @@ export async function search(el, params, ctx) {
     const sbox = el.querySelector('.songs-box');
     if (sbox && merged.songs.slice(0, 4).some((t, i) => t !== songs[i])) sbox.innerHTML = String(trackList(merged.songs.slice(0, 4), { context: { type: 'search', name: `Recherche « ${q} »` }, album: false, numbered: false }));
     if (!merged.scOnly.length) return;
-    box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(merged.scOnly.slice(0, 5), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false, numbered: false })}</section>`);
+    box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(merged.scOnly.slice(0, matchMedia('(max-width: 768px)').matches ? 2 : 5), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false, numbered: false })}</section>`);
   }).catch(() => {});
   api(`/api/spotify/users?q=${encodeURIComponent(q)}`).then((users) => {
     const box = el.querySelector('#sp-users');
     if (!box || !users.length) return;
-    box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Profils Spotify</h2><a href="#/search?q=${encodeURIComponent(q)}&type=people">Tout afficher</a></div>${spotifyUserCards(users.slice(0, 6))}</section>`);
+    box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Profils Spotify</h2><a href="#/search?q=${encodeURIComponent(q)}&type=people">Tout afficher</a></div>${spotifyUserCards(users.slice(0, matchMedia('(max-width: 768px)').matches ? 3 : 6))}</section>`);
   }).catch(() => {});
 }
 
