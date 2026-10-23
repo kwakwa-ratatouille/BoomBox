@@ -133,6 +133,62 @@ function watchChunks() {
   setTimeout(tick, 300);
 }
 
+// Boutons « tout en haut / tout en bas » sur les longues listes (playlists, titres likés…), gros et faciles à viser.
+// En bas : les paquets pas encore dessinés sont posés vides à leur hauteur, puis remplis en arrivant à l'écran.
+const scroller = (el) => {
+  for (let n = el?.parentElement; n && n !== document.body; n = n.parentElement) {
+    const o = getComputedStyle(n).overflowY;
+    if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) return n;
+  }
+  return document.scrollingElement;
+};
+let jumpBox = null;
+function jumpTo(bottom) {
+  const wrap = [...document.querySelectorAll('[data-list-wrap]')].sort((a, b) => b.querySelectorAll('.track').length - a.querySelectorAll('.track').length)[0];
+  if (!wrap) return;
+  const sc = scroller(wrap);
+  if (!bottom) return sc.scrollTo({ top: 0, behavior: 'auto' });
+  const more = wrap.querySelector('.tl-more');
+  const p = more && chunkLists.get(more.dataset.more);
+  if (p) {
+    let html = '';
+    for (; p.next < p.tracks.length; p.next += CHUNK) html += `<div class="tl-chunk" data-list="${more.dataset.more}" data-from="${p.next}" data-empty="1" style="height:${Math.min(CHUNK, p.tracks.length - p.next) * 56}px"></div>`;
+    more.insertAdjacentHTML('beforebegin', html);
+    more.remove();
+  }
+  // Les vrais sons n'ont pas tout à fait la hauteur estimée : on se recale en bas une fois dessinés
+  const toEnd = () => sc.scrollTo({ top: sc.scrollTop + wrap.getBoundingClientRect().bottom - sc.getBoundingClientRect().bottom + 24, behavior: 'auto' });
+  toEnd();
+  [60, 200, 450].forEach((ms) => setTimeout(() => (updateChunks(), toEnd()), ms));
+}
+function updateJump() {
+  const wrap = [...document.querySelectorAll('[data-list-wrap]')].find((w) => w.querySelectorAll('.track').length >= 30);
+  if (!wrap) return jumpBox?.classList.remove('show');
+  if (!jumpBox) {
+    jumpBox = document.createElement('div');
+    jumpBox.className = 'jump-btns';
+    jumpBox.innerHTML = `<button type="button" data-jump="0" class="up" aria-label="Tout en haut">${icon('chevronDown', 26)}</button><button type="button" data-jump="1" aria-label="Tout en bas">${icon('chevronDown', 26)}</button>`;
+    jumpBox.onclick = (e) => { const b = e.target.closest('[data-jump]'); if (b) jumpTo(b.dataset.jump === '1'); };
+    document.body.appendChild(jumpBox);
+  }
+  const sc = scroller(wrap);
+  const top = sc.scrollTop < 300;
+  const end = wrap.getBoundingClientRect().bottom <= sc.getBoundingClientRect().bottom + 40 && !wrap.querySelector('.tl-more');
+  jumpBox.classList.toggle('show', !(top && end));
+  // Caché 3 s après le dernier défilement (ne gêne pas les boutons ⋯ des sons)
+  clearTimeout(jumpBox._hide);
+  jumpBox._hide = setTimeout(() => !jumpBox.matches(':hover') && jumpBox.classList.remove('show'), 3000);
+  jumpBox.querySelector('[data-jump="0"]').disabled = top;
+  jumpBox.querySelector('[data-jump="1"]').disabled = end;
+}
+{
+  let t = 0;
+  const soon = () => t || (t = setTimeout(() => ((t = 0), updateJump()), 120));
+  document.addEventListener('scroll', soon, { capture: true, passive: true });
+  addEventListener('hashchange', () => setTimeout(updateJump, 400));
+  setTimeout(() => new MutationObserver(soon).observe(document.getElementById('view') || document.body, { childList: true }), 0);
+}
+
 function trackRow(t, i, listId, o) {
   const playing = player.track?.id === t.id;
   const playIcon = raw(String(icon('play', 16)).replace('class="ic"', 'class="ic play-i"'));

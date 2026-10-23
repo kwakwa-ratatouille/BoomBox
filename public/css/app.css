@@ -2193,3 +2193,12 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .card .cover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42); }
 .is-scrolling .card, .is-scrolling .track, .is-scrolling .quick-item { pointer-events: none; }
 .is-scrolling .card *, .is-scrolling .track * { transition: none !important; }
+
+/* Boutons tout en haut / tout en bas des longues listes : au-dessus du lecteur, assez gros pour le pouce */
+.jump-btns { position: fixed; right: 16px; bottom: 120px; z-index: 90; display: flex; flex-direction: column; gap: 10px; opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .2s, transform .2s; }
+.jump-btns.show { opacity: 1; pointer-events: auto; transform: none; }
+.jump-btns button { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: #2c2538; color: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, .6); border: 1px solid rgba(255, 255, 255, .12); }
+.jump-btns button:disabled { opacity: .35; }
+.jump-btns button:active { transform: scale(.92); }
+.jump-btns .up .ic { transform: rotate(180deg); }
+@media (max-width: 768px) { .jump-btns { right: 12px; bottom: calc(150px + env(safe-area-inset-bottom)); } }
