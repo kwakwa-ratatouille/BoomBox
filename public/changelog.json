@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Logo Découverte recentré",
+    "items": [
+      "Le logo de Découverte est maintenant bien centré."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1224",
     "title": "Fonds aux couleurs des logos, Nouveautés plus légères",
     "items": [
