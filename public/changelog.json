@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Lecture sans PC encore plus rapide, réponse en glissant",
+    "items": [
+      "Téléphone sans PC : la connexion à YouTube se prépare dès le lancement, et la méthode qui a marché la dernière fois est essayée en premier. Les sons démarrent plus vite.",
+      "Si une version d’un son est bloquée chez YouTube, Boombox prend tout seul une autre version du même son (même titre, même artiste).",
+      "Messages : fais glisser un message vers la droite pour y répondre."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1639",
     "title": "Téléphone plus rapide et plus fiable",
     "items": [

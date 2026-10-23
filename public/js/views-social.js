@@ -241,8 +241,37 @@ export async function friendsPage(el, params) {
       let t = null;
       const open = () => reactBar(el, c, Number(el.dataset.at), () => startReply(Number(el.dataset.at)));
       el.addEventListener('dblclick', open);
-      el.addEventListener('touchstart', () => (t = setTimeout(open, 450)), { passive: true });
-      ['touchend', 'touchmove', 'touchcancel'].forEach((ev) => el.addEventListener(ev, () => clearTimeout(t), { passive: true }));
+      // Glisser le message vers la droite → répondre (comme WhatsApp) ; appui long → réactions
+      let x0 = 0, y0 = 0, dx = 0, swiping = false;
+      el.addEventListener('touchstart', (e) => {
+        x0 = e.touches[0].clientX;
+        y0 = e.touches[0].clientY;
+        dx = 0;
+        swiping = false;
+        t = setTimeout(open, 450);
+      }, { passive: true });
+      el.addEventListener('touchmove', (e) => {
+        const mx = e.touches[0].clientX - x0;
+        const my = e.touches[0].clientY - y0;
+        if (Math.abs(mx) > 8 || Math.abs(my) > 8) clearTimeout(t);
+        if (!swiping && mx > 12 && Math.abs(mx) > Math.abs(my) * 1.5) swiping = true;
+        if (!swiping) return;
+        dx = Math.max(0, Math.min(80, mx));
+        el.style.transform = `translateX(${dx}px)`;
+        el.classList.toggle('swipe-ready', dx > 55);
+      }, { passive: true });
+      const end = () => {
+        clearTimeout(t);
+        if (!swiping) return;
+        el.style.transition = 'transform .2s';
+        el.style.transform = '';
+        setTimeout(() => (el.style.transition = ''), 220);
+        el.classList.remove('swipe-ready');
+        if (dx > 55) navigator.vibrate?.(10), startReply(Number(el.dataset.at));
+        swiping = false;
+      };
+      el.addEventListener('touchend', end, { passive: true });
+      el.addEventListener('touchcancel', end, { passive: true });
       el.addEventListener('contextmenu', (e) => (e.preventDefault(), open()));
     });
     const box = root.querySelector('#chat-msgs');

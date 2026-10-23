@@ -46,6 +46,8 @@ function playerYt() {
   return ytPlayer;
 }
 
+setTimeout(() => playerYt().catch(() => {}), 4000);
+
 // ---------- Relais par le PC ----------
 // Sur le même Wi-Fi que le PC, l'audio passe par son serveur (yt-dlp) : fiable et instantané.
 // Ailleurs (4G/5G, PC éteint), le téléphone récupère l'audio lui-même (ci-dessous).
@@ -92,7 +94,9 @@ async function remoteAudio(id, exclude = []) {
   if (hit && hit.exp > Date.now() && !exclude.includes(hit.client)) return hit;
   const y = await playerYt();
   let lastErr = null;
-  for (const [client, ua] of CLIENTS) {
+  const good = localStorage.getItem('boombox.ytClient');
+  const order = [...CLIENTS].sort((a, b) => (b[0] === good) - (a[0] === good));
+  for (const [client, ua] of order) {
     if (exclude.includes(client)) continue;
     try {
       const r = await resolveClient(y, id, client, ua);
@@ -286,6 +290,19 @@ async function scTwinFor(meta, q) {
   }) || null;
 }
 
+// Autre version YouTube Music du même son (clip, audio, réédition…) quand la fiche enregistrée ne se lit plus
+async function ytTwin(id, meta) {
+  const r = await yt.search(`${meta.artist} ${meta.title}`, 'song');
+  const t = normTxt(meta.title);
+  const a = normTxt(meta.artist).split(' ')[0];
+  return (r?.songs || r?.items || []).find((x) => {
+    if (!x?.id || x.id === id) return false;
+    const xt = normTxt(x.title);
+    const xa = normTxt((x.artists || []).map((z) => z.name).join(' '));
+    return (xt === t || xt.includes(t) || t.includes(xt)) && (!a || xa.includes(a)) && (!meta.duration || !x.duration || Math.abs(x.duration - meta.duration) < 20);
+  })?.id || null;
+}
+
 export function downloadAudio(id, { keep = false } = {}) {
   if (audioIndex[id]) {
     audioIndex[id].used = Date.now();
@@ -323,6 +340,15 @@ export function downloadAudio(id, { keep = false } = {}) {
         urlCache.delete(id);
         return null;
       });
+      if (stat) localStorage.setItem('boombox.ytClient', r.client);
+    }
+    // 3 bis. Cette version est bloquée chez YouTube : une autre version du même son (même titre, même artiste)
+    if (!stat && trackMeta.has(id)) {
+      const alt = await ytTwin(id, trackMeta.get(id)).catch(() => null);
+      if (alt) {
+        const r = await remoteAudio(alt).catch((e) => ((lastErr = e), null));
+        if (r) stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => ((lastErr = e), null));
+      }
     }
     // 4. YouTube refuse (fréquent sans PC, surtout sur iPhone) : le même son sur SoundCloud
     if (!stat && trackMeta.has(id)) {
