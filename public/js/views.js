@@ -302,8 +302,9 @@ export async function home(el, _p, ctx) {
     if (mixes[0]) sections.push(slot('pl-fans', `Pour les fans de ${mixes[0].a.name}`));
     sections.push(slot('pl-genre', 'Rap français alternatif'));
   }
-  if (lib.playlists.length) sections.push(section('Tes playlists', lib.playlists.map((p) => card({ ...p, type: 'local', coverHtml: playlistCover(p) }, { sub: plural(p.tracks.length, 'titre') })), '#/library', 'Tout afficher'));
-  if (lib.follows.length) sections.push(section('Artistes suivis', lib.follows.map((f) => card({ ...f, type: 'artist' })), '#/releases', 'Nouveautés'));
+  // Rangées de l'accueil limitées (le reste est sur « Tout afficher ») : des centaines de cartes ralentissaient la page
+  if (lib.playlists.length) sections.push(section('Tes playlists', lib.playlists.slice(0, HOME_ROW_MAX).map((p) => card({ ...p, type: 'local', coverHtml: playlistCover(p) }, { sub: plural(p.tracks.length, 'titre') })), '#/library', 'Tout afficher'));
+  if (lib.follows.length) sections.push(section('Artistes suivis', lib.follows.slice(0, HOME_ROW_MAX).map((f) => card({ ...f, type: 'artist' })), '#/following', 'Tout afficher'));
 
   if (!sections.length) {
     homeSections.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-library.png" alt=""><h2>Bienvenue sur Boombox</h2><p>Cherche un titre ou un artiste pour commencer, ou importe tes playlists Spotify / Deezer.</p>
@@ -1193,6 +1194,8 @@ const fmtAgoShort = (ts) => {
   const d = Math.floor((Date.now() - ts) / 86400e3);
   return d < 1 ? "aujourd'hui" : d === 1 ? 'hier' : `il y a ${d} jours`;
 };
+
+const HOME_ROW_MAX = 20;
 
 // ======================= NOUVEAUTÉS =======================
 const FOLLOWS_SHOWN = 12;

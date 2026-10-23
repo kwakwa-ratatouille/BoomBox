@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Accueil plus léger",
+    "items": [
+      "Accueil : « Tes playlists » et « Artistes suivis » montrent 20 éléments au maximum. Le reste est dans « Tout afficher ». La page reste fluide même avec beaucoup d’artistes suivis."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1445",
     "title": "Mise à jour Android en un bouton",
     "items": [
