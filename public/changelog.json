@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Messages plus confortables",
+    "items": [
+      "Conversation : après l’envoi d’un son, le fil reste en bas au lieu de sauter quand les pochettes et les GIF finissent de charger.",
+      "Sur téléphone, la zone « Écris un message… » reste toujours entièrement visible au-dessus du lecteur."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1446",
     "title": "Accueil plus léger",
     "items": [

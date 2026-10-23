@@ -131,6 +131,18 @@ export function sendToFriend(payload, at = null) {
 }
 
 // ---------- Page Amis / conversation ----------
+// Téléphone : la conversation prend exactement la place entre son haut et le lecteur / la barre du bas,
+// pour que la zone « Écris un message… » ne passe jamais derrière le lecteur
+function fitChat(root) {
+  const page = root.querySelector('.friends-page.has-chat');
+  if (!page || !matchMedia('(max-width: 768px)').matches) return page && (page.style.height = '');
+  const r = document.getElementById('playerbar')?.getBoundingClientRect();
+  const main = document.getElementById('main')?.getBoundingClientRect();
+  const bottom = Math.min(window.visualViewport?.height || innerHeight, main?.bottom || Infinity, r?.height ? r.top : Infinity);
+  page.style.height = `${Math.max(240, bottom - page.getBoundingClientRect().top - 10)}px`;
+}
+addEventListener('resize', () => fitChat(document));
+window.visualViewport?.addEventListener('resize', () => fitChat(document));
 let chatScroll = 'bottom';
 export async function friendsPage(el, params) {
   if (params.add) social.addFriend(params.add).then((n) => toast(`Demande d’ami envoyée à ${n}`)).catch((e) => toast(e.message));
@@ -232,7 +244,10 @@ export async function friendsPage(el, params) {
       el.addEventListener('contextmenu', (e) => (e.preventDefault(), open()));
     });
     const box = root.querySelector('#chat-msgs');
+    fitChat(root);
     if (box) box.scrollTop = chatScroll === 'bottom' ? box.scrollHeight : chatScroll;
+    // Pochettes et GIF qui finissent de charger : le fil reste collé en bas (sinon il « saute » après un envoi)
+    if (box && chatScroll === 'bottom') box.querySelectorAll('img').forEach((im) => im.complete || im.addEventListener('load', () => box.scrollHeight - box.scrollTop - box.clientHeight < 400 && (box.scrollTop = box.scrollHeight), { once: true }));
     social.markRead(c);
     const input = root.querySelector('#chat-input');
     if (!input) return;
