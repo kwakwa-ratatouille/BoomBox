@@ -1,11 +1,11 @@
 [
   {
-    "version": "next",
+    "version": "2026.1023.1001",
     "title": "Installer Boombox sur iPhone, facilement",
     "items": [
       "Nouveau programme pour PC « Installer Boombox iPhone » : il installe tout seul ce qu’il faut sur le PC (iTunes, l’installeur de SideStore), détecte l’iPhone et explique chaque geste à faire sur le téléphone, étape par étape, avec des QR codes.",
       "Une page à suivre sur l’iPhone en même temps (musikal-b72d1.web.app/iphone.html), avec un bouton qui ajoute Boombox à SideStore en un geste.",
-      "À télécharger : musikal-b72d1.web.app/downloads/Installer-Boombox-iPhone.exe (et le guide en texte : Guide-Boombox-iPhone.txt)."
+      "À télécharger sur le PC : github.com/kwakwa-ratatouille/BoomBox/raw/main/tools/iphone-installer/dist/Installer-Boombox-iPhone.exe (lien aussi en haut de musikal-b72d1.web.app/iphone.html)."
     ],
     "date": "2026-10-23"
   },
