@@ -4,6 +4,7 @@ import { isNative, localApi } from './native.js';
 import { firebaseConfig } from './firebase-config.js';
 import { cloud, db, getDocsFromCache, getDocsFromServer, where, doc, collection, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, limit, writeBatch, serverTimestamp } from './cloud.js';
 
+import { canonId, artistKey as aKey, canonArtist, fixTrack, learnArtists } from './twins.js';
 export const bus = new EventTarget();
 export const emit = (type, detail) => bus.dispatchEvent(new CustomEvent(type, { detail }));
 export const on = (type, fn) => bus.addEventListener(type, (e) => fn(e.detail));
@@ -161,10 +162,12 @@ function rebuild() {
     if (!byPl.has(it.playlistId)) byPl.set(it.playlistId, []);
     byPl.get(it.playlistId).push(it);
   }
+  learnArtists(raw.liked);
+  learnArtists(raw.items);
   const all = raw.playlists
     .map((p) => ({
       ...p,
-      tracks: (byPl.get(p.id) || []).sort((a, b) => a.pos - b.pos).map(({ playlistId, pos, updatedAt, ...t }) => t),
+      tracks: (byPl.get(p.id) || []).sort((a, b) => a.pos - b.pos).map(({ playlistId, pos, updatedAt, ...t }) => fixTrack(t)),
     }))
     // Épinglées d'abord, puis l'ordre choisi par l'utilisateur (glisser-déposer)
     .sort((a, b) => (!!b.pinned - !!a.pinned) || playlistKey(a) - playlistKey(b));
@@ -172,8 +175,8 @@ function rebuild() {
   const playlists = all.filter((p) => !p.deletedAt);
   const trash = all.filter((p) => p.deletedAt).sort((a, b) => b.deletedAt - a.deletedAt);
   purgeOldTrash(trash);
-  state.library = { ...state.library, liked: raw.liked, playlists, trash, follows: raw.follows, folders: raw.folders.sort((a, b) => folderKey(a) - folderKey(b)) };
-  state.likedIds = new Set(raw.liked.map((t) => t.id));
+  state.library = { ...state.library, liked: raw.liked.map(fixTrack), playlists, trash, follows: raw.follows, folders: raw.folders.sort((a, b) => folderKey(a) - folderKey(b)) };
+  state.likedIds = new Set(raw.liked.flatMap((t) => [t.id, canonId(t.id)]));
   state.libVersion++;
   firstLoad?.();
   firstLoad = null;
@@ -292,13 +295,17 @@ export function subscribeLibrary() {
 export async function loadLibrary() {}
 
 // ---------- Actions ----------
-export const isLiked = (id) => state.likedIds.has(id);
+// Liké sous sa version YouTube ou SoundCloud : c'est le même son
+export const isLiked = (id) => state.likedIds.has(id) || state.likedIds.has(canonId(id));
 
 export async function toggleLike(track) {
   if (!track) return;
   const liked = isLiked(track.id);
   try {
-    if (liked) await setDoc(pref('liked', track.id), { id: track.id, ...tomb() });
+    if (liked) {
+      const c = canonId(track.id);
+      for (const t of state.library.liked.filter((x) => x.id === track.id || canonId(x.id) === c)) await setDoc(pref('liked', t.id), { id: t.id, ...tomb() });
+    }
     else await setDoc(pref('liked', track.id), { ...cleanTrack(track), addedAt: Date.now(), updatedAt: Date.now() });
     toast(liked ? 'Retiré des Titres likés' : 'Ajouté aux Titres likés');
   } catch (e) {
@@ -443,6 +450,34 @@ export async function removeFromPlaylist(playlistId, track) {
 // Retire plusieurs titres d'un coup (détecteur de doublons) : _item = identifiant de la ligne dans la playlist
 export async function removeItems(itemIds) {
   await batched(itemIds.map((id) => (b) => b.update(pref('items', id), tomb())));
+}
+
+// Même son ajouté sous sa version YouTube et sa version SoundCloud : on garde la première entrée (sa place dans la
+// playlist et sa date d'ajout), l'autre est retirée. Deux ajouts du même identifiant ne sont pas touchés.
+export async function mergeDuplicates() {
+  const drop = [];
+  for (const p of state.library.playlists) {
+    const first = new Map();
+    for (const t of p.tracks) {
+      const c = canonId(t.id);
+      const f = first.get(c);
+      if (!f) first.set(c, t);
+      else if (f.id !== t.id && t._item) drop.push(t._item);
+    }
+  }
+  // Likes : la fiche principale reste likée, l'autre version est retirée
+  const groups = new Map();
+  for (const t of state.library.liked) groups.set(canonId(t.id), [...(groups.get(canonId(t.id)) || []), t.id]);
+  const unlike = [];
+  for (const [c, ids] of groups) {
+    const uniq = [...new Set(ids)];
+    if (uniq.length < 2) continue;
+    const keep = uniq.includes(c) ? c : uniq[0];
+    unlike.push(...uniq.filter((id) => id !== keep));
+  }
+  if (drop.length) await removeItems(drop);
+  if (unlike.length) await batched(unlike.map((id) => (b) => b.set(pref('liked', id), { id, ...tomb() })));
+  return drop.length + unlike.length;
 }
 
 export async function movePlaylistItem(playlistId, from, to) {
@@ -721,13 +756,14 @@ export async function getStats(days = 30) {
   const count = (t, n, sec) => {
     plays += n;
     seconds += sec;
-    const key = t.id || `${t.artists?.[0]?.name}|${t.title}`;
-    const e = tracks.get(key) || { track: t, count: 0 };
+    const key = canonId(t.id) || `${t.artists?.[0]?.name}|${t.title}`;
+    const e = tracks.get(key) || { track: fixTrack(t), count: 0 };
+    if (e.track.id !== key && t.id === key) e.track = t; // fiche principale (YouTube Music) de préférence
     e.count += n;
     tracks.set(key, e);
-    const a = t.artists?.[0];
+    const a = canonArtist(t.artists?.[0]);
     if (a?.name) {
-      const k = a.name.toLowerCase();
+      const k = aKey(a.name);
       const ea = artists.get(k) || { artist: a, count: 0, thumb: t.thumb };
       ea.count += n;
       if (!ea.artist.id && a.id) ea.artist = a;
@@ -782,8 +818,8 @@ export async function getStatsFull(days = 30, range = null, top = 10) {
   const cur = events.filter((e) => e.ts >= since && e.ts <= now);
   const prev = all ? [] : events.filter((e) => e.ts >= prevSince && e.ts < since);
   const sum = (arr, f) => arr.reduce((s, e) => s + f(e), 0);
-  const artistKey = (t) => (t.artists?.[0]?.name || '').toLowerCase();
-  const trackKey = (t) => t.id || `${artistKey(t)}|${t.title}`;
+  const artistKey = (t) => aKey(t.artists?.[0]?.name);
+  const trackKey = (t) => canonId(t.id) || `${artistKey(t)}|${t.title}`;
 
   const tops = (keyOf, mk) => {
     const m = new Map();
@@ -791,6 +827,7 @@ export async function getStatsFull(days = 30, range = null, top = 10) {
       const k = keyOf(e.t);
       if (!k) continue;
       const x = m.get(k) || mk(e.t);
+      if (x.track && x.track.id !== k && e.t.id === k) x.track = e.t; // fiche principale (YouTube Music) de préférence
       x.count += e.n;
       x.seconds += e.sec;
       if (!x.thumb && e.t.thumb) x.thumb = e.t.thumb;
@@ -799,8 +836,8 @@ export async function getStatsFull(days = 30, range = null, top = 10) {
     }
     return [...m.values()].sort((a, b) => b.count - a.count);
   };
-  const topArtists = tops(artistKey, (t) => ({ artist: t.artists?.[0] || { name: '?' }, count: 0, seconds: 0, thumb: t.thumb }));
-  const topTracksAll = tops(trackKey, (t) => ({ track: t, count: 0, seconds: 0 }));
+  const topArtists = tops(artistKey, (t) => ({ artist: canonArtist(t.artists?.[0]) || { name: '?' }, count: 0, seconds: 0, thumb: t.thumb }));
+  const topTracksAll = tops(trackKey, (t) => ({ track: fixTrack(t), count: 0, seconds: 0 }));
   const topAlbums = tops((t) => (t.album?.name ? `${artistKey(t)}|${t.album.name.toLowerCase()}` : ''), (t) => ({ album: t.album, artist: t.artists?.[0], count: 0, seconds: 0, thumb: t.thumb }));
 
   // Série temporelle : par jour (≤ 31 jours) sinon par mois
@@ -845,7 +882,7 @@ export async function getStatsFull(days = 30, range = null, top = 10) {
     const k = artistKey(e.t);
     if (k && (!firstSeen.has(k) || e.ts < firstSeen.get(k))) firstSeen.set(k, e.ts);
   }
-  const discoveries = all ? [] : topArtists.filter((a) => firstSeen.get(a.artist.name.toLowerCase()) >= since);
+  const discoveries = all ? [] : topArtists.filter((a) => firstSeen.get(aKey(a.artist.name)) >= since);
 
   const plays = sum(cur, (e) => e.n);
   const prevPlays = sum(prev, (e) => e.n);

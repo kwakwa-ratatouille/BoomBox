@@ -1,5 +1,18 @@
 [
   {
+    "version": "next",
+    "title": "Un son, une seule fiche",
+    "items": [
+      "Un son présent sur YouTube Music et sur SoundCloud n’apparaît plus qu’une fois : la fiche YouTube Music (titre, pochette, nombre d’écoutes justes) est gardée, la version SoundCloud y est rattachée.",
+      "Quand YouTube n’a qu’un remix, un sped up ou la version de quelqu’un d’autre, c’est la vraie version SoundCloud (publiée par l’artiste) qui prend sa place dans les résultats.",
+      "Les comptes SoundCloud (« PNL Officiel »…) sont reliés au vrai artiste : un seul artiste dans les stats, le récap et le classement.",
+      "Les doublons déjà présents (même son ajouté en version YouTube et SoundCloud dans une playlist ou les likes) sont fusionnés tout seuls, sans perdre tes ajouts.",
+      "Menu d’un son : « Écouter la version SoundCloud / YouTube » pour corriger quand la détection se trompe.",
+      "Téléphone : les 3 prochains sons de la file sont téléchargés à l’avance (démarrage instantané, moins de coupures en 4G)."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.0915",
     "title": "Sons lisibles sans PC",
     "items": [

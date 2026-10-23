@@ -1658,6 +1658,13 @@ async function boot() {
   setTimeout(showWhatsNew, 1500);
   import('./alarm.js').then((m) => m.startAlarm()).catch(() => {}); // réveil en musique
   import('./drunk.js').then((m) => m.setupDrunkTrigger()).catch(() => {}); // mode caché
+  // Un son = une entrée : versions SoundCloud rattachées à YouTube Music, doublons fusionnés (en arrière-plan)
+  setTimeout(async () => {
+    const [tw, st] = await Promise.all([import('./twins.js'), import('./state.js')]);
+    await st.mergeDuplicates().catch(() => 0);
+    const found = await tw.discoverTwins(state.library, (q) => api(`/api/search?q=${encodeURIComponent(q)}&type=song`)).catch(() => 0);
+    if (found) setTimeout(() => st.mergeDuplicates().catch(() => 0), 3000);
+  }, 20000);
   // Appli mobile : l'interface a bien démarré ; on cherche une version plus récente en ligne (sans réinstaller l'appli)
   if (isNative) {
     webUpdateConfirm();

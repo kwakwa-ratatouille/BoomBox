@@ -4,6 +4,7 @@ import { state, emit, bus, api, ls, setting, addHistory } from './state.js';
 import { toast, artistNames } from './ui.js';
 import { automix } from './automix.js';
 import { isNative, localApi } from './native.js';
+import { playId } from './twins.js';
 
 // Source audio d'un titre : serveur du PC (flux yt-dlp) ou, dans l'appli, fichier téléchargé sur le téléphone
 // Connexion faible : son plus léger (~50 kb/s au lieu de ~130) plutôt qu'une lecture qui bloque.
@@ -12,12 +13,16 @@ let lowQuality = false;
 const wantLow = () => lowQuality || setting('audioQuality', 'auto') === 'low' || !!navigator.connection?.saveData || /(^|-)2g$|^3g$/.test(navigator.connection?.effectiveType || '');
 async function audioSrc(id, fresh = false, stream = false) {
   const low = setting('audioQuality', 'auto') !== 'high' && wantLow();
+  const meta = player.track?.id === id ? player.track : player._nextTrack?.()?.id === id ? player._nextTrack() : null;
+  let src = playId(id);
   // Appli : fichier du téléphone, ou streaming immédiat la première fois (sauf nouvel essai → fichier local)
   if (isNative) {
     const media = (await localApi()).media;
-    media.rememberMeta?.(player.track?.id === id ? player.track : player._nextTrack?.()?.id === id ? player._nextTrack() : null);
-    return media.localAudioSrc(id, { stream: stream && !fresh, low });
+    if (src !== id && !media.isDownloaded?.(src) && media.isDownloaded?.(id) && !media.net?.connected) src = id; // hors ligne : la version téléchargée
+    media.rememberMeta?.(meta && { ...meta, id: src });
+    return media.localAudioSrc(src, { stream: stream && !fresh, low });
   }
+  id = src;
   const q = [fresh && `fresh=${Date.now()}`, low && 'q=low'].filter(Boolean).join('&');
   return `/api/stream/${id}${q ? `?${q}` : ''}`;
 }
@@ -492,7 +497,8 @@ export const player = {
         const nextId = this._nextTrack()?.id;
         if (this.engine.name === 'audio' && nextId && nextId !== this._prefetched) {
           this._prefetched = nextId;
-          fetch(`/api/prefetch/${nextId}`, { method: 'POST' }).catch(() => {});
+          if (isNative) this._prefetchPhone();
+          else fetch(`/api/prefetch/${playId(nextId)}`, { method: 'POST' }).catch(() => {});
         }
         this.paused = false;
         this.buffering = false;
@@ -675,6 +681,17 @@ export const player = {
 
   // Prochain titre réellement joué : celui de la file de la Jam (si on l'héberge) passe avant la suite.
   // Sert au préchargement, à l'automix, au fondu et à l'égalisation du volume.
+  async _prefetchPhone() {
+    const media = (await localApi()).media;
+    if (!media.net?.connected) return;
+    for (const t of this.upcoming(3)) {
+      if (!t?.id || t.local) continue;
+      const id = playId(t.id);
+      if (media.isDownloaded?.(id)) continue;
+      media.rememberMeta?.({ ...t, id });
+      await media.downloadAudio(id).catch(() => {});
+    }
+  },
   _nextTrack() {
     return this.jamPeek?.() || this.upcoming(1)[0];
   },

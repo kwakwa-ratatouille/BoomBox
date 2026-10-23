@@ -5,6 +5,7 @@ import { state, api, ls, emit, setting, saveSettings, toggleFollow, isFollowing,
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
 import { cover, playlistCover, likedCover, trackList, card, rememberTracks, playlistSubmenu, playKey, openPlaylistPicker } from './components.js';
+import { mergeResults, fixTrack } from './twins.js';
 import { sendToFriend } from './views-social.js';
 import { playlistShareItems } from './views-share.js';
 import { dailyMixes, lastMixes } from './dailymix.js';
@@ -433,7 +434,7 @@ export async function search(el, params, ctx) {
   if (type === 'soundcloud') {
     const box = el.querySelector('#results');
     box.innerHTML = String(html`<p class="muted">Recherche sur SoundCloud…</p>${loading}`);
-    const list = await api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).catch(() => []);
+    const list = (await api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).catch(() => [])).map(fixTrack);
     if (!ctx.alive()) return;
     rememberTracks(list);
     box.innerHTML = list.length ? String(trackList(list, { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false })) : String(html`<div class="empty"><h2>Rien sur SoundCloud pour « ${q} »</h2><p class="muted">La recherche SoundCloud se fait avec Boombox ouvert sur ton PC.</p></div>`);
@@ -480,14 +481,19 @@ export async function search(el, params, ctx) {
     if (!items.length && type !== 'song') return (out.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-search.png" alt=""><h2>Aucun résultat pour « ${q} »</h2><p>Vérifie l'orthographe ou essaie d'autres mots-clés.</p></div>`));
     if (type === 'song' || type === 'video') {
       const tracks = items.map(({ type: _t, ...t }) => t);
-      out.innerHTML = tracks.length ? String(trackList(tracks, { context: { type: 'search', name: `Recherche « ${q} »` }, album: type === 'song' })) : String(html`<p class="muted sc-wait">Rien sur YouTube Music, recherche sur SoundCloud…</p>`);
-      // Titres : aussi ceux de SoundCloud (sons bloqués sur YouTube Music, ex. PNL)
+      const songList = (list) => String(trackList(list, { context: { type: 'search', name: `Recherche « ${q} »` }, album: type === 'song' }));
+      out.innerHTML = tracks.length ? `<div class="songs-box">${songList(tracks)}</div>` : String(html`<p class="muted sc-wait">Rien sur YouTube Music, recherche sur SoundCloud…</p>`);
+      // Titres : aussi ceux de SoundCloud (sons bloqués sur YouTube Music, ex. PNL), sans doublons : un son présent
+      // des deux côtés n'apparaît qu'une fois, et la vraie version remplace un remix YouTube
       if (type === 'song') api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).then((list) => {
         if (!ctx.alive()) return;
         if (!list.length) return !tracks.length && (out.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-search.png" alt=""><h2>Aucun résultat pour « ${q} »</h2></div>`));
         out.querySelector('.sc-wait')?.remove();
-        rememberTracks(list);
-        out.insertAdjacentHTML('beforeend', String(html`<section class="section" style="margin-top:24px"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(list.slice(0, 8), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false })}</section>`));
+        const { songs, scOnly } = mergeResults(tracks, list, q);
+        rememberTracks([...songs, ...scOnly]);
+        const box = out.querySelector('.songs-box');
+        if (box && songs.some((t, i) => t !== tracks[i])) box.innerHTML = songList(songs);
+        if (scOnly.length) out.insertAdjacentHTML('beforeend', String(html`<section class="section" style="margin-top:24px"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(scOnly.slice(0, 8), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false })}</section>`));
       }).catch(() => {});
     } else {
       rememberTracks(items);
@@ -501,7 +507,7 @@ export async function search(el, params, ctx) {
   // Rien sur YouTube Music : on attend SoundCloud avant de dire qu'il n'y a rien
   if (!top && !songs.length) {
     out.innerHTML = String(html`<p class="muted">Rien sur YouTube Music, recherche sur SoundCloud…</p>`);
-    const list = await api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).catch(() => []);
+    const list = (await api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).catch(() => [])).map(fixTrack);
     if (!ctx.alive()) return;
     if (!list.length) return (out.innerHTML = String(html`<div class="empty"><img class="empty-art" src="/assets/empty-search.png" alt=""><h2>Aucun résultat pour « ${q} »</h2></div>`));
     rememberTracks(list);
@@ -523,7 +529,7 @@ export async function search(el, params, ctx) {
     <div class="search-grid">
       ${topHtml}
       <div><div class="section-head"><h2>Titres</h2><a href="#/search?q=${encodeURIComponent(q)}&type=song">Tout afficher</a></div>
-      ${trackList(songs.slice(0, 4), { context: { type: 'search', name: `Recherche « ${q} »` }, album: false, numbered: false })}</div>
+      <div class="songs-box">${trackList(songs.slice(0, 4), { context: { type: 'search', name: `Recherche « ${q} »` }, album: false, numbered: false })}</div></div>
     </div>
     ${res.artists.length ? raw(section('Artistes', res.artists.map((a) => card(a)), `#/search?q=${encodeURIComponent(q)}&type=artist`)) : ''}
     ${res.albums.length ? raw(section('Albums', res.albums.map((a) => card(a)), `#/search?q=${encodeURIComponent(q)}&type=album`)) : ''}
@@ -535,8 +541,12 @@ export async function search(el, params, ctx) {
   api(`/api/soundcloud/search?q=${encodeURIComponent(q)}`).then((list) => {
     const box = el.querySelector('#sc-results');
     if (!box || !list.length || !ctx.alive()) return;
-    rememberTracks(list);
-    box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(list.slice(0, 5), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false, numbered: false })}</section>`);
+    const merged = mergeResults(songs, list, q);
+    rememberTracks([...merged.songs, ...merged.scOnly]);
+    const sbox = el.querySelector('.songs-box');
+    if (sbox && merged.songs.slice(0, 4).some((t, i) => t !== songs[i])) sbox.innerHTML = String(trackList(merged.songs.slice(0, 4), { context: { type: 'search', name: `Recherche « ${q} »` }, album: false, numbered: false }));
+    if (!merged.scOnly.length) return;
+    box.innerHTML = String(html`<section class="section"><div class="section-head"><h2>Sur SoundCloud</h2><a href="#/search?q=${encodeURIComponent(q)}&type=soundcloud">Tout afficher</a></div>${trackList(merged.scOnly.slice(0, 5), { context: { type: 'search', name: `SoundCloud « ${q} »` }, album: false, numbered: false })}</section>`);
   }).catch(() => {});
   api(`/api/spotify/users?q=${encodeURIComponent(q)}`).then((users) => {
     const box = el.querySelector('#sp-users');

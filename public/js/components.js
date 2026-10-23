@@ -3,6 +3,7 @@ import { html, raw, esc, icon, fmtTime, fmtAgo, artistLinks, contextMenu, toast,
 import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting } from './state.js';
 import { player, ctl, startAt } from './player.js';
 import { sync } from './sync.js';
+import * as twinsMod from './twins.js';
 import { lastMixes } from './dailymix.js';
 import { sendToFriend } from './views-social.js';
 
@@ -373,6 +374,15 @@ export function trackMenu(track, x, y, { playlistId, index } = {}) {
     { label: 'Plus', icon: 'more', submenu: () => [
       { label: 'Lire ensuite', icon: 'playNext', action: () => ctl.playNext(track) },
       { label: 'Lancer la radio du titre', icon: 'radio', action: () => ctl.playRadio(track) },
+      twinsMod.otherVersion(track.id) && (() => {
+        const other = twinsMod.otherVersion(track.id);
+        const cur = twinsMod.playId(track.id);
+        const toSc = !/^sc_/.test(cur);
+        return { label: toSc ? 'Écouter la version SoundCloud' : 'Écouter la version YouTube', icon: 'radio', action: async () => {
+          await twinsMod.setAudioPick(track.id, cur === track.id ? other : track.id);
+          toast(toSc ? 'Ce son sera joué depuis SoundCloud (dès la prochaine écoute)' : 'Ce son sera joué depuis YouTube (dès la prochaine écoute)');
+        } };
+      })(),
       setting('banned', []).includes(track.id)
         ? { label: 'Proposer à nouveau ce titre', icon: 'check', action: () => toggleBan(track) }
         : { label: 'Ne plus proposer ce titre', icon: 'close', action: async () => { await toggleBan(track); if (player.track?.id === track.id && !player.remoteSender) player.next(); } },
