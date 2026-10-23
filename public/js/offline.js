@@ -114,6 +114,7 @@ export const offline = {
     if (setting('offlineWifiOnly', false) && !this.media.net.wifi) return;
     const want = this.wanted();
     this._want = want;
+    for (const t of want.values()) this.media.rememberMeta?.(t);
     for (const id of Object.keys(this.media.audioIndex)) if (!want.has(id) && this.media.audioIndex[id].keep) this.media.unkeep(id);
     this.queue = [...want.keys()].filter((id) => !this.media.isDownloaded(id));
     this.pump();
@@ -176,6 +177,7 @@ export const offline = {
     const slim = { id: track.id, title: track.title, artists: (track.artists || []).map((a) => ({ name: a.name, id: a.id || null })), thumb: track.thumb || null, duration: track.duration || 0 };
     await saveSettings({ offlineTracks: on ? [...list, slim].slice(-500) : list.filter((t) => t?.id !== track.id) });
     if (on) {
+      this.media?.rememberMeta?.(track);
       toast('Téléchargement du son…');
       // Tout de suite, même hors Wi-Fi : c'est une demande explicite
       this.media?.downloadAudio(track.id, { keep: true }).then(() => (this.refreshSet(), document.dispatchEvent(new Event('offline-progress')), toast('Son téléchargé : écoute possible hors ligne'))).catch((e) => toast(`Téléchargement impossible : ${e.message}`));

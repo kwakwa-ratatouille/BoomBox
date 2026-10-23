@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Sons lisibles sans PC",
+    "items": [
+      "Téléphone sans PC : quand YouTube refuse un son (fréquent sur iPhone), Boombox le récupère automatiquement sur SoundCloud s’il y est (même titre, même artiste)."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.0911",
     "title": "Classement depuis toujours et pauses iPhone",
     "items": [

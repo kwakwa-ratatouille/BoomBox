@@ -232,6 +232,30 @@ export function isDownloaded(id) {
 }
 
 // Télécharge le titre sur le téléphone (une seule fois) ; keep = téléchargé volontairement (hors ligne)
+// Infos des sons (titre, artiste, durée) : servent au repli sur SoundCloud quand YouTube refuse
+const trackMeta = new Map();
+export function rememberMeta(t) {
+  if (t?.id && t.title) trackMeta.set(t.id, { title: t.title, artist: (t.artists || [])[0]?.name || '', duration: t.duration || 0 });
+}
+const normTxt = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\(.*?\)|\[.*?\]|feat\.?.*$|ft\..*$/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+// Même son sur SoundCloud : titre qui correspond, artiste présent, durée proche (si connue)
+async function scTwin(meta) {
+  return (await scTwinFor(meta, `${meta.artist} ${meta.title}`)) || scTwinFor(meta, meta.title);
+}
+async function scTwinFor(meta, q) {
+  const list = await scWorker(`/sc/search?q=${encodeURIComponent(q)}`).catch(() => []);
+  const t = normTxt(meta.title);
+  const a = normTxt(meta.artist).split(' ')[0];
+  return (list || []).find((x) => {
+    const xt = normTxt(x.title);
+    const xa = normTxt((x.artists || [])[0]?.name);
+    const titleOk = xt === t || xt.includes(t) || t.includes(xt);
+    const artistOk = !a || xa.includes(a) || xt.includes(a);
+    const durOk = !meta.duration || !x.duration || Math.abs(x.duration - meta.duration) < 15;
+    return titleOk && artistOk && durOk;
+  }) || null;
+}
+
 export function downloadAudio(id, { keep = false } = {}) {
   if (audioIndex[id]) {
     audioIndex[id].used = Date.now();
@@ -269,6 +293,11 @@ export function downloadAudio(id, { keep = false } = {}) {
         urlCache.delete(id);
         return null;
       });
+    }
+    // 4. YouTube refuse (fréquent sans PC, surtout sur iPhone) : le même son sur SoundCloud
+    if (!stat && trackMeta.has(id)) {
+      const twin = await scTwin(trackMeta.get(id)).catch(() => null);
+      if (twin) stat = await scDownload(twin.id, path).catch((e) => ((lastErr = new Error(`SoundCloud : ${e.message}`)), null));
     }
     if (!stat) throw lastErr || new Error('téléchargement impossible');
     audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep };
@@ -459,4 +488,4 @@ export function unkeep(id) {
   if (audioIndex[id]) (audioIndex[id].keep = false), saveIndex();
 }
 
-export const media = { localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
+export const media = { rememberMeta, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };

@@ -13,7 +13,11 @@ const wantLow = () => lowQuality || setting('audioQuality', 'auto') === 'low' ||
 async function audioSrc(id, fresh = false, stream = false) {
   const low = setting('audioQuality', 'auto') !== 'high' && wantLow();
   // Appli : fichier du téléphone, ou streaming immédiat la première fois (sauf nouvel essai → fichier local)
-  if (isNative) return (await localApi()).media.localAudioSrc(id, { stream: stream && !fresh, low });
+  if (isNative) {
+    const media = (await localApi()).media;
+    media.rememberMeta?.(player.track?.id === id ? player.track : player._nextTrack?.()?.id === id ? player._nextTrack() : null);
+    return media.localAudioSrc(id, { stream: stream && !fresh, low });
+  }
   const q = [fresh && `fresh=${Date.now()}`, low && 'q=low'].filter(Boolean).join('&');
   return `/api/stream/${id}${q ? `?${q}` : ''}`;
 }
