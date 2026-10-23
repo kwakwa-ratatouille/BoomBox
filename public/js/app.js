@@ -1886,6 +1886,12 @@ function onboarding() {
       <div id="ob-join-box" class="hidden" style="margin-top:24px;text-align:left">
         <p class="muted">Sur ton autre appareil : <b>Paramètres → Lier mes appareils</b>. Scanne le QR code avec l'appareil photo, ou colle le lien ici :</p>
         <div class="row-flex"><input class="input" id="ob-link" placeholder="http://…/#/join?s=…&k=…" style="flex:1"><button class="btn white" id="ob-go">Lier</button></div>
+        <p class="muted" style="margin:20px 0 8px">Plus d'appareil ni de lien ? Avec le nom et le code de récupération choisis dans les Paramètres :</p>
+        <form id="ob-rec" style="display:flex;flex-direction:column;gap:8px">
+          <input class="input" id="ob-rec-name" placeholder="Ton nom" maxlength="40" autocomplete="username">
+          <input class="input" id="ob-rec-code" type="password" placeholder="Ton code secret" maxlength="64" autocomplete="current-password">
+          <button class="btn primary" id="ob-rec-go">Retrouver ma bibliothèque</button>
+        </form>
       </div>
       <p class="muted" id="ob-err" style="color:var(--danger);margin-top:16px"></p>
     </div>`);
@@ -1920,6 +1926,23 @@ function onboarding() {
       }
     };
     $('#ob-join').onclick = () => $('#ob-join-box').classList.remove('hidden');
+    $('#ob-rec').onsubmit = async (e) => {
+      e.preventDefault();
+      const b = $('#ob-rec-go');
+      b.disabled = true;
+      b.textContent = 'Recherche…';
+      try {
+        const { recover } = await import('./recovery.js');
+        await recover($('#ob-rec-name').value, $('#ob-rec-code').value, state.device.name);
+        box.classList.add('hidden');
+        resolve();
+      } catch (er) {
+        err(er);
+      } finally {
+        b.disabled = false;
+        b.textContent = 'Retrouver ma bibliothèque';
+      }
+    };
     $('#ob-go').onclick = async () => {
       const inv = parseInvite($('#ob-link').value);
       if (!inv) return err('Lien invalide');

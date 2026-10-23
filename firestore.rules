@@ -52,6 +52,16 @@ service cloud.firestore {
       }
     }
 
+    // Récupération par nom + code : contenu chiffré, adresse impossible à deviner sans le nom et le code.
+    // Lecture d'un document précis seulement (jamais de liste) ; seul son créateur peut le remplacer ou le supprimer.
+    match /recovery/{id} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid
+                    && request.resource.data.data is string && request.resource.data.data.size() < 2000;
+      allow update, delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
+
     // Playlists partagées : lisibles par tout utilisateur connecté qui a le code ; modifiables par leur auteur.
     match /shares/{id} {
       allow read: if signedIn();

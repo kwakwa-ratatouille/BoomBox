@@ -410,6 +410,7 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Nom du profil</b></div><input class="input" id="s-pname" value="${p.name}" maxlength="40"></div>
     <div class="settings-row"><div><b>Couleur</b></div><input type="color" id="s-pcolor" value="${p.color}"></div>
     <div class="settings-row"><div><b>Changer de profil</b><p>Chaque profil a ses propres playlists, likes et artistes suivis.</p></div><button class="btn ghost" id="s-switch">Changer</button></div>
+    <div class="settings-row"><div><b>Récupérer ma bibliothèque sans lien</b><p>${localStorage.getItem('boombox.recoveryId') ? 'Code de récupération enregistré : sur un nouvel appareil, choisis « J’ai déjà Boombox » puis « Avec mon nom et mon code ».' : 'Choisis ton nom et un code secret : si tu perds ton téléphone, ils suffisent pour tout retrouver sur un nouvel appareil, sans lien ni QR code.'}</p></div><button class="btn ghost" id="s-recovery">${localStorage.getItem('boombox.recoveryId') ? 'Changer le code' : 'Créer mon code'}</button></div>
     <div class="settings-row"><div><b>Code du profil</b><p>${state.profile.pin ? 'Un code à 4 chiffres protège ce profil : il est demandé quand on le choisit sur un appareil ou qu’on change de profil.' : 'Protège ce profil par un code à 4 chiffres, demandé quand quelqu’un le choisit ou change de profil.'}</p></div><div class="row-flex">${state.profile.pin ? html`<button class="btn ghost" id="s-pin">Changer</button><button class="btn ghost" id="s-pin-off">Retirer</button>` : html`<button class="btn ghost" id="s-pin">Choisir un code</button>`}</div></div>
 
     <h2 style="font-size:20px;margin-top:24px">Apparence</h2>
@@ -717,6 +718,37 @@ export async function settings(el) {
       btn.onclick = () => apk.installApk((p) => (btn.textContent = `${Math.round(p * 100)} %`)).finally(() => (btn.textContent = `Mettre à jour (${next.version})`));
     }
   })();
+  el.querySelector('#s-recovery').onclick = async () => {
+    const { saveRecovery, MIN_CODE } = await import('./recovery.js');
+    const ok = await modal({
+      title: 'Code de récupération',
+      body: `<p class="muted" style="margin-top:0">Retiens bien ces deux infos : sans elles (ni lien), ta bibliothèque ne pourra pas être retrouvée.</p>
+        <label class="muted" style="font-size:13px">Ton nom</label><input class="input" id="rc-name" value="${esc(state.profile.name || '')}" maxlength="40" style="width:100%;margin:4px 0 12px">
+        <label class="muted" style="font-size:13px">Code secret (au moins ${MIN_CODE} caractères, lettres et chiffres)</label><input class="input" id="rc-code" type="password" autocomplete="new-password" maxlength="64" style="width:100%;margin:4px 0 12px">
+        <label class="muted" style="font-size:13px">Retape le code</label><input class="input" id="rc-code2" type="password" autocomplete="new-password" maxlength="64" style="width:100%;margin-top:4px">
+        <p id="rc-err" style="color:var(--danger);min-height:1em;margin-bottom:0"></p>`,
+      actions: [{ label: 'Annuler' }, {
+        label: 'Enregistrer',
+        primary: true,
+        value: async (w) => {
+          const name = w.querySelector('#rc-name').value;
+          const code = w.querySelector('#rc-code').value;
+          const errEl = w.querySelector('#rc-err');
+          if (code !== w.querySelector('#rc-code2').value) return (errEl.textContent = 'Les deux codes ne sont pas pareils'), false;
+          if (code.trim().length >= MIN_CODE && /^\d+$/.test(code.trim()) && code.trim().length < 8) return (errEl.textContent = 'Que des chiffres : mets-en au moins 8, ou ajoute des lettres'), false;
+          errEl.textContent = 'Enregistrement…';
+          try {
+            await saveRecovery(name, code);
+            return true;
+          } catch (e) {
+            errEl.textContent = e.message;
+            return false;
+          }
+        },
+      }],
+    });
+    if (ok === true) toast('Code de récupération enregistré'), settings(el);
+  };
   el.querySelector('#s-switch').onclick = () => document.dispatchEvent(new Event('pick-profile'));
   el.querySelector('#s-pin').onclick = async () => (await setProfilePin(state.profile)) && settings(el);
   el.querySelector('#s-pin-off')?.addEventListener('click', async () => (await removeProfilePin(state.profile)) && settings(el));

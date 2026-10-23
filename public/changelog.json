@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Retrouver sa bibliothèque avec son nom et un code",
+    "items": [
+      "Paramètres → « Récupérer ma bibliothèque sans lien » : choisis ton nom et un code secret.",
+      "Sur un nouvel appareil : « J’ai déjà Boombox sur un autre appareil », puis entre ton nom et ton code. Tout revient, sans lien ni QR code.",
+      "Sécurisé : ton nom et ton code ne sont jamais envoyés, et tes identifiants sont chiffrés avec eux. Sans le bon code, impossible de trouver ou de lire quoi que ce soit."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.2305",
     "title": "Lecteur Android visible, playlists IA réparées",
     "items": [
