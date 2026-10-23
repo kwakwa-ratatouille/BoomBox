@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Clic droit sur les pochettes",
+    "items": [
+      "PC : clic droit sur la pochette d’un album, d’un single, d’un EP, d’une playlist ou d’un artiste pour un menu adapté : lire, lecture aléatoire, ajouter à la file, lire ensuite, ajouter à une playlist, liker, enregistrer comme playlist, suivre l’artiste, lancer la radio, envoyer à un ami, télécharger sur le PC, copier le lien.",
+      "Single : les actions d’un son (liker, radio du titre) ; album et EP : liker tous les titres, l’enregistrer comme playlist."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1001",
     "title": "Installer Boombox sur iPhone, facilement",
     "items": [

@@ -1,6 +1,6 @@
 // Composants réutilisables : pochettes, listes de titres, cartes, menus contextuels des titres.
 import { html, raw, esc, icon, fmtTime, fmtAgo, artistLinks, contextMenu, toast, promptText, isMobile, plural } from './ui.js';
-import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting } from './state.js';
+import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting, toggleFollow, isFollowing } from './state.js';
 import { player, ctl, startAt } from './player.js';
 import { sync } from './sync.js';
 import * as twinsMod from './twins.js';
@@ -423,13 +423,83 @@ export function card(item, { sub, href, play, isNew } = {}) {
   const round = item.type === 'artist';
   const link = href || hrefOf(item);
   const p = play ?? playKeyOf(item);
-  return html`<div class="card" data-href="${link}">
+  const ck = item.id && !item.coverHtml ? `${item.type || 'song'}:${item.id}` : '';
+  if (ck) cardItems.set(ck, item);
+  return html`<div class="card" data-href="${link}" data-ck="${ck}">
     ${isNew ? html`<span class="new-dot">NOUVEAU</span>` : ''}
     ${item.coverHtml || cover(item, round ? 'round' : '')}
     ${p ? html`<button class="card-play" data-play="${p}" aria-label="Lire">${icon('play')}</button>` : ''}
     <div class="card-title">${item.title || item.name}</div>
     <div class="card-sub">${sub ?? subOf(item)}</div>
   </div>`;
+}
+
+// ---------- Clic droit sur une carte (album, single, EP, playlist, artiste, titre) ----------
+const cardItems = new Map();
+const tracksCache = new Map();
+async function cardTracks(item) {
+  const k = `${item.type}:${item.id}`;
+  if (!tracksCache.has(k)) {
+    const p = item.type === 'album' ? api(`/api/album/${item.id}`).then((a) => a.tracks)
+      : item.type === 'playlist' ? api(`/api/ytplaylist/${item.id}`).then((a) => a.tracks)
+      : api(`/api/artist/${item.id}`).then((a) => a.topTracks);
+    tracksCache.set(k, p.catch((e) => (tracksCache.delete(k), Promise.reject(e))));
+  }
+  const list = await tracksCache.get(k);
+  if (!list?.length) throw new Error('aucun titre');
+  return list;
+}
+const copyLink = (url) => navigator.clipboard?.writeText(url).then(() => toast('Lien copié'));
+export function cardMenu(item, x, y) {
+  if (item.type !== 'album' && item.type !== 'playlist' && item.type !== 'artist') {
+    const t = trackCards.get(item.id) || item;
+    return t?.id ? trackMenu(t, x, y) : null;
+  }
+  const name = item.title || item.name;
+  const ctx = { type: item.type === 'playlist' ? 'ytplaylist' : item.type, id: item.id, name };
+  // Les actions qui ont besoin des titres les chargent au moment du clic
+  const withTracks = (fn) => async () => {
+    try {
+      await fn(await cardTracks(item));
+    } catch (e) {
+      toast(`Impossible : ${e.message}`);
+    }
+  };
+  const onPc = !window.Capacitor?.isNativePlatform?.() && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  const artists = (item.artists || []).filter((a) => a.id);
+  const isAlbum = item.type === 'album';
+  const single = isAlbum && /single/i.test(item.kind || '');
+  const ep = isAlbum && /\bep\b/i.test(item.kind || '');
+  const kindLabel = item.type === 'artist' ? 'l’artiste' : item.type === 'playlist' ? 'la playlist' : single ? 'le single' : ep ? 'l’EP' : 'l’album';
+  const following = item.type === 'artist' && isFollowing(item.id);
+  const link = item.type === 'artist' ? `https://music.youtube.com/channel/${item.id}`
+    : item.type === 'playlist' ? `https://music.youtube.com/playlist?list=${String(item.id).replace(/^VL/, '')}`
+    : `https://music.youtube.com/browse/${item.id}`;
+  contextMenu(x, y, [
+    { label: item.type === 'artist' ? 'Lire les titres populaires' : 'Lire', icon: 'play', action: withTracks((t) => ctl.playList(t, 0, ctx)) },
+    !single && { label: 'Lecture aléatoire', icon: 'shuffle', action: withTracks((t) => { if (!player.shuffle) ctl.toggleShuffle(); ctl.playList(t, Math.floor(Math.random() * t.length), ctx); }) },
+    { label: sync.jam ? 'Ajouter à la file de la party' : "Ajouter à la file d'attente", icon: 'addQueue', action: withTracks((t) => ctl.addToQueue(t)) },
+    { label: 'Lire ensuite', icon: 'playNext', action: withTracks((t) => ctl.playNext(t)) },
+    item.type !== 'artist' && { label: 'Ajouter à une playlist…', icon: 'plus', action: withTracks((t) => openPlaylistPicker(t, { x, y: y + 40 })) },
+    single && { label: 'Ajouter aux Titres likés', icon: 'heart', action: withTracks(async (t) => { const n = await likeMany(t); toast(n ? 'Ajouté aux Titres likés' : 'Déjà dans tes Titres likés'); }) },
+    isAlbum && !single && { label: 'Liker tous les titres', icon: 'heart', action: withTracks(async (t) => { const n = await likeMany(t); toast(n ? `${plural(n, 'titre')} ajouté${n > 1 ? 's' : ''} aux Titres likés` : 'Tous les titres sont déjà likés'); }) },
+    item.type === 'artist' && { label: following ? 'Ne plus suivre' : 'Suivre', icon: following ? 'check' : 'person', action: () => toggleFollow({ id: item.id, name, thumb: item.thumb || null }) },
+    (single || item.type === 'artist') && { label: single ? 'Lancer la radio du titre' : 'Lancer la radio de l’artiste', icon: 'radio', action: withTracks((t) => ctl.playRadio(t[0])) },
+    !single && item.type !== 'artist' && { label: item.type === 'playlist' ? 'Enregistrer dans ma bibliothèque' : 'Enregistrer comme playlist', icon: 'library', action: withTracks(async (t) => {
+      const desc = isAlbum ? `${item.kind || 'Album'} de ${(item.artists || []).map((a) => a.name).join(', ')}${item.year ? ' (' + item.year + ')' : ''}` : '';
+      const p = await createPlaylist(name, t, desc);
+      toast('Enregistré dans ta bibliothèque', { action: 'Voir', onAction: () => (location.hash = `#/playlist/${p.id}`) });
+    }) },
+    { sep: true },
+    { label: `Ouvrir ${kindLabel}`, icon: item.type === 'artist' ? 'person' : 'library', action: () => (location.hash = hrefOf(item)) },
+    artists.length === 1 && { label: "Aller à l'artiste", icon: 'person', action: () => (location.hash = `#/artist/${artists[0].id}`) },
+    artists.length > 1 && { label: "Aller à l'artiste", icon: 'person', submenu: artists.map((a) => ({ label: a.name, action: () => (location.hash = `#/artist/${a.id}`) })) },
+    item.type !== 'artist' && { label: 'Envoyer à un ami…', icon: 'send', action: withTracks((t) => sendToFriend({ tracks: t }, { x, y })) },
+    { label: 'Plus', icon: 'more', submenu: () => [
+      onPc && item.type !== 'artist' && { label: 'Télécharger sur le PC', icon: 'import', action: withTracks((t) => import('./views-local.js').then((m) => m.downloadToPc(t, name))) },
+      { label: 'Copier le lien YouTube Music', icon: 'link', action: () => copyLink(link) },
+    ].filter(Boolean) },
+  ].filter(Boolean));
 }
 
 export function hrefOf(item) {
@@ -557,6 +627,12 @@ export function setupDelegation() {
       // Clic droit sur la carte d'une de mes playlists (profil, accueil, bibliothèque…) : même menu que dans la liste
       const pid = e.target.closest('.card[data-href^="#/playlist/"], .quick-item[data-href^="#/playlist/"]')?.dataset.href.split('/')[2];
       const p = pid && state.library.playlists.find((x) => x.id === pid);
+      // Autres cartes : album, single, EP, playlist YouTube, artiste, titre
+      const ck = !p && e.target.closest('.card[data-ck]')?.dataset.ck;
+      if (ck && cardItems.has(ck)) {
+        e.preventDefault();
+        return cardMenu(cardItems.get(ck), e.clientX, e.clientY);
+      }
       if (!p) return;
       e.preventDefault();
       import('./views.js').then((v) => v.playlistMenu(p, e.clientX, e.clientY));
