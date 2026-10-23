@@ -2,5 +2,7 @@
 <!-- yt-dlp (Python) a besoin que ses bibliothèques natives soient extraites à l'installation -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Mise à jour de l'appli depuis l'appli (bouton « Mettre à jour ») -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application android:extractNativeLibs="true" />
 </manifest>

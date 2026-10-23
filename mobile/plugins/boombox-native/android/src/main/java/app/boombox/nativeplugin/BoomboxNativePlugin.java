@@ -16,6 +16,9 @@ import android.media.session.PlaybackState;
 import android.os.Build;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
+import android.provider.Settings;
+import androidx.core.content.FileProvider;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -26,6 +29,9 @@ import com.yausername.youtubedl_android.YoutubeDL;
 import com.yausername.youtubedl_android.YoutubeDLRequest;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.concurrent.CountDownLatch;
@@ -219,6 +225,59 @@ public class BoomboxNativePlugin extends Plugin {
                     .addAction(action(ctx, android.R.drawable.ic_media_next, "Suivant", "next", 3))
                     .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()).setShowActionsInCompactView(0, 1, 2));
                 ((NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE)).notify(4242, b.build());
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }).start();
+    }
+
+    // Mise à jour de l'appli : télécharge l'APK (progression envoyée par « apkProgress ») puis ouvre l'écran
+    // d'installation d'Android. La première fois, Android demande d'autoriser Boombox à installer des applis :
+    // on ouvre ce réglage et on renvoie l'erreur « permission » (il suffit de réappuyer ensuite).
+    @PluginMethod
+    public void installApk(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null) {
+            call.reject("adresse manquante");
+            return;
+        }
+        Context ctx = getContext();
+        if (Build.VERSION.SDK_INT >= 26 && !ctx.getPackageManager().canRequestPackageInstalls()) {
+            Intent s = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + ctx.getPackageName()));
+            s.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(s);
+            call.reject("permission", "permission");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                File dir = new File(ctx.getCacheDir(), "update");
+                dir.mkdirs();
+                File apk = new File(dir, "Boombox.apk");
+                HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                c.setInstanceFollowRedirects(true);
+                c.setConnectTimeout(15000);
+                c.setReadTimeout(30000);
+                long total = c.getContentLengthLong();
+                try (InputStream in = c.getInputStream(); OutputStream out = new FileOutputStream(apk)) {
+                    byte[] buf = new byte[65536];
+                    long done = 0, lastSent = 0;
+                    for (int n; (n = in.read(buf)) > 0; ) {
+                        out.write(buf, 0, n);
+                        done += n;
+                        if (total > 0 && done - lastSent > total / 50) {
+                            lastSent = done;
+                            JSObject p = new JSObject();
+                            p.put("progress", (double) done / total);
+                            notifyListeners("apkProgress", p);
+                        }
+                    }
+                }
+                Uri uri = FileProvider.getUriForFile(ctx, ctx.getPackageName() + ".fileprovider", apk);
+                Intent i = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive");
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(i);
                 call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());

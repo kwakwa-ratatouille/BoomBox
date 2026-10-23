@@ -29,7 +29,7 @@ import * as X from './views-extra.js';
 import { profilePage, avatarHtml, followingPage } from './views-profile.js';
 import { discoverPage } from './views-discover.js';
 import { automix } from './automix.js';
-import { isNative, nativeInfo } from './native.js';
+import { isNative, nativeInfo, platform } from './native.js';
 import { offline } from './offline.js';
 import { social } from './social.js';
 import { friendsPage, friendsPanel } from './views-social.js';
@@ -1534,6 +1534,7 @@ async function boot() {
     let marksTimer = 0;
     document.addEventListener('offline-progress', () => marksTimer || (marksTimer = setTimeout(() => ((marksTimer = 0), refreshTrackMarks(true)), 1000)));
     checkExpiry();
+    if (platform === 'android') setTimeout(() => import('./apk-update.js').then((m) => m.checkApkUpdate()).catch(() => {}), 6000);
     window.Capacitor.Plugins.App?.addListener('appUrlOpen', async (e) => {
       // Retour de la connexion Spotify
       if (/^boombox:\/\/spotify/.test(e.url)) return import('./spotify-sync.js').then((m) => m.handleSpotifyLink(e.url));

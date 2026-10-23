@@ -493,7 +493,7 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Restaurer une sauvegarde</b><p>Remplace la bibliothèque de ce profil.</p></div><label class="btn ghost" style="cursor:pointer">Importer<input type="file" accept=".json" id="s-restore" hidden></label></div>
 
     <h2 style="font-size:20px;margin-top:32px">À propos</h2>
-<div class="settings-row"><div><b>Version</b><p id="s-version">…</p></div></div>
+<div class="settings-row"><div><b>Version</b><p id="s-version">…</p></div><button class="btn white" id="s-apk" hidden>Mettre à jour l'appli</button></div>
     ${isNative ? html`<div class="settings-row"><div><b>Diagnostic lecture</b><p>Si les sons ne se lancent pas : teste chaque étape (PC, YouTube, téléchargement) et envoie une capture du résultat.</p></div><button class="btn ghost" id="s-diag">Lancer</button></div>` : ''}
     ${isNative ? '' : html`<div class="settings-row"><div><b>Raccourcis clavier</b><p>Espace : lecture/pause · Ctrl+→ / Ctrl+← : suivant/précédent · Maj+→ / Maj+← : ±10 s · Ctrl+↑/↓ : volume · L : liker · / : rechercher</p></div></div>`}
   </div>`);
@@ -707,6 +707,15 @@ export async function settings(el) {
     const err = localStorage.getItem('boombox.web.lastError');
     if (box) box.textContent = `Interface ${v.version || 'inconnue'}${app ? ` · appli ${app.version} (${app.build})` : ''}${isNative ? `\nDernière vérification : ${check || 'jamais'}${err ? `\nÉchec de mise à jour : ${err}` : ''}` : ''}`;
     if (box) box.style.whiteSpace = 'pre-line';
+    // Android : nouvelle version de l'appli disponible → bouton qui la télécharge et l'installe
+    const apk = await import('./apk-update.js');
+    const next = await apk.latestApk();
+    const btn = el.querySelector('#s-apk');
+    if (next && btn) {
+      btn.hidden = false;
+      btn.textContent = `Mettre à jour (${next.version})`;
+      btn.onclick = () => apk.installApk((p) => (btn.textContent = `${Math.round(p * 100)} %`)).finally(() => (btn.textContent = `Mettre à jour (${next.version})`));
+    }
   })();
   el.querySelector('#s-switch').onclick = () => document.dispatchEvent(new Event('pick-profile'));
   el.querySelector('#s-pin').onclick = async () => (await setProfilePin(state.profile)) && settings(el);

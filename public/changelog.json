@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Mise à jour Android en un bouton",
+    "items": [
+      "Android : quand une nouvelle version de l’appli sort, un bandeau « Mettre à jour » apparaît. Boombox la télécharge et ouvre l’écran d’installation, sans désinstaller ni perdre tes sons téléchargés.",
+      "Le bouton est aussi dans Paramètres → Version.",
+      "Pour passer à cette version, il faut désinstaller l’appli une toute dernière fois."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1239",
     "title": "Logo Découverte recentré",
     "items": [
