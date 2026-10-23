@@ -166,8 +166,10 @@ export function artistLinks(t) {
 export const artistNames = (t) => (t?.artists || []).map((a) => a.name).join(', ');
 
 // ---------- Toasts ----------
-export function toast(message, { action, onAction, timeout = 3500 } = {}) {
+export function toast(message, { action, onAction, timeout = action ? 4500 : 2800 } = {}) {
   const root = document.getElementById('toasts');
+  // Deux messages à l'écran au plus : les plus anciens partent
+  [...root.children].slice(0, -1).forEach((old) => old.remove());
   const el = document.createElement('div');
   el.className = 'toast';
   el.innerHTML = `<span>${esc(message)}</span>${action ? `<button>${esc(action)}</button>` : ''}`;

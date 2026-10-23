@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Messages plus discrets",
+    "items": [
+      "Les petits messages (« Ajouté aux Titres likés »…) sont maintenant une petite pastille sombre au lieu du gros bandeau bleu : on peut cliquer à travers, ils partent plus vite et il n’y en a jamais plus de deux à la fois."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1059",
     "title": "Clic droit sur les pochettes",
     "items": [
