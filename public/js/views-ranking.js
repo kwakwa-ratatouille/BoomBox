@@ -5,6 +5,7 @@ import { html, icon, plural } from './ui.js';
 import { db, collection, getDocs, query, limit } from './cloud.js';
 import { social } from './social.js';
 import { avatar } from './views-social.js';
+import { pixelBackdrop, accentPalette } from './pixel-bg.js';
 
 const PERIODS = [['week', 'Cette semaine'], ['month', 'Ce mois-ci'], ['year', 'Cette année'], ['all', 'Depuis toujours']];
 const METRICS = [
@@ -46,6 +47,12 @@ export async function rankingPage(el, params, ctx) {
     return;
   }
   if (!ctx.alive()) return;
+  // En-tête (logo + fond animé) dessiné une seule fois ; seule la liste est redessinée quand on change d'onglet
+  el.innerHTML = String(html`<div class="page rk-page">
+    <div class="ai-head ai-hero rk-hero"><img class="ai-badge" src="/assets/pixel/section-ranking.png" alt=""><div><h1>Classement</h1><p class="muted">Tous les utilisateurs de Boombox qui partagent leur activité. Appuie sur quelqu'un pour voir son profil, l'ajouter en ami ou enregistrer ses playlists.</p></div></div>
+    <div class="rk-body"></div></div>`);
+  pixelBackdrop(el.querySelector('.rk-hero'), accentPalette(), { accents: ['#FFD34D', '#ffffff'] });
+  const body = el.querySelector('.rk-body');
   const render = () => {
     const fmt = METRICS.find((m) => m[0] === metric)[2];
     const ranked = list.filter((p) => p.share !== false && p.name).map((p) => ({ p, v: valueOf(p, period, metric) })).sort((a, b) => b.v - a.v || a.p.name.localeCompare(b.p.name));
@@ -58,19 +65,16 @@ export async function rankingPage(el, params, ctx) {
       <div class="rk-main"><b class="ellipsis">${r.p.name}${r.p.code === me ? ' (toi)' : ''}</b>
         <span class="muted ellipsis">${social.isAdded(r.p.code) ? 'Ami' : r.p.code === me ? 'Ton profil' : 'Voir le profil'}${r.p.top?.artists?.[0] ? ` · fan de ${r.p.top.artists[0].name}` : ''}</span></div>
       <span class="rk-v">${r.v ? fmt(r.v) : ''}</span></a>`;
-    el.innerHTML = String(html`<div class="page rk-page">
-      <h1 style="margin-bottom:4px">Classement</h1>
-      <p class="muted" style="margin-top:0">Tous les utilisateurs de Boombox qui partagent leur activité. Appuie sur quelqu'un pour voir son profil, l'ajouter en ami ou enregistrer ses playlists.</p>
+    body.innerHTML = String(html`
       <div class="row-flex rk-tabs">${PERIODS.map(([k, l]) => html`<button class="chip ${k === period ? 'active' : ''}" data-p="${k}">${l}</button>`)}</div>
       <div class="row-flex rk-tabs">${METRICS.map(([k, l]) => html`<button class="chip ${k === metric ? 'active' : ''}" data-m="${k}">${l}</button>`)}</div>
       ${active.length >= 3 ? html`<div class="rk-podium">${[1, 0, 2].map((i) => html`<a class="rk-pod p${i + 1}" href="${active[i].p.code === me ? '#/profile' : `#/user/${active[i].p.code}`}">${avatar({ name: active[i].p.name, photo: active[i].p.photo, color: active[i].p.color })}<b class="ellipsis">${active[i].p.name}</b><span>${fmt(active[i].v)}</span><i>${i + 1}</i></a>`)}</div>` : ''}
       <div class="rk-list">${active.map(row)}</div>
       ${!active.length ? html`<p class="muted">Personne n'a encore écouté sur cette période.</p>` : ''}
       ${rest.length ? html`<h3 style="margin:24px 0 8px;font-size:16px">Autres utilisateurs</h3><div class="rk-list">${rest.map((r) => row(r, 0))}</div>` : ''}
-      <p class="muted" style="font-size:12px;margin-top:20px">${icon('info', 14)} Les chiffres se mettent à jour toutes les heures. Désactive « Partager mon activité d'écoute » dans les paramètres pour ne pas apparaître.</p>
-    </div>`);
-    el.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => ((period = b.dataset.p), render())));
-    el.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => ((metric = b.dataset.m), render())));
+      <p class="muted" style="font-size:12px;margin-top:20px">${icon('info', 14)} Les chiffres se mettent à jour toutes les heures. Désactive « Partager mon activité d'écoute » dans les paramètres pour ne pas apparaître.</p>`);
+    body.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => ((period = b.dataset.p), render())));
+    body.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => ((metric = b.dataset.m), render())));
   };
   render();
 }

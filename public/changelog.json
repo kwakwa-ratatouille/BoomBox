@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Nouveaux logos Découverte et Classement",
+    "items": [
+      "Découverte a un nouveau logo pixel (une boussole).",
+      "Le Classement a maintenant son logo (un podium) et un fond animé en pixels, comme dans Ton récap."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1116",
     "title": "Plus fluide, nouveautés plus rapides",
     "items": [
