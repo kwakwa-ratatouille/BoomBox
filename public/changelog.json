@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Lecteur Android visible, playlists IA réparées",
+    "items": [
+      "Android : la notification du lecteur passe par un « service de lecture », comme Spotify. Elle reste visible sur Xiaomi, même quand une autre appli comme Brave a joué du son (nouvelle version de l’appli).",
+      "Playlists IA : les sons qui arrivaient sans artiste (« Artiste inconnu ») prennent maintenant le bon artiste."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.2252",
     "title": "Android : notification de lecture et premier son plus rapide",
     "items": [

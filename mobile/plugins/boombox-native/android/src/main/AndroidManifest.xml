@@ -4,5 +4,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Mise à jour de l'appli depuis l'appli (bouton « Mettre à jour ») -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <application android:extractNativeLibs="true" />
+    <!-- Service de lecture : la notification du lecteur reste visible (Xiaomi, autres applis qui jouent du son) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <application android:extractNativeLibs="true">
+        <service android:name="app.boombox.nativeplugin.PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+    </application>
 </manifest>

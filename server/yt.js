@@ -551,11 +551,13 @@ function saveMatches() {
 
 export async function matchTrack(item) {
   const key = `${clean(item.title)}|${clean(item.artist)}`;
-  if (key in matchCache) return matchCache[key];
+  // Certains résultats YouTube Music arrivent sans artiste (« Artiste inconnu ») : on met celui qu'on cherchait
+  const withArtist = (t) => (t && !t.artists?.length && item.artist ? { ...t, artists: [{ name: item.artist, id: null }] } : t);
+  if (key in matchCache) return withArtist(matchCache[key]);
   const t = await matchTrackUncached(item);
   matchCache[key] = t;
   saveMatches();
-  return t;
+  return withArtist(t);
 }
 
 async function matchTrackUncached({ title, artist, duration }) {

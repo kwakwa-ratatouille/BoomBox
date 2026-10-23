@@ -240,7 +240,20 @@ public class BoomboxNativePlugin extends Plugin {
                     .addAction(playing ? action(ctx, android.R.drawable.ic_media_pause, "Pause", "pause", 2) : action(ctx, android.R.drawable.ic_media_play, "Lecture", "play", 2))
                     .addAction(action(ctx, android.R.drawable.ic_media_next, "Suivant", "next", 3))
                     .setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()).setShowActionsInCompactView(0, 1, 2));
-                ((NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE)).notify(4242, b.build());
+                Notification n = b.build();
+                PlaybackService.current = n;
+                // Premier son : le service de lecture prend la notification au premier plan. Ensuite (ou s'il ne peut
+                // pas démarrer, appli en arrière-plan), on met simplement la notification à jour.
+                boolean started = false;
+                if (playing && !serviceOn) {
+                    try {
+                        androidx.core.content.ContextCompat.startForegroundService(ctx, new Intent(ctx, PlaybackService.class));
+                        serviceOn = true;
+                        started = true;
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (!started) ((NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE)).notify(4242, n);
                 call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());
@@ -301,9 +314,15 @@ public class BoomboxNativePlugin extends Plugin {
         }).start();
     }
 
+    private static boolean serviceOn = false;
+
     @PluginMethod
     public void mediaStop(PluginCall call) {
         Context ctx = getContext().getApplicationContext();
+        if (serviceOn) {
+            ctx.stopService(new Intent(ctx, PlaybackService.class));
+            serviceOn = false;
+        }
         ((NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(4242);
         call.resolve();
     }
