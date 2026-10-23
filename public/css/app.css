@@ -2194,15 +2194,17 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .is-scrolling .card, .is-scrolling .track, .is-scrolling .quick-item { pointer-events: none; }
 .is-scrolling .card *, .is-scrolling .track * { transition: none !important; }
 
-/* Barre de défilement à glisser des longues listes : ligne verticale à droite, gros curseur pour le pouce */
-.list-rail { position: fixed; right: 4px; top: 140px; bottom: 150px; width: 44px; z-index: 90; opacity: 0; pointer-events: none; transition: opacity .2s; }
-.list-rail::before { content: ""; position: absolute; right: 20px; top: 0; bottom: 0; width: 3px; border-radius: 3px; background: rgba(255, 255, 255, .15); }
+/* Barre de défilement à glisser des longues listes : fine et discrète, la zone à attraper est large pour le pouce */
+.list-rail { position: fixed; right: 2px; top: 140px; bottom: 150px; width: 36px; z-index: 90; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.list-rail::before { content: ""; position: absolute; right: 9px; top: 0; bottom: 0; width: 2px; border-radius: 2px; background: rgba(255, 255, 255, .08); }
 .list-rail.show { opacity: 1; }
-.rail-thumb { position: absolute; right: 4px; top: 0; width: 36px; height: 56px; border-radius: 18px; background: var(--accent, #b07cf7); box-shadow: 0 4px 16px rgba(0, 0, 0, .5); pointer-events: auto; touch-action: none; cursor: grab; }
+.rail-thumb { position: absolute; right: 0; top: 0; width: 36px; height: 52px; pointer-events: auto; touch-action: none; cursor: grab; }
+.rail-thumb::before { content: ""; position: absolute; right: 6px; top: 4px; bottom: 4px; width: 8px; border-radius: 8px; background: rgba(255, 255, 255, .55); box-shadow: 0 2px 8px rgba(0, 0, 0, .4); transition: width .15s, background .15s, right .15s; }
+.list-rail.drag .rail-thumb::before { width: 12px; right: 4px; background: var(--accent, #b07cf7); }
 .list-rail:not(.show) .rail-thumb { pointer-events: none; }
-.rail-thumb::after { content: ""; position: absolute; left: 11px; right: 11px; top: 22px; height: 12px; border-top: 2px solid rgba(0, 0, 0, .45); border-bottom: 2px solid rgba(0, 0, 0, .45); }
-.rail-tip { position: absolute; right: 46px; top: 50%; transform: translateY(-50%); white-space: nowrap; padding: 6px 10px; border-radius: 8px; background: #2c2538; color: #fff; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity .15s; pointer-events: none; }
-.list-rail.drag .rail-tip { opacity: 1; }
+.rail-tip { position: absolute; right: 30px; top: 50%; transform: translateY(-50%) scale(.9); white-space: nowrap; padding: 6px 12px; border-radius: 999px; background: var(--accent, #b07cf7); color: #fff; font-size: 13px; font-weight: 800; box-shadow: 0 4px 14px rgba(0, 0, 0, .45); opacity: 0; transition: opacity .15s, transform .15s; pointer-events: none; }
+.rail-tip:empty { display: none; }
+.list-rail.drag .rail-tip { opacity: 1; transform: translateY(-50%) scale(1); }
 .list-rail.drag .rail-thumb { cursor: grabbing; }
 @media (max-width: 768px) { .list-rail { top: 110px; bottom: calc(160px + env(safe-area-inset-bottom)); } }
 
@@ -2220,3 +2222,12 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
   .search-tabs .chip { flex: none; }
   .search-grid ~ .section .cards.row .card { width: 112px; min-width: 112px; }
 }
+
+/* Tous les sons d'un artiste : un bloc par sortie avec sa pochette ; hors de l'écran, pas dessiné */
+.at-album { margin-bottom: 28px; content-visibility: auto; contain-intrinsic-size: auto 600px; }
+.at-head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 10px; color: inherit; }
+.at-head .cover { width: 120px; height: 120px; flex: none; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.at-head > div { min-width: 0; }
+.at-album .track-head { display: none; }
+.at-head h2 { font-size: 24px; margin: 2px 0; }
+@media (max-width: 768px) { .at-head .cover { width: 84px; height: 84px; } .at-head h2 { font-size: 19px; } }

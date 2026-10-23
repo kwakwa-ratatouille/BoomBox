@@ -144,7 +144,11 @@ const scroller = (el) => {
   }
   return document.scrollingElement;
 };
-const longList = () => [...document.querySelectorAll('[data-list-wrap]')].find((w) => w.querySelectorAll('.track').length >= 30);
+// Une longue liste, ou une page faite de plusieurs listes (ex. tous les sons d'un artiste, album par album)
+const longList = () => {
+  const wraps = [...document.querySelectorAll('[data-list-wrap]')];
+  return wraps.find((w) => w.querySelectorAll('.track').length >= 30) || (wraps.length > 2 && document.querySelectorAll('.track').length >= 30 ? wraps[0] : null);
+};
 function fillList(wrap) {
   const more = wrap.querySelector('.tl-more');
   const p = more && chunkLists.get(more.dataset.more);
@@ -213,7 +217,7 @@ function place(k, wrap) {
     const count = Math.min(CHUNK, total - Number(ch.dataset.from));
     at = Number(ch.dataset.from) + Math.floor(((mid - r.top) / r.height) * count) + 1;
   }
-  thumb.firstElementChild.textContent = `${Math.max(1, Math.min(total, at || 1))} / ${total}`;
+  thumb.firstElementChild.textContent = total >= 30 ? `${Math.max(1, Math.min(total, at || 1))} / ${total}` : '';
 }
 function hideSoon() {
   clearTimeout(rail._hide);

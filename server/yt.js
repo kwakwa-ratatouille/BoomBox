@@ -93,7 +93,16 @@ function artistsOf(item) {
     if (typeof item.author === 'string') return [{ name: item.author, id: null }];
     return [{ name: item.author.name, id: item.author.channel_id || item.author.id || null }];
   }
-  return [];
+  // Certains résultats n'ont pas d'artiste « rangé » (affiché « Artiste inconnu ») : on le lit dans la 2e ligne
+  // du résultat (« Titre • Ninho • Album • 3:21 »), d'abord les liens vers une page artiste, sinon le texte
+  const runs = item.flex_columns?.[1]?.title?.runs || item.subtitle?.runs || [];
+  const linked = runs
+    .filter((r) => /ARTIST/.test(r.endpoint?.payload?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType || '') || /^UC/.test(r.endpoint?.payload?.browseId || ''))
+    .map((r) => ({ name: txt(r.text), id: r.endpoint.payload.browseId }));
+  if (linked.length) return linked;
+  const parts = runs.map((r) => txt(r.text)).join('').split('•').map((x) => x.trim()).filter(Boolean);
+  const name = parts.find((p) => !/^(titre|song|chanson|vid[ée]o|single|ep|album|\d+:\d+|[\d,.\s]+\s*(k|m|md)?\s*(vues|views|lectures|plays)?)$/i.test(p));
+  return name ? [{ name, id: null }] : [];
 }
 
 function durationOf(item) {

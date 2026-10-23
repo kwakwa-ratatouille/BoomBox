@@ -1080,6 +1080,7 @@ export async function artist(el, { id }, ctx) {
           <button class="outline-btn" id="follow">${following ? 'Abonné' : "S'abonner"}</button>
           <button class="act-btn" id="ar-more">${icon('more')}</button>
           <a class="outline-btn" href="#/discography/${id}">Voir la discographie</a>
+          <a class="outline-btn" href="#/alltracks/${id}">Tous les sons</a>
         </div>
         ${a.topTracks.length ? html`<section class="section"><div class="section-head"><h2>Populaires</h2></div>
           ${trackList(showAll ? a.topTracks : a.topTracks.slice(0, 5), { context: actx, plays: true })}
@@ -1165,6 +1166,79 @@ export async function discography(el, { id }, ctx) {
     }
   };
   render();
+}
+
+// ======================= TOUS LES SONS D'UN ARTISTE =======================
+// Toute la discographie d'un coup, comme une longue playlist : albums, singles et EP du plus récent au plus ancien,
+// chacun avec sa pochette, puis les featurings (seulement les sons où l'artiste apparaît). Les albums arrivent au
+// fur et à mesure (4 à la fois) ; ceux qui sont loin de l'écran ne sont pas dessinés (pas de ralentissement).
+export async function allTracks(el, { id }, ctx) {
+  el.innerHTML = String(loading);
+  let d;
+  try {
+    d = await api(`/api/discography/${id}`);
+  } catch (e) {
+    el.innerHTML = String(errorBox(e));
+    return;
+  }
+  if (!ctx.alive()) return;
+  const name = d.name || "l'artiste";
+  const items = [...d.items.filter((x) => x.group !== 'feat'), ...d.items.filter((x) => x.group === 'feat')];
+  const loaded = new Array(items.length);
+  let done = 0;
+  el.innerHTML = String(html`<div class="page all-tracks">
+    <div class="section-head"><h1>Tous les sons de ${name}</h1><a class="outline-btn" href="#/artist/${id}">Retour</a></div>
+    <p class="muted" id="at-count">Chargement… 0 / ${items.length} sorties</p>
+    <div class="actions" style="padding:0 0 16px;flex-wrap:wrap">
+      <button class="btn primary" data-at="play" disabled>${icon('play')} Tout écouter</button>
+      <button class="btn ghost" data-at="shuffle" disabled>${icon('shuffle', 18)} Aléatoire</button>
+      <button class="btn ghost" data-at="playlist" disabled>${icon('plus', 18)} Créer une playlist de tous les sons</button>
+      <button class="btn ghost" data-at="queue" disabled>Ajouter à la file</button>
+    </div>
+    <div id="at-list">${items.map((a, i) => html`<section class="at-album" data-i="${i}">
+      <a class="at-head" href="#/album/${a.id}">${cover(a, '', 120)}<div><small class="muted">${a.group === 'feat' ? 'FEATURING' : (a.kind || 'Album').toUpperCase()}${a.year ? ` · ${a.year}` : ''}</small><h2 class="ellipsis">${a.title}</h2>${a.group === 'feat' ? html`<div class="muted ellipsis">${(a.artists || []).map((x) => x.name).join(', ')}</div>` : ''}</div></a>
+      <div class="at-tracks"><div class="sk-page"><div class="sk sk-title"></div></div></div></section>`)}</div>
+  </div>`);
+  const isHim = (t) => (t.artists || []).some((a) => a.id === id || (a.name || '').toLowerCase() === name.toLowerCase());
+  const all = () => {
+    const seen = new Set();
+    return loaded.flat().filter((t) => t && !seen.has(t.id) && seen.add(t.id));
+  };
+  const pctx = { type: 'artist-all', id, name: `Tous les sons de ${name}` };
+  const queue = items.map((_, i) => i);
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    for (let i; (i = queue.shift()) !== undefined; ) {
+      if (!ctx.alive()) return;
+      const a = await api(`/api/album/${items[i].id}`).catch(() => null);
+      let tracks = a?.tracks || [];
+      if (items[i].group === 'feat') tracks = tracks.filter(isHim);
+      loaded[i] = tracks;
+      rememberTracks(tracks);
+      const sec = el.querySelector(`.at-album[data-i="${i}"]`);
+      if (sec) {
+        if (!tracks.length) sec.remove();
+        else sec.querySelector('.at-tracks').innerHTML = String(trackList(tracks, { context: { type: 'album', id: items[i].id, name: items[i].title }, album: false, numbered: true }));
+      }
+      done++;
+      const c = el.querySelector('#at-count');
+      if (c) c.textContent = done < items.length ? `Chargement… ${done} / ${items.length} sorties` : `${plural(all().length, 'son')} · ${plural(items.length, 'sortie')}`;
+    }
+  }));
+  if (!ctx.alive()) return;
+  el.querySelectorAll('[data-at]').forEach((b) => {
+    b.disabled = false;
+    b.onclick = async () => {
+      const list = all();
+      if (!list.length) return;
+      if (b.dataset.at === 'play') ctl.playList(list, 0, pctx);
+      else if (b.dataset.at === 'shuffle') ctl.playList([...list].sort(() => Math.random() - 0.5), 0, pctx);
+      else if (b.dataset.at === 'queue') ctl.addToQueue(list), toast(`${plural(list.length, 'son')} ajoutés à la file`);
+      else {
+        const p = await createPlaylist(`Tout ${name}`, list, `Tous les sons de ${name}, du plus récent au plus ancien`);
+        toast('Playlist créée', { action: 'Voir', onAction: () => (location.hash = `#/playlist/${p.id}`) });
+      }
+    };
+  });
 }
 
 // ======================= CORBEILLE =======================

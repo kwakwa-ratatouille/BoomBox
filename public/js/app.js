@@ -167,6 +167,7 @@ const routes = [
   [/^album\/([\w-]+)$/, V.album, 'album', ['id']],
   [/^artist\/([\w-]+)$/, V.artist, 'artist', ['id']],
   [/^discography\/([\w-]+)$/, V.discography, 'discography', ['id']],
+  [/^alltracks\/([\w-]+)$/, V.allTracks, 'alltracks', ['id']],
   [/^spuser\/([\w.-]+)$/, spotifyUserPage, 'spuser', ['id']],
   [/^ranking$/, rankingPage, 'ranking'],
   [/^local$/, localPage, 'local'],
@@ -1021,6 +1022,7 @@ function renderFullPlayer() {
       const secs = [...pick(/album|single|\bep\b/i), ...pick(/similaire|aiment aussi|fans|similar|also like/i)];
       box.innerHTML = String(html`<a class="fa-head" href="#/artist/${ar.id}">${cover(a, 'round', 300)}<div style="min-width:0"><small class="muted">À propos de l'artiste</small><b class="ellipsis">${a.name}</b>${a.monthlyListeners ? html`<span class="muted">${a.monthlyListeners.toLocaleString('fr-FR')} auditeurs mensuels</span>` : ''}</div></a>
         <a class="outline-btn" href="#/discography/${ar.id}" style="display:inline-block;margin-top:6px">Voir la discographie</a>
+        <a class="outline-btn" href="#/alltracks/${ar.id}" style="display:inline-block;margin-top:6px">Tous les sons</a>
         ${secs.map((s) => html`<section class="section"><h3>${s.title}</h3><div class="cards row">${s.items.slice(0, 12).map((i) => card(i))}</div></section>`)}`);
       box.addEventListener('click', (e) => e.target.closest('a[href^="#/"]') && closeFullPlayer(true));
     }).catch(() => {});
