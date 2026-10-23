@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Boombox sur iPhone</title>
+<meta name="theme-color" content="#121212">
+<link rel="icon" href="/assets/favicon-32.png?v=2">
+<style>
+  :root { --bg: #121212; --card: #1e1e22; --text: #f4f2f8; --muted: #a9a3b5; --accent: #b07cf7; --ok: #2ef28b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 0 16px 60px; }
+  header { text-align: center; padding: 28px 0 8px; }
+  header img { width: 76px; height: 76px; border-radius: 18px; }
+  h1 { font-size: 26px; margin: 12px 0 4px; }
+  header p { color: var(--muted); margin: 0; }
+  .step { background: var(--card); border-radius: 18px; padding: 18px; margin: 16px auto; max-width: 560px; }
+  .step h2 { font-size: 20px; margin: 0 0 10px; display: flex; gap: 10px; align-items: center; }
+  .num { flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #121212; display: grid; place-items: center; font-weight: 800; font-size: 17px; }
+  ol { margin: 0; padding-left: 22px; }
+  li { margin: 6px 0; }
+  b { color: #fff; }
+  .path { display: inline-block; background: #2b2933; border-radius: 8px; padding: 1px 8px; font-weight: 600; }
+  .btn { display: block; text-align: center; background: var(--accent); color: #121212; font-weight: 800; font-size: 18px; text-decoration: none; padding: 15px; border-radius: 14px; margin: 14px 0 4px; }
+  .btn.alt { background: transparent; color: var(--accent); border: 2px solid var(--accent); font-size: 16px; padding: 12px; }
+  .note { color: var(--muted); font-size: 15px; margin-top: 10px; }
+  .pc { display: inline-block; font-size: 13px; font-weight: 700; color: var(--accent); background: rgba(176,124,247,.14); border-radius: 99px; padding: 2px 10px; margin-bottom: 8px; }
+  .warn { border-left: 4px solid var(--accent); padding-left: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <img src="/assets/app-icon-1024.png?v=2" alt="">
+  <h1>Boombox sur iPhone</h1>
+  <p>Suis les étapes en même temps que le programme sur ton PC.</p>
+</header>
+
+<section class="step" id="vpn">
+  <span class="pc">Étape 1 sur le PC</span>
+  <h2><span class="num">1</span> Installer LocalDevVPN</h2>
+  <p>C'est une petite appli gratuite de l'App Store. Elle permet à SideStore d'installer et de renouveler Boombox directement depuis l'iPhone.</p>
+  <a class="btn" href="https://apps.apple.com/app/localdevvpn/id6755608044">Ouvrir LocalDevVPN dans l'App Store</a>
+  <ol>
+    <li>Touche <b>Obtenir</b> pour l'installer.</li>
+    <li>Ouvre-la et touche <b>Connect</b>.</li>
+    <li>iOS demande d'ajouter un VPN : touche <b>Autoriser</b>, puis tape ton code.</li>
+  </ol>
+  <p class="note">Ce n'est pas un vrai VPN : rien ne sort de ton téléphone, il ne ralentit pas Internet.</p>
+</section>
+
+<section class="step" id="trust">
+  <span class="pc">Étape 5 sur le PC</span>
+  <h2><span class="num">2</span> Autoriser SideStore</h2>
+  <p>Une fois SideStore installé par le PC, il faut dire à l'iPhone que tu lui fais confiance :</p>
+  <ol>
+    <li>Ouvre <b>Réglages</b> → <span class="path">Général</span> → <span class="path">VPN et gestion de l'appareil</span>.</li>
+    <li>Sous « App de développeur », touche ton adresse Apple.</li>
+    <li>Touche <b>Faire confiance</b> (ou <b>Autoriser et redémarrer</b>), puis confirme.</li>
+  </ol>
+  <p style="margin-top:14px">Ensuite, active le mode développeur :</p>
+  <ol>
+    <li><b>Réglages</b> → <span class="path">Confidentialité et sécurité</span>.</li>
+    <li>Tout en bas : <span class="path">Mode développeur</span> → active-le.</li>
+    <li>L'iPhone redémarre. Au démarrage, touche <b>Activer</b> et tape ton code.</li>
+  </ol>
+  <p class="note">Tu ne vois pas « Mode développeur » ? C'est qu'il n'est pas nécessaire sur ta version d'iOS : passe à la suite.</p>
+</section>
+
+<section class="step" id="sidestore">
+  <span class="pc">Étape 6 sur le PC</span>
+  <h2><span class="num">3</span> Premier lancement de SideStore</h2>
+  <ol>
+    <li>Ouvre <b>LocalDevVPN</b> et vérifie qu'il est sur <b>Connected</b>.</li>
+    <li>Ouvre <b>SideStore</b>.</li>
+    <li>Connecte-toi avec <b>le même identifiant Apple</b> que sur le PC.</li>
+    <li>Va dans l'onglet <b>Mes apps</b> et touche le bouton <b>7 JOURS</b> à côté de SideStore.</li>
+    <li>S'il demande de créer ou révoquer un certificat : touche <b>Oui</b>.</li>
+  </ol>
+  <p class="note">SideStore se ferme puis revient tout seul : c'est normal, il vient de se renouveler.</p>
+</section>
+
+<section class="step" id="boombox">
+  <span class="pc">Étape 7 sur le PC</span>
+  <h2><span class="num">4</span> Installer Boombox</h2>
+  <p>LocalDevVPN doit être sur <b>Connected</b>. Puis :</p>
+  <a class="btn" href="sidestore://source?url=https%3A%2F%2Fgithub.com%2Fkwakwa-ratatouille%2FBoomBox%2Freleases%2Flatest%2Fdownload%2Fsource.json">Ajouter Boombox à SideStore</a>
+  <ol>
+    <li>SideStore s'ouvre et propose la source Boombox : touche <b>Ajouter</b>.</li>
+    <li>Va dans <b>Parcourir</b>, touche <b>Boombox</b>, puis <b>Installer</b>.</li>
+  </ol>
+  <p class="note">Ça ne marche pas ? Installe-le directement (sans mises à jour automatiques) :</p>
+  <a class="btn alt" href="sidestore://install?url=https%3A%2F%2Fgithub.com%2Fkwakwa-ratatouille%2FBoomBox%2Freleases%2Flatest%2Fdownload%2FBoombox.ipa">Installer Boombox directement</a>
+</section>
+
+<section class="step" id="done">
+  <h2><span class="num">✓</span> C'est fini !</h2>
+  <ol>
+    <li>Ouvre <b>Boombox</b>, choisis <b>J'ai déjà Boombox sur un autre appareil</b> et suis les indications pour retrouver ta bibliothèque.</li>
+    <li>Une appli installée avec un identifiant Apple gratuit dure <b>7 jours</b>. SideStore la renouvelle tout seul en arrière-plan si LocalDevVPN est connecté, et Boombox te prévient avant la fin.</li>
+    <li>Pour renouveler à la main : LocalDevVPN sur <b>Connect</b>, puis SideStore → <b>Mes apps</b> → <b>Tout actualiser</b>.</li>
+  </ol>
+  <p class="note warn">Garde l'appli LocalDevVPN installée : sans elle, SideStore ne peut plus renouveler Boombox.</p>
+</section>
+</body>
+</html>

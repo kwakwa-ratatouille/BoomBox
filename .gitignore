@@ -13,3 +13,4 @@ abonnements-spotify.txt
 .firebase/
 /dist/
 /scripts/Output/
+/tools/iphone-installer/*.exe

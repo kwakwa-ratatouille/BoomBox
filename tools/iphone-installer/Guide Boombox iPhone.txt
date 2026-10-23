@@ -1,0 +1,111 @@
+﻿BOOMBOX SUR IPHONE : LE GUIDE
+=============================
+
+Page à suivre sur l'iPhone : https://musikal-b72d1.web.app/iphone.html
+
+BIENVENUE
+----------------------------------------
+Ce programme t'installe Boombox sur ton iPhone, pas à pas. Compte environ 10 minutes.
+
+Il fait tout seul ce qui peut se faire depuis le PC. Pour le reste, il te dit exactement quoi toucher sur l'iPhone.
+
+Prépare :
+   •  ton iPhone (iOS 15 ou plus récent), avec son code de déverrouillage
+   •  le câble USB de l'iPhone
+   •  un identifiant Apple (gratuit : celui de ton iPhone ou un autre)
+   •  le Wi-Fi sur le PC et sur l'iPhone (pas la 4G)
+
+1. SUR L'IPHONE : INSTALLER LOCALDEVVPN
+----------------------------------------
+Sur l'iPhone, ouvre dans Safari la page https://musikal-b72d1.web.app/iphone.html (ou scanne le QR code affiché par le programme). Une page s'ouvre : elle reprend les mêmes étapes que ce programme, avec des boutons à toucher.
+
+Sur cette page, touche « Ouvrir LocalDevVPN dans l'App Store », puis :
+   1.  Touche « Obtenir » pour installer l'appli (gratuite).
+   2.  Ouvre LocalDevVPN et touche « Connect ».
+   3.  iOS demande d'ajouter un VPN : touche « Autoriser » et tape ton code.
+
+LocalDevVPN permet à SideStore d'installer et de renouveler Boombox depuis l'iPhone. Ce n'est pas un vrai VPN : rien ne sort du téléphone.
+
+Garde la page ouverte sur l'iPhone : elle resservira.
+
+2. PRÉPARER LE PC
+----------------------------------------
+Le PC a besoin de deux choses :
+
+   •  iTunes : il contient les pilotes qui permettent au PC de parler à l'iPhone. Tu n'auras pas besoin de l'ouvrir.
+   •  iloader : l'installeur officiel de SideStore (l'appli qui installera Boombox).
+
+Clique sur « Tout installer ». Windows peut demander une autorisation : réponds « Oui ». Si l'installeur d'iTunes s'affiche, clique sur « Suivant » jusqu'à la fin.
+
+3. BRANCHER L'IPHONE
+----------------------------------------
+   1.  Branche l'iPhone au PC avec le câble USB.
+   2.  Déverrouille l'iPhone.
+   3.  Sur l'iPhone, touche « Se fier » (« Faire confiance à cet ordinateur ? ») et tape ton code.
+
+Le programme détecte l'iPhone tout seul : attends que la ligne ci-dessous passe au vert.
+
+Pas détecté ? Débranche puis rebranche le câble, essaie un autre port USB, ou redémarre le PC si iTunes vient d'être installé.
+
+4. INSTALLER SIDESTORE AVEC ILOADER
+----------------------------------------
+Clique sur « Ouvrir iloader ». Dans la fenêtre d'iloader :
+
+   1.  Connecte-toi avec ton identifiant Apple (attention aux majuscules). Il est envoyé seulement à Apple, comme sur un iPhone.
+   2.  Choisis ton iPhone dans la liste.
+   3.  Clique sur « Install SideStore (Stable) » et attends la fin.
+
+Si Apple envoie un code de vérification sur tes appareils, tape-le dans iloader.
+
+L'iPhone doit rester branché et déverrouillé pendant l'installation.
+
+5. SUR L'IPHONE : AUTORISER SIDESTORE
+----------------------------------------
+SideStore est installé, mais iOS ne l'ouvrira pas tant que tu ne l'as pas autorisé.
+
+A.  Faire confiance
+   1.  Ouvre Réglages → Général → VPN et gestion de l'appareil.
+   2.  Sous « App de développeur », touche ton adresse Apple.
+   3.  Touche « Faire confiance » (ou « Autoriser et redémarrer ») et confirme.
+
+B.  Activer le mode développeur
+   1.  Réglages → Confidentialité et sécurité → tout en bas : Mode développeur.
+   2.  Active-le : l'iPhone redémarre.
+   3.  Au redémarrage, touche « Activer » et tape ton code.
+
+Pas de « Mode développeur » dans les Réglages ? Il n'est pas nécessaire sur ta version d'iOS : passe à la suite.
+
+6. PREMIER LANCEMENT DE SIDESTORE
+----------------------------------------
+   1.  Ouvre LocalDevVPN : il doit afficher « Connected » (sinon touche « Connect »).
+   2.  Ouvre SideStore.
+   3.  Connecte-toi avec le même identifiant Apple que dans iloader.
+   4.  Va dans l'onglet « Mes apps » et touche le bouton « 7 JOURS » à côté de SideStore.
+   5.  S'il demande de créer ou de révoquer un certificat : touche « Oui ».
+
+SideStore se ferme puis revient : c'est normal, il vient de se renouveler.
+
+Tu peux débrancher l'iPhone : la suite se fait sans câble.
+
+7. INSTALLER BOOMBOX
+----------------------------------------
+Ouvre https://musikal-b72d1.web.app/iphone.html#boombox sur l'iPhone (ou va tout en bas de la page déjà ouverte).
+
+   1.  Vérifie que LocalDevVPN affiche « Connected ».
+   2.  Touche « Ajouter Boombox à SideStore », puis « Ajouter » dans SideStore.
+   3.  Dans SideStore, va dans « Parcourir », touche Boombox, puis « Installer ».
+
+Ça ne marche pas ? Sur la même page, touche « Installer Boombox directement ».
+
+C'EST FINI !
+----------------------------------------
+Ouvre Boombox sur l'iPhone, choisis « J'ai déjà Boombox sur un autre appareil » et suis les indications pour retrouver ta bibliothèque.
+
+Bon à savoir :
+   •  Avec un identifiant Apple gratuit, une appli installée dure 7 jours. SideStore la renouvelle tout seul en arrière-plan quand LocalDevVPN est connecté, et Boombox te prévient avant la fin.
+   •  Pour renouveler à la main : LocalDevVPN sur « Connect », puis SideStore → Mes apps → « Tout actualiser ».
+   •  Ne supprime pas LocalDevVPN : sans elle, SideStore ne peut plus renouveler Boombox.
+   •  Les mises à jour de Boombox arrivent toutes seules, dans l'appli.
+
+Tu peux relancer ce programme à tout moment, par exemple pour réinstaller SideStore sur un nouvel iPhone.
+
