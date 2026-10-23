@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1023.2252",
     "title": "Android : notification de lecture et premier son plus rapide",
     "items": [
       "Android (Xiaomi, Redmi…) : l’appli demande l’autorisation « Notifications » au premier son. Sans elle, Android cachait la notification de lecture (nouvelle version de l’appli).",
