@@ -85,7 +85,7 @@ async function resolveClient(y, id, client, ua) {
   let url = fmt.url || (await fmt.decipher(y.session.player));
   if (url && tokens && !/[?&]pot=/.test(url)) url += `&pot=${encodeURIComponent(tokens.gvs)}`;
   if (!url) throw new Error('aucun lien');
-  return { url, client, ua: ua || navigator.userAgent, withToken: !!tokens, exp: Date.now() + 4 * 3600e3 };
+  return { url, client, ua: ua || navigator.userAgent, withToken: !!tokens, size: Number(fmt.content_length) || 0, exp: Date.now() + 4 * 3600e3 };
 }
 async function remoteAudio(id, exclude = []) {
   const hit = urlCache.get(id);
@@ -221,6 +221,36 @@ async function fetchTo(path, url, headers = {}) {
   return stat;
 }
 
+// YouTube bride un lien téléchargé d'un seul coup à la vitesse de lecture (un son de 3 min prenait ~3 min, même
+// en Wi-Fi) : on le télécharge en morceaux de 1 Mo (paramètre range=), 4 à la fois, puis on les recolle.
+const CHUNK = 1024 * 1024;
+async function fetchChunked(path, url, headers, size) {
+  if (!size) return fetchTo(path, url, headers);
+  const parts = [];
+  for (let a = 0; a < size; a += CHUNK) parts.push([a, Math.min(size, a + CHUNK) - 1]);
+  const queue = parts.map((p, i) => i);
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    for (let i; (i = queue.shift()) !== undefined; ) {
+      const [a, b] = parts[i];
+      await Filesystem.downloadFile({ url: `${url}&range=${a}-${b}`, path: `${path}.p${i}`, directory: Directory.Data, recursive: true, headers });
+    }
+  })).catch(async (e) => {
+    await Promise.all(parts.map((p, i) => Filesystem.deleteFile({ path: `${path}.p${i}`, directory: Directory.Data }).catch(() => {})));
+    throw e;
+  });
+  for (let i = 0; i < parts.length; i++) {
+    const { data } = await Filesystem.readFile({ path: `${path}.p${i}`, directory: Directory.Data });
+    await (i ? Filesystem.appendFile : Filesystem.writeFile)({ path, data, directory: Directory.Data });
+    await Filesystem.deleteFile({ path: `${path}.p${i}`, directory: Directory.Data }).catch(() => {});
+  }
+  const stat = await Filesystem.stat({ path, directory: Directory.Data });
+  if (Math.abs(stat.size - size) > 1024) {
+    await Filesystem.deleteFile({ path, directory: Directory.Data }).catch(() => {});
+    throw new Error(`fichier incomplet (${stat.size}/${size} o)`);
+  }
+  return stat;
+}
+
 // Index des fichiers audio présents sur le téléphone : { id: { size, at, used, keep } }
 const INDEX_KEY = 'boombox.audioIndex';
 export const audioIndex = JSON.parse(localStorage.getItem(INDEX_KEY) || '{}');
@@ -288,7 +318,7 @@ export function downloadAudio(id, { keep = false } = {}) {
       const r = await remoteAudio(id, tried).catch((e) => ((lastErr = e), null));
       if (!r) break;
       tried.push(r.client);
-      stat = await fetchTo(path, r.url, { 'User-Agent': r.ua }).catch((e) => {
+      stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => {
         lastErr = new Error(`${r.client} : ${e.message}`);
         urlCache.delete(id);
         return null;

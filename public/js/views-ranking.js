@@ -2,7 +2,7 @@
 // nombre d'écoutes, artistes ou titres différents, sur la semaine, le mois ou l'année en cours.
 // Un appui ouvre le profil (ajouter en ami, voir ses playlists et son top).
 import { html, icon, plural } from './ui.js';
-import { db, collection, getDocs, query, limit } from './cloud.js';
+import { db, collection, getDocs, query, limit, firestoreBroken } from './cloud.js';
 import { social } from './social.js';
 import { avatar } from './views-social.js';
 import { pixelBackdrop, RANKING_PALETTE } from './pixel-bg.js';
@@ -43,7 +43,7 @@ export async function rankingPage(el, params, ctx) {
   try {
     list = await loadPeople();
   } catch (e) {
-    el.innerHTML = String(html`<div class="page"><div class="empty"><h2>Classement indisponible</h2><p class="muted">${e.message}</p></div></div>`);
+    el.innerHTML = String(html`<div class="page"><div class="empty"><h2>Classement indisponible</h2><p class="muted">${firestoreBroken(e) ? 'Reconnexion en cours…' : e.message}</p></div></div>`);
     return;
   }
   if (!ctx.alive()) return;

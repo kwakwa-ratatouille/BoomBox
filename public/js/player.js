@@ -684,7 +684,7 @@ export const player = {
   async _prefetchPhone() {
     const media = (await localApi()).media;
     if (!media.net?.connected) return;
-    for (const t of this.upcoming(3)) {
+    for (const t of this.upcoming(5)) {
       if (!t?.id || t.local) continue;
       const id = playId(t.id);
       if (media.isDownloaded?.(id)) continue;

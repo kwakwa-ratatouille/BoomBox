@@ -4,7 +4,7 @@
 import { initializeApp } from '../vendor/firebase/firebase-app.js';
 import { getAuth, initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, signInAnonymously, onAuthStateChanged, signOut } from '../vendor/firebase/firebase-auth.js';
 import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED, getDocsFromCache, getDocsFromServer,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, persistentSingleTabManager, CACHE_SIZE_UNLIMITED, getDocsFromCache, getDocsFromServer,
   doc, collection, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot,
   query, where, orderBy, limit, writeBatch, serverTimestamp, arrayUnion, arrayRemove, runTransaction, deleteField,
 } from '../vendor/firebase/firebase-firestore.js';
@@ -20,9 +20,29 @@ export const auth = window.Capacitor?.isNativePlatform?.()
 window.__bbIdToken = () => auth.currentUser?.getIdToken() ?? Promise.resolve(null);
 export const db = initializeFirestore(app, {
   // Cache local sans limite de taille : la bibliothèque y est gardée en entier et n'est relue à Firebase que pour les changements
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager(), cacheSizeBytes: CACHE_SIZE_UNLIMITED }),
+  // Appli : un seul onglet possible. Le mode « plusieurs onglets » fait des écritures IndexedDB en continu que
+  // l'iPhone coupe quand l'appli passe en arrière-plan → Firestore cassé (« INTERNAL ASSERTION FAILED … b815 »)
+  localCache: persistentLocalCache({ tabManager: window.Capacitor?.isNativePlatform?.() ? persistentSingleTabManager({}) : persistentMultipleTabManager(), cacheSizeBytes: CACHE_SIZE_UNLIMITED }),
   ignoreUndefinedProperties: true,
 });
+// Firestore cassé quand même (IndexedDB de l'iPhone) : plus rien ne charge jusqu'au redémarrage. On recharge la
+// page tout de suite si rien ne joue, sinon dès que la musique est en pause (au plus une fois par minute).
+const isFsBroken = (e) => /INTERNAL ASSERTION FAILED|b815|ca9|in-progress transaction/i.test(String(e?.message || e || ''));
+let fsBroken = false;
+function onFsBroken() {
+  if (fsBroken) return;
+  fsBroken = true;
+  const last = Number(sessionStorage.getItem('boombox.fsReload') || 0);
+  if (Date.now() - last < 60e3) return;
+  const reload = () => (sessionStorage.setItem('boombox.fsReload', String(Date.now())), location.reload());
+  const playing = () => [...document.querySelectorAll('audio')].some((a) => !a.paused);
+  if (!playing()) return reload();
+  const t = setInterval(() => !playing() && (clearInterval(t), reload()), 3000);
+}
+addEventListener('bb-fs-broken', onFsBroken);
+addEventListener('unhandledrejection', (e) => isFsBroken(e.reason) && onFsBroken());
+addEventListener('error', (e) => isFsBroken(e.error || e.message) && onFsBroken());
+export const firestoreBroken = (e) => (isFsBroken(e) ? (onFsBroken(), true) : false);
 export { getDocsFromCache, getDocsFromServer, doc, collection, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, limit, writeBatch, serverTimestamp, arrayUnion, arrayRemove, runTransaction, deleteField };
 
 const randomId = (n) => {

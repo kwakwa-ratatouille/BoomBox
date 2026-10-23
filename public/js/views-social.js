@@ -212,10 +212,12 @@ export async function friendsPage(el, params) {
           const day = new Date(m.at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
           const sep = day !== lastDay ? ((lastDay = day), html`<div class="chat-day">${day}</div>`) : '';
           return html`${sep}<div class="msg ${m.out ? 'out' : 'in'}" data-mid="${m.mid}" data-at="${m.at}">
+            ${m.reply ? html`<button type="button" class="msg-reply" data-goto="${m.reply.at}"><b>${m.reply.name}</b><span class="ellipsis">${m.reply.text}</span></button>` : ''}
             ${m.collab ? html`<a class="btn primary sm" style="margin-bottom:6px" href="#/shared/${m.out ? social.code : m.peer}/${m.collab.id}">${icon('library', 16)} Ouvrir « ${m.collab.name} »</a>` : ''}${m.playlist ? playlistCard(m) : ''}${m.tracks?.length ? tracksCard(m) : ''}${m.image || m.gif ? html`<img class="msg-img" src="${m.image || m.gif}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}${m.sticker ? html`<img class="msg-sticker" src="${m.sticker}" alt="">` : ''}${m.text ? html`<p class="msg-text">${m.text}</p>` : ''}
             ${m === lastOut ? html`<span class="msg-state">${seen >= m.at ? 'Vu' : 'Remis'}</span>` : ''}<time>${new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</time>${reactBadge(c, m.at)}</div>`;
         }) : html`<p class="muted chat-empty">Envoie un message, un son ou une playlist à ${who.name}.</p>`}
       </div>
+      <div class="chat-replying" id="chat-replying" hidden><div><b></b><span class="ellipsis"></span></div><button type="button" class="icon-btn" aria-label="Annuler la réponse">${icon('close', 18)}</button></div>
       <form class="chat-form" id="chat-form">
         <button type="button" class="icon-btn" id="chat-attach" title="Envoyer un son ou une playlist">${icon('addCircle')}</button>
         <input class="input" id="chat-input" placeholder="Écris un message…" maxlength="2000" autocomplete="off">
@@ -237,7 +239,7 @@ export async function friendsPage(el, params) {
     // Réactions : double-clic / appui long sur un message → barre d'emojis
     root.querySelectorAll('.msg[data-at]').forEach((el) => {
       let t = null;
-      const open = () => reactBar(el, c, Number(el.dataset.at));
+      const open = () => reactBar(el, c, Number(el.dataset.at), () => startReply(Number(el.dataset.at)));
       el.addEventListener('dblclick', open);
       el.addEventListener('touchstart', () => (t = setTimeout(open, 450)), { passive: true });
       ['touchend', 'touchmove', 'touchcancel'].forEach((ev) => el.addEventListener(ev, () => clearTimeout(t), { passive: true }));
@@ -255,7 +257,28 @@ export async function friendsPage(el, params) {
     if (keep) input.value = keep;
     input.oninput = () => sessionStorage.setItem(`boombox.draft.${c}`, input.value);
     if (matchMedia('(pointer: fine)').matches) input.focus();
+    // Répondre : le message visé est gardé jusqu'au prochain envoi (ou ✕)
+    let replyTo = null;
+    const strip = root.querySelector('#chat-replying');
+    const startReply = (at) => {
+      const m = social.thread(c).find((x) => x.at === at);
+      if (!m || !strip) return;
+      replyTo = { at, name: m.out ? 'Toi' : m.fromName || '', text: preview(m) };
+      strip.querySelector('b').textContent = `Réponse à ${replyTo.name}`;
+      strip.querySelector('span').textContent = replyTo.text;
+      strip.hidden = false;
+      input.focus();
+    };
+    strip?.querySelector('button').addEventListener('click', () => ((replyTo = null), (strip.hidden = true)));
+    root.querySelectorAll('[data-goto]').forEach((b) => (b.onclick = () => {
+      const t = root.querySelector(`.msg[data-at="${b.dataset.goto}"]`);
+      if (!t) return toast('Message trop ancien');
+      t.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      t.classList.add('flash');
+      setTimeout(() => t.classList.remove('flash'), 1200);
+    }));
     const send = async (payload) => {
+      if (replyTo) (payload.reply = replyTo), (replyTo = null), strip && (strip.hidden = true);
       try {
         await social.send(c, payload);
       } catch (e) {
@@ -518,12 +541,12 @@ function reactBadge(code, at) {
   const list = [r.theirs, r.mine].filter(Boolean);
   return list.length ? html`<span class="msg-react">${list.join('')}</span>` : '';
 }
-function reactBar(el, code, at) {
+function reactBar(el, code, at, onReply) {
   document.querySelector('.react-bar')?.remove();
   const mine = social.reactions(code, at).mine;
   const bar = document.createElement('div');
   bar.className = 'react-bar';
-  bar.innerHTML = REACTS.map((e) => `<button class="${e === mine ? 'on' : ''}" data-e="${e}">${e}</button>`).join('');
+  bar.innerHTML = REACTS.map((e) => `<button class="${e === mine ? 'on' : ''}" data-e="${e}">${e}</button>`).join('') + (onReply ? '<button class="react-reply" data-reply title="Répondre">↩︎</button>' : '');
   document.body.appendChild(bar);
   const r = el.getBoundingClientRect();
   bar.style.top = Math.max(8, r.top - bar.offsetHeight - 6) + 'px';
@@ -533,6 +556,7 @@ function reactBar(el, code, at) {
   const away = (e) => !bar.contains(e.target) && close();
   setTimeout(() => document.addEventListener('pointerdown', away, true), 0);
   bar.onclick = (e) => {
+    if (e.target.closest('[data-reply]')) return void (close(), onReply());
     const b = e.target.closest('[data-e]');
     if (!b) return;
     social.react(code, at, b.dataset.e === mine ? '' : b.dataset.e).catch((er) => toast(er.message));

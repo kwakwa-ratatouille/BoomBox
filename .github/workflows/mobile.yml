@@ -54,6 +54,8 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" "$PLIST" || true
           /usr/libexec/PlistBuddy -c "Add :NSLocalNetworkUsageDescription string 'Boombox lit ta musique par ton PC quand il est sur le même Wi-Fi.'" "$PLIST" || true
+          # Position (concerts près de chez toi) : sans cette phrase, iOS refuse la position sans rien demander
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'Boombox utilise ta position pour trouver les concerts près de chez toi.'" "$PLIST" || true
           # Siri en français : les phrases des commandes sont en français
           /usr/libexec/PlistBuddy -c "Set :CFBundleDevelopmentRegion fr" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDevelopmentRegion string fr" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Boombox" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Boombox" "$PLIST"

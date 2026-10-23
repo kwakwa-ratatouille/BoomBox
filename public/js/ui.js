@@ -167,6 +167,11 @@ export const artistNames = (t) => (t?.artists || []).map((a) => a.name).join(', 
 
 // ---------- Toasts ----------
 export function toast(message, { action, onAction, timeout = action ? 4500 : 2800 } = {}) {
+  // Erreur interne de Firestore (iPhone) : pas de message technique, la base se relance toute seule (cloud.js)
+  if (/INTERNAL ASSERTION FAILED/i.test(String(message))) {
+    dispatchEvent(new Event('bb-fs-broken'));
+    message = 'Reconnexion…';
+  }
   const root = document.getElementById('toasts');
   // Deux messages à l'écran au plus : les plus anciens partent
   [...root.children].slice(0, -1).forEach((old) => old.remove());

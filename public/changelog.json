@@ -1,5 +1,17 @@
 [
   {
+    "version": "next",
+    "title": "Téléphone plus rapide et plus fiable",
+    "items": [
+      "iPhone sans PC : les sons se téléchargent en morceaux, 4 à la fois, au lieu d’un seul bloc ralenti par YouTube. La lecture démarre bien plus vite, et il y a beaucoup moins de « lecture impossible ».",
+      "Les 5 prochains sons de la file sont préparés à l’avance (au lieu de 3).",
+      "Correction de l’erreur « FIRESTORE INTERNAL ASSERTION FAILED » qui bloquait les réactions, le classement et les stats sur iPhone. Si elle revient quand même, l’appli se relance toute seule (en attendant une pause si une musique joue).",
+      "Messages : tu peux répondre à un message précis. Appui long dessus, puis ↩︎. La citation est cliquable et ramène au message d’origine.",
+      "Concerts : l’iPhone demandera l’autorisation d’utiliser ta position (nouvelle version de l’appli)."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1506",
     "title": "Messages plus confortables",
     "items": [

@@ -468,6 +468,8 @@ export const social = {
     if (msg.image) body.image = String(msg.image).slice(0, 900000);
     if (msg.gif) body.gif = String(msg.gif).slice(0, 500);
     if (msg.sticker) body.sticker = String(msg.sticker).slice(0, 300000);
+    // Réponse à un message : heure du message visé (pour y remonter), son auteur et un aperçu court
+    if (msg.reply?.at) body.reply = { at: Number(msg.reply.at), name: String(msg.reply.name || '').slice(0, 60), text: String(msg.reply.text || '').slice(0, 120) };
     if (msg.collab) body.collab = { owner: msg.collab.owner, id: msg.collab.id, name: String(msg.collab.name || '').slice(0, 100) };
     if (!body.text && !body.tracks && !body.playlist && !body.image && !body.gif && !body.sticker) return;
     const type = body.playlist ? 'playlist' : body.tracks ? 'tracks' : body.image || body.gif || body.sticker ? 'image' : 'text';
