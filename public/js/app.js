@@ -1738,14 +1738,17 @@ function enhanceRows(root = document) {
       moved = false;
       e.preventDefault(); // pas de sélection de texte ni d'image attrapée
     });
+    let raf = 0;
+    let lastX = 0;
     window.addEventListener('pointermove', (e) => {
       if (x0 == null) return;
-      const dx = e.clientX - x0;
-      if (!moved && Math.abs(dx) > 6) {
+      lastX = e.clientX;
+      if (!moved && Math.abs(lastX - x0) > 6) {
         moved = true;
         row.classList.add('hs-dragging');
       }
-      if (moved) row.scrollLeft = s0 - dx;
+      // Une mise à jour par image affichée (la souris envoie bien plus d’événements que l’écran n’affiche d’images)
+      if (moved && !raf) raf = requestAnimationFrame(() => ((raf = 0), x0 != null && (row.scrollLeft = s0 - (lastX - x0))));
     });
     const end = () => {
       x0 = null;
@@ -1757,6 +1760,17 @@ function enhanceRows(root = document) {
   });
 }
 new MutationObserver(() => enhanceRows($('#view'))).observe(document.getElementById('view'), { childList: true, subtree: true });
+
+// PC : pendant un défilement (page ou rangée), les survols sont coupés pour ne pas repeindre les cartes sous la souris
+if (matchMedia('(hover: hover)').matches) {
+  let scrollT = 0;
+  const root = document.documentElement;
+  document.addEventListener('scroll', () => {
+    if (!root.classList.contains('is-scrolling')) root.classList.add('is-scrolling');
+    clearTimeout(scrollT);
+    scrollT = setTimeout(() => root.classList.remove('is-scrolling'), 160);
+  }, { capture: true, passive: true });
+}
 
 // Premier lancement après une mise à jour : récapitulatif des nouveautés (rien à la toute première installation)
 async function showWhatsNew() {

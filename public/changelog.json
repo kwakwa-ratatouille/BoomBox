@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Plus fluide, nouveautés plus rapides",
+    "items": [
+      "Défilement plus fluide : les pochettes hors de l’écran ne sont plus dessinées, leurs ombres sont plus légères et les effets de survol sont coupés pendant qu’on fait défiler.",
+      "Nouveautés : la page s’affiche tout de suite avec les sorties de ta dernière visite, puis se met à jour au fur et à mesure que tes artistes sont vérifiés (par petits groupes, au lieu d’attendre qu’ils le soient tous)."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1110",
     "title": "Messages plus discrets",
     "items": [

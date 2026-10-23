@@ -1212,16 +1212,50 @@ export async function releases(el, _p, ctx) {
       <div class="cards">${follows.map((f) => card({ ...f, type: 'artist' }, { sub: 'Suivi' }))}</div></section></div>`);
   artistQuickSearch(el, ctx);
   el.querySelector('#bulk-follow').onclick = () => bulkFollow(() => releases(el, _p, ctx));
+  el.querySelector('#mark-seen').disabled = true;
+  el._discoverLoading = false;
+  const renderReleases = (d, progress) => renderReleasesInto(el, d, progress);
+  // Affichage immédiat avec le dernier résultat (pochettes tout de suite), puis mise à jour au fur et à mesure
+  // que les artistes arrivent (par petits groupes) ; les artistes pas encore revus gardent leurs sorties d'avant
+  const saved = ls.get(relKey(), null);
+  let shownOnce = false;
+  let last = 0;
+  let timer = 0;
+  const show = (part, done = false) => {
+    if (!ctx.alive()) return;
+    const fresh = new Set(Object.keys(part.current || {}));
+    const old = done ? [] : (saved?.releases || []).filter((r) => !fresh.has(r.artist?.id));
+    const merged = { ...part, releases: [...part.releases, ...old] };
+    clearTimeout(timer);
+    const wait = done || !shownOnce ? 0 : Math.max(0, 600 - (Date.now() - last));
+    timer = setTimeout(() => {
+      if (!ctx.alive()) return;
+      last = Date.now();
+      shownOnce = true;
+      renderReleases(merged, done ? null : `${fresh.size} / ${follows.length} artistes vérifiés…`);
+    }, wait);
+  };
+  if (saved?.releases?.length) show({ releases: [], current: {} });
   let data;
   try {
-    data = await fetchReleases();
+    data = await fetchReleases((part) => show(part));
   } catch (e) {
-    el.querySelector('#rel').innerHTML = String(html`<p class="muted">${e.message}</p>`);
+    if (!saved) el.querySelector('#rel').innerHTML = String(html`<p class="muted">${e.message}</p>`);
     return;
   }
   if (!ctx.alive()) return;
+  show(data, true);
+  el.querySelector('#mark-seen').disabled = false;
   state.newReleases = data.newCount;
   emit('releases', data.newCount);
+  el.querySelector('#mark-seen').onclick = async () => {
+    await setKnownReleases(data.current);
+    toast('Marqué comme vu');
+    releases(el, _p, ctx);
+  };
+}
+
+function renderReleasesInto(el, data, progress) {
   // Date exacte (données Spotify) : « aujourd'hui », « il y a 3 j », sinon le jour ; à défaut l'année
   const releaseWhen = (r) => {
     if (!r.date) return r.year ? ` • ${r.year}` : '';
@@ -1248,10 +1282,16 @@ export async function releases(el, _p, ctx) {
   const block = (title, list) =>
     list.length ? html`<h3 style="margin:8px 0 12px;font-size:18px">${title} <span class="muted" style="font-size:14px;font-weight:500">· ${plural(list.length, 'sortie')}</span></h3><div class="cards" style="margin-bottom:24px">${list.map((r) => card(r, { sub: `${r.artist.name} • ${r.kind}${releaseWhen(r)}`, isNew: r.isNew }))}</div>` : '';
   const fresh = recentList.filter((r) => r.isNew).length;
+  const discover = el.querySelector('#rel-discover');
   el.querySelector('#rel').innerHTML = String(html`
+    ${progress ? html`<p class="muted rel-progress">⏳ ${progress}</p>` : ''}
     <p class="muted" style="margin:0 0 16px">${fresh ? html`🔔 <b>${plural(fresh, 'nouvelle sortie')}</b> depuis ta dernière visite (marquées « nouveau »). ` : ''}Sorties des 2 derniers mois, de la plus récente à la plus ancienne.</p>
-    ${recentList.length ? groups.map(([t, test]) => block(t, recentList.filter((r) => test(ageOf(r) ?? 0)))) : html`<p class="muted">Aucune sortie de tes artistes ces 2 derniers mois.</p>`}
+    ${recentList.length ? groups.map(([t, test]) => block(t, recentList.filter((r) => test(ageOf(r) ?? 0)))) : progress ? '' : html`<p class="muted">Aucune sortie de tes artistes ces 2 derniers mois.</p>`}
     <section class="section" style="margin-top:24px"><div class="section-head"><h2>Nouvelles sorties à découvrir</h2><span class="muted">Artistes que tu ne suis pas</span></div><div id="rel-discover">${loading}</div></section>`);
+  // Section « à découvrir » déjà chargée : on la garde telle quelle
+  if (discover && !discover.querySelector('.sk-page')) return el.querySelector('#rel-discover').replaceWith(discover);
+  if (el._discoverLoading) return;
+  el._discoverLoading = true;
   api('/api/new-releases').then((list) => {
     const box = el.querySelector('#rel-discover');
     if (!box) return;
@@ -1259,19 +1299,34 @@ export async function releases(el, _p, ctx) {
     const items = list.filter((r) => !(r.artists || []).some((a) => followed.has(a.id))).slice(0, 30);
     box.innerHTML = items.length ? String(html`<div class="cards">${items.map((r) => card(r))}</div>`) : '<p class="muted">Rien à proposer pour l’instant.</p>';
   }).catch(() => el.querySelector('#rel-discover') && (el.querySelector('#rel-discover').innerHTML = '<p class="muted">Indisponible pour le moment.</p>'));
-  el.querySelector('#mark-seen').onclick = async () => {
-    await setKnownReleases(data.current);
-    toast('Marqué comme vu');
-    releases(el, _p, ctx);
-  };
 }
 
 // Dernières sorties des artistes suivis (calculées par le serveur local à partir de YouTube Music).
 // Les sorties absentes lors du dernier passage sont marquées « nouveau ».
 let releasesCache = null;
-export async function fetchReleases() {
+const relKey = () => `boombox.releases.${state.profile?.id}`;
+export async function fetchReleases(onPart) {
   const follows = state.library.follows.map((f) => ({ id: f.id, name: f.name, known: f.known || null }));
-  const data = await api('/api/releases', { method: 'POST', body: { follows } });
+  const data = { releases: [], current: {}, thumbs: {}, newCount: 0 };
+  const queue = [];
+  for (let i = 0; i < follows.length; i += 8) queue.push(follows.slice(i, i + 8));
+  let ok = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    for (let chunk; (chunk = queue.shift()); ) {
+      const d = await api('/api/releases', { method: 'POST', body: { follows: chunk } }).catch(() => null);
+      if (!d) continue;
+      ok++;
+      data.releases.push(...(d.releases || []));
+      Object.assign(data.current, d.current || {});
+      Object.assign(data.thumbs, d.thumbs || {});
+      data.newCount = data.releases.filter((r) => r.isNew).length;
+      onPart?.(data);
+    }
+  }));
+  if (!ok && follows.length) throw new Error('Nouveautés indisponibles pour le moment');
+  // Gardé pour le prochain affichage (seulement les sorties récentes : l'appareil a peu de place)
+  const recent = Date.now() - 70 * 86400e3;
+  ls.set(relKey(), { at: Date.now(), releases: data.releases.filter((r) => r.isNew || (r.date ? Date.parse(r.date) > recent : Number(r.year) >= new Date().getFullYear())).slice(0, 600) });
   const firstSeen = Object.fromEntries(Object.entries(data.current).filter(([id]) => !follows.find((f) => f.id === id)?.known));
   if (Object.keys(firstSeen).length) setKnownReleases(firstSeen).catch(() => {});
   if (data.thumbs) setFollowThumbs(data.thumbs).catch(() => {});

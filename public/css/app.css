@@ -2173,3 +2173,10 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 @keyframes drunkHicLite { 0% { transform: translateY(0); } 40% { transform: translateY(-10px); } 100% { transform: none; } }
 .drunk-veil.lite { inset: 0; background: #ff2bd6; opacity: 0.06; animation: drunkTint 6s ease-in-out infinite; will-change: auto; }
 @keyframes drunkTint { 0%, 100% { background: #ff2bd6; } 33% { background: #22f0ff; } 66% { background: #c6ff4d; } }
+
+/* Défilement plus fluide : les cartes hors de l'écran ne sont pas dessinées, ombres des pochettes allégées, et
+   pendant un défilement les survols (fond, bouton lecture, zoom de pochette) sont coupés (moins de repeints) */
+.cards .card { content-visibility: auto; contain-intrinsic-size: auto 200px auto 270px; }
+.card .cover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42); }
+.is-scrolling .card, .is-scrolling .track, .is-scrolling .quick-item { pointer-events: none; }
+.is-scrolling .card *, .is-scrolling .track * { transition: none !important; }
