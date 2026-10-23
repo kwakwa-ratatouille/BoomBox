@@ -63,8 +63,9 @@ function playPlaylist(name) {
 }
 
 async function playArtist(name) {
-  const r = await api(`/api/search?q=${encodeURIComponent(name)}&type=artist`);
-  const a = r.items?.[0];
+  // Artiste suivi : son id est déjà connu, pas de recherche (démarrage plus rapide)
+  const fol = (state.library.follows || []).find((f) => norm(f.name) === norm(name));
+  const a = fol || (await api(`/api/search?q=${encodeURIComponent(name)}&type=artist`)).items?.[0];
   if (!a) return toast(`Artiste « ${name} » introuvable`);
   const full = await api(`/api/artist/${a.id}`);
   if (!full.topTracks?.length) return toast(`Pas de titres pour ${a.name}`);
@@ -75,6 +76,11 @@ async function playArtist(name) {
 // « Lance <quelque chose> » : une de mes playlists si le nom correspond, sinon le meilleur résultat (son ou artiste)
 async function playAnything(q) {
   if (!q) return player.paused ? ctl.play() : null;
+  // Son déjà connu (liké ou écouté) : lancé tout de suite, sans recherche. « Titre|Artiste » vient de Siri.
+  const [title, artist] = q.split('|');
+  const known = [...(state.library.liked || []), ...(state.library.history || [])].find((t) => norm(t.title) === norm(title) && (!artist || norm((t.artists || [])[0]?.name) === norm(artist)));
+  if (known) return ctl.playTrack(known), toast(`▶ ${known.title}`);
+  q = q.replace('|', ' ');
   const p = findPlaylist(q);
   if (p && norm(p.name).length > 2 && norm(q) === norm(p.name)) return playPlaylist(q);
   const r = await api(`/api/search?q=${encodeURIComponent(q)}&type=all`);

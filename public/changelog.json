@@ -1,5 +1,16 @@
 [
   {
+    "version": "next",
+    "title": "Siri : mets n’importe quoi sur Boombox",
+    "items": [
+      "« Dis Siri, mets Ninho sur Boombox » : marche pour un artiste, une de tes playlists ou un son que tu as liké ou écouté, en une seule phrase.",
+      "« Dis Siri, cherche sur Boombox » : Siri te demande quoi chercher, pour n’importe quel son.",
+      "« Dis Siri, lance une jam sur Boombox », « Pause Boombox », « Boombox suivant », « Boombox précédent ».",
+      "Les artistes suivis et les sons connus démarrent plus vite (pas de recherche)."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1708",
     "title": "Lecture sans PC encore plus rapide, réponse en glissant",
     "items": [

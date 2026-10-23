@@ -1980,7 +1980,16 @@ function setupSiri() {
   const P = window.Capacitor?.Plugins?.BoomboxNative;
   if (!P?.takeVoiceCommand) return;
   const run = (url) => url && import('./voice.js').then((m) => m.runVoiceLink(url));
-  const sendNames = debounce(() => P.setVoicePlaylists?.({ names: state.library.playlists.map((p) => p.name) }).catch(() => {}), 3000);
+  // Noms appris par Siri : playlists, artistes (suivis puis les plus écoutés) et sons (likés puis récents)
+  const sendNames = debounce(() => {
+    const L = state.library;
+    const heard = [...(L.history || [])].sort((x, y) => (y.playedAt || 0) - (x.playedAt || 0));
+    const count = new Map();
+    for (const h of heard.slice(0, 3000)) for (const a of h.artists || []) a?.name && count.set(a.name, (count.get(a.name) || 0) + 1);
+    const artists = [...new Set([...(L.follows || []).map((f) => f.name), ...[...count].sort((x, y) => y[1] - x[1]).map((x) => x[0])])].filter(Boolean).slice(0, 250);
+    const songs = [...new Set([...(L.liked || []), ...heard].filter((t) => t?.title).map((t) => `${t.title}|${(t.artists || [])[0]?.name || ''}`))].slice(0, 400);
+    P.setVoicePlaylists?.({ names: L.playlists.map((p) => p.name), artists, songs }).catch(() => {});
+  }, 3000);
   on('library', sendNames);
   sendNames();
   P.addListener?.('voice', (e) => run(e.url));

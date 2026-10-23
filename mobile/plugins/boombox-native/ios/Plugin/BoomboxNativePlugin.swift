@@ -72,6 +72,9 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setVoicePlaylists(_ call: CAPPluginCall) {
         let names = (call.getArray("names") as? [String]) ?? []
         UserDefaults.standard.set(Array(names.prefix(200)), forKey: "boombox.playlists")
+        // Artistes et sons connus : « mets Ninho sur Boombox », « mets Jefe sur Boombox » (titre|artiste)
+        if let artists = call.getArray("artists") as? [String] { UserDefaults.standard.set(Array(artists.prefix(250)), forKey: "boombox.artists") }
+        if let songs = call.getArray("songs") as? [String] { UserDefaults.standard.set(Array(songs.prefix(400)), forKey: "boombox.songs") }
         if #available(iOS 16.0, *) { BoomboxNativePlugin.refreshSiri() }
         call.resolve()
     }
