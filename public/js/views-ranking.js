@@ -5,7 +5,7 @@ import { html, icon, plural } from './ui.js';
 import { db, collection, getDocs, query, limit } from './cloud.js';
 import { social } from './social.js';
 import { avatar } from './views-social.js';
-import { pixelBackdrop, accentPalette } from './pixel-bg.js';
+import { pixelBackdrop, RANKING_PALETTE } from './pixel-bg.js';
 
 const PERIODS = [['week', 'Cette semaine'], ['month', 'Ce mois-ci'], ['year', 'Cette année'], ['all', 'Depuis toujours']];
 const METRICS = [
@@ -51,7 +51,7 @@ export async function rankingPage(el, params, ctx) {
   el.innerHTML = String(html`<div class="page rk-page">
     <div class="ai-head ai-hero rk-hero"><img class="ai-badge" src="/assets/pixel/section-ranking.png" alt=""><div><h1>Classement</h1><p class="muted">Tous les utilisateurs de Boombox qui partagent leur activité. Appuie sur quelqu'un pour voir son profil, l'ajouter en ami ou enregistrer ses playlists.</p></div></div>
     <div class="rk-body"></div></div>`);
-  pixelBackdrop(el.querySelector('.rk-hero'), accentPalette(), { accents: ['#FFD34D', '#ffffff'] });
+  pixelBackdrop(el.querySelector('.rk-hero'), RANKING_PALETTE, { accents: ['#FFD34D', '#ffffff'] });
   const body = el.querySelector('.rk-body');
   const render = () => {
     const fmt = METRICS.find((m) => m[0] === metric)[2];

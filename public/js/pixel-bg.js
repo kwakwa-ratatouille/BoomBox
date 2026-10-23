@@ -33,6 +33,9 @@ export const accentColor = () => (getComputedStyle(document.documentElement).get
 export const accentPalette = (c = accentColor()) => ['#131019', mix('#131019', c, 0.22), mix('#131019', c, 0.5), mix('#131019', c, 0.82)];
 export const PARTY_PALETTE = ['#131019', '#241D33', '#3A2A63', '#8A55D8'];
 export const PARTY_ACCENTS = ['#2EF28B', '#FFD34D'];
+// Couleurs prises des logos de rubrique (section-ranking.png / section-discover.png)
+export const RANKING_PALETTE = ['#141634', '#222a66', '#33449a', '#5470d6'];
+export const DISCOVER_PALETTE = ['#0c2a28', '#15524a', '#1d7a66', '#2fb886'];
 
 // Styles proposés pour les bannières de playlists
 export const BACKDROP_STYLES = { waves: 'Vagues', rain: 'Pluie de pixels', stars: 'Étoiles', rings: 'Ondes', plasma: 'Plasma' };

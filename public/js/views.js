@@ -1195,6 +1195,8 @@ const fmtAgoShort = (ts) => {
 };
 
 // ======================= NOUVEAUTÉS =======================
+const FOLLOWS_SHOWN = 12;
+const RELEASES_SHOWN = 18;
 export async function releases(el, _p, ctx) {
   const follows = state.library.follows;
   if (!follows.length) {
@@ -1207,9 +1209,15 @@ export async function releases(el, _p, ctx) {
     return;
   }
   el.innerHTML = String(html`<div class="page"><div class="section-head"><h2>Nouveautés de tes artistes</h2><div class="row-flex"><a class="outline-btn" href="#/concerts">Concerts près de chez toi</a><button class="outline-btn" id="bulk-follow">+ Liste d'artistes</button><button class="outline-btn" id="mark-seen">Tout marquer comme vu</button></div></div><div id="rel">${loading}</div>
-    <section class="section" style="margin-top:32px"><div class="section-head"><h2>Artistes suivis (${follows.length})</h2></div>
+    <section class="section" style="margin-top:32px"><div class="section-head"><h2>Artistes suivis</h2></div>
       <div class="search-box" style="margin:0 0 16px;max-width:420px"><input id="artist-q" placeholder="Ajouter un artiste…"></div><div id="artist-res"></div>
-      <div class="cards">${follows.map((f) => card({ ...f, type: 'artist' }, { sub: 'Suivi' }))}</div></section></div>`);
+      <div class="cards" id="rel-follows">${follows.slice(0, FOLLOWS_SHOWN).map((f) => card({ ...f, type: 'artist' }, { sub: 'Suivi' }))}</div>
+      ${follows.length > FOLLOWS_SHOWN ? html`<button class="outline-btn" id="rel-follows-all" style="margin-top:12px">Voir tous mes artistes</button>` : ''}</section></div>`);
+  // Liste complète dessinée seulement à la demande (des centaines d'artistes peuvent ralentir la page)
+  el.querySelector('#rel-follows-all')?.addEventListener('click', (e) => {
+    el.querySelector('#rel-follows').innerHTML = String(html`${follows.map((f) => card({ ...f, type: 'artist' }, { sub: 'Suivi' }))}`);
+    e.currentTarget.remove();
+  });
   artistQuickSearch(el, ctx);
   el.querySelector('#bulk-follow').onclick = () => bulkFollow(() => releases(el, _p, ctx));
   el.querySelector('#mark-seen').disabled = true;
@@ -1279,8 +1287,13 @@ function renderReleasesInto(el, data, progress) {
     ['Ce mois-ci', (a) => a >= 7 && a < 31],
     ['Le mois dernier', (a) => a >= 31],
   ];
-  const block = (title, list) =>
-    list.length ? html`<h3 style="margin:8px 0 12px;font-size:18px">${title} <span class="muted" style="font-size:14px;font-weight:500">· ${plural(list.length, 'sortie')}</span></h3><div class="cards" style="margin-bottom:24px">${list.map((r) => card(r, { sub: `${r.artist.name} • ${r.kind}${releaseWhen(r)}`, isNew: r.isNew }))}</div>` : '';
+  // Nombre de sorties affichées par période (les autres derrière « Afficher plus », pour ne pas ralentir la page)
+  const shown = (el._relShown ||= {});
+  const block = (title, list) => {
+    if (!list.length) return '';
+    const n = shown[title] || RELEASES_SHOWN;
+    return html`<h3 style="margin:8px 0 12px;font-size:18px">${title} <span class="muted" style="font-size:14px;font-weight:500">· ${plural(list.length, 'sortie')}</span></h3><div class="cards" style="margin-bottom:${list.length > n ? 12 : 24}px">${list.slice(0, n).map((r) => card(r, { sub: `${r.artist.name} • ${r.kind}${releaseWhen(r)}`, isNew: r.isNew }))}</div>${list.length > n ? html`<button class="outline-btn" data-rel-more="${title}" style="margin-bottom:24px">Afficher plus (${list.length - n})</button>` : ''}`;
+  };
   const fresh = recentList.filter((r) => r.isNew).length;
   const discover = el.querySelector('#rel-discover');
   el.querySelector('#rel').innerHTML = String(html`
@@ -1288,6 +1301,11 @@ function renderReleasesInto(el, data, progress) {
     <p class="muted" style="margin:0 0 16px">${fresh ? html`🔔 <b>${plural(fresh, 'nouvelle sortie')}</b> depuis ta dernière visite (marquées « nouveau »). ` : ''}Sorties des 2 derniers mois, de la plus récente à la plus ancienne.</p>
     ${recentList.length ? groups.map(([t, test]) => block(t, recentList.filter((r) => test(ageOf(r) ?? 0)))) : progress ? '' : html`<p class="muted">Aucune sortie de tes artistes ces 2 derniers mois.</p>`}
     <section class="section" style="margin-top:24px"><div class="section-head"><h2>Nouvelles sorties à découvrir</h2><span class="muted">Artistes que tu ne suis pas</span></div><div id="rel-discover">${loading}</div></section>`);
+  el.querySelectorAll('[data-rel-more]').forEach((b) => (b.onclick = () => {
+    const t = b.dataset.relMore;
+    shown[t] = (shown[t] || RELEASES_SHOWN) + RELEASES_SHOWN * 2;
+    renderReleasesInto(el, data, progress);
+  }));
   // Section « à découvrir » déjà chargée : on la garde telle quelle
   if (discover && !discover.querySelector('.sk-page')) return el.querySelector('#rel-discover').replaceWith(discover);
   if (el._discoverLoading) return;

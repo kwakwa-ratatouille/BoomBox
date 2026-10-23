@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Fonds aux couleurs des logos, Nouveautés plus légères",
+    "items": [
+      "Classement et Découverte ont un fond animé aux couleurs de leur logo : bleu pour le Classement, vert pour Découverte.",
+      "Nouveautés : 18 sorties maximum par période, les autres apparaissent avec « Afficher plus ». La page reste fluide même si tu suis beaucoup d’artistes.",
+      "Nouveautés : seulement 12 de tes artistes suivis sont affichés en bas, le bouton « Voir tous mes artistes » montre les autres. Leur nombre n’est plus affiché."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1215",
     "title": "Nouveaux logos Découverte et Classement",
     "items": [

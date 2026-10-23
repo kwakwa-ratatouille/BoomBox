@@ -3,6 +3,7 @@ import { html, raw, icon, plural, toast, debounce, contextMenu } from './ui.js';
 import { state, api, ls, setting, saveSettings, getStats, toggleFollow, isFollowing } from './state.js';
 import { ctl, startAt } from './player.js';
 import { card, cover, trackList, playlistSubmenu, openPlaylistPicker } from './components.js';
+import { pixelBackdrop, DISCOVER_PALETTE } from './pixel-bg.js';
 
 const STYLES = ['Pour toi', 'Rap français', 'Rap US', 'Pop', 'R&B', 'Afro', 'Électro', 'House', 'Rock', 'Indé', 'Drill', 'Reggaeton', 'K-pop', 'Lo-fi', 'Jazz', 'Variété française', 'Années 2000'];
 let last = null; // résultats gardés en mémoire (on peut changer de page et revenir)
@@ -25,7 +26,7 @@ export async function discoverPage(el, _p, ctx) {
 
   const render = () => {
     el.innerHTML = String(html`<div class="page">
-      <div class="ai-head"><img class="ai-badge" src="/assets/pixel/section-discover.png" alt=""><div><h1>Découverte</h1><p class="muted">De nouveaux artistes et sons, pris hors de ce que tu écoutes déjà.</p></div></div>
+      <div class="ai-head ai-hero"><img class="ai-badge" src="/assets/pixel/section-discover.png" alt=""><div><h1>Découverte</h1><p class="muted">De nouveaux artistes et sons, pris hors de ce que tu écoutes déjà.</p></div></div>
       <div class="search-tabs dc-styles">${STYLES.map((s) => html`<button class="chip ${s === style ? 'active' : ''}" data-style="${s}">${s}</button>`)}</div>
       ${style === 'Pour toi' ? html`<div class="np-card seeds">
         <div class="row-flex" style="justify-content:space-between;gap:12px;flex-wrap:wrap"><h4 style="margin:0">Basé sur ${extraSeeds().length ? plural(extraSeeds().length, 'artiste choisi') : 'tes abonnements et tes écoutes'}</h4>
@@ -45,6 +46,7 @@ export async function discoverPage(el, _p, ctx) {
       </div>
       <div id="dc-results">${last && last.style === style ? '' : raw('<div class="sk-page"><div class="sk sk-title"></div><div class="sk-cards">' + '<div class="sk sk-card"></div>'.repeat(6) + '</div></div>')}</div>
     </div>`);
+    pixelBackdrop(el.querySelector('.ai-hero'), DISCOVER_PALETTE, { accents: ['#FFD34D', '#ffffff'] });
     el.querySelectorAll('[data-style]').forEach((b) => (b.onclick = () => {
       style = b.dataset.style;
       ls.set('boombox.discoverStyle', style);
