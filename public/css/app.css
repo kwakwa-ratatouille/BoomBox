@@ -1586,6 +1586,7 @@ html, body { overflow-x: hidden; overscroll-behavior-x: none; max-width: 100%; }
 @media (hover: hover) { .hs-arrow:hover { transform: translateY(-50%) scale(1.08); background: rgba(40, 32, 52, 0.96); } }
 .cards.row.hs-dragging { cursor: grabbing; user-select: none; scroll-behavior: auto; }
 .cards.row.hs-dragging * { pointer-events: none; }
+.cards.row img { -webkit-user-drag: none; user-select: none; }
 
 /* Écran géant de la party : bouton fermer toujours visible, version téléphone épurée */
 .party-screen > .ps-close { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px; z-index: 5; background: rgba(0, 0, 0, 0.45); }

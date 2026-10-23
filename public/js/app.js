@@ -1724,29 +1724,35 @@ function enhanceRows(root = document) {
     row.addEventListener('scroll', update, { passive: true });
     new ResizeObserver(update).observe(row);
     update();
-    // Glisser à la souris (un vrai glisser ne déclenche pas le clic sur la carte)
+    // Glisser à la souris, y compris en attrapant une pochette (un vrai glisser ne déclenche pas le clic sur la carte).
+    // Le glisser-déposer natif des images est coupé : sinon le navigateur « attrape » la pochette et la rangée ne
+    // bouge plus.
     let x0 = null;
     let s0 = 0;
     let moved = false;
+    row.addEventListener('dragstart', (e) => e.preventDefault());
     row.addEventListener('pointerdown', (e) => {
-      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      if (e.pointerType !== 'mouse' || e.button !== 0 || e.target.closest('button')) return;
       x0 = e.clientX;
       s0 = row.scrollLeft;
       moved = false;
+      e.preventDefault(); // pas de sélection de texte ni d'image attrapée
     });
     window.addEventListener('pointermove', (e) => {
       if (x0 == null) return;
       const dx = e.clientX - x0;
-      if (Math.abs(dx) > 6) {
+      if (!moved && Math.abs(dx) > 6) {
         moved = true;
         row.classList.add('hs-dragging');
       }
       if (moved) row.scrollLeft = s0 - dx;
     });
-    window.addEventListener('pointerup', () => {
+    const end = () => {
       x0 = null;
       row.classList.remove('hs-dragging');
-    });
+    };
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
     row.addEventListener('click', (e) => moved && (e.stopPropagation(), e.preventDefault(), (moved = false)), true);
   });
 }
