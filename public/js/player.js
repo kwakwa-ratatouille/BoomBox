@@ -498,7 +498,7 @@ export const player = {
         if (this._drunkHold) return; // mode bourré (iPhone) : le lecteur normal est mis en silence exprès
         // Téléphone, appli en arrière-plan : iOS met parfois le son en pause sans interruption (ouverture d'une
         // autre appli). Si ce n'est ni une pause voulue ni une vraie interruption, on relance (2 essais max).
-        if (isNative && document.hidden && !this._interruptedAt && this.engine?.name === 'audio' && Date.now() - (this._userPauseAt || 0) > 2000 && (this._autoResumes || 0) < 2) {
+        if (isNative && !this._interruptedAt && this.engine?.name === 'audio' && Date.now() - (this._userPauseAt || 0) > 2000 && (this._autoResumes || 0) < 2) {
           this._autoResumes = (this._autoResumes || 0) + 1;
           setTimeout(() => (this._autoResumes = 0), 30e3);
           return void this.engine.play().catch?.(() => ((this.paused = true), emit('player:state')));
@@ -920,7 +920,11 @@ export const player = {
   _ctxPlaylist() {
     return this.context?.type === 'playlist' ? state.library?.playlists?.find((p) => p.id === this.context.id) || null : null;
   },
+  // iPhone : une page web ne peut pas régler le volume d'un son (iOS l'ignore) ni filtrer sans couper le son écran
+  // verrouillé → les transitions s'y faisaient à plein volume (coupure nette). Là-bas, les sons s'enchaînent
+  // simplement, sans chevauchement.
   _automixOn() {
+    if (isNative) return false;
     return setting('automix', false) || !!this._ctxPlaylist()?.mixed;
   },
   // Transition voulue entre deux titres : celle choisie dans la playlist mixée, sinon le réglage général
@@ -976,7 +980,7 @@ export const player = {
     if (!d || this.repeat === 'one' || this.engine?.name !== 'audio' || this.sleep?.endOfTrack || this.remoteSender) return d;
     const p = this._mixPlan;
     if (p && this._automixOn() && p.mixStart > 0 && p.mixStart < d && this.time() <= p.mixStart + 2) return p.mixStart;
-    const xf = this._automixOn() ? (this._styleFor(this.track?.id, this._nextTrack()?.id) !== 'none' ? 6 : 0) : Number(setting('crossfade', 0));
+    const xf = this._automixOn() ? (this._styleFor(this.track?.id, this._nextTrack()?.id) !== 'none' ? 6 : 0) : (isNative ? 0 : Number(setting('crossfade', 0)));
     if (xf > 0 && d > xf * 2 + 5) return d - xf;
     return d;
   },
@@ -1095,7 +1099,7 @@ export const player = {
     // Fondu de secours (6 s) seulement si l'analyse n'est pas prête ou si le moment du mix est passé ; rien si « Aucune transition ».
     const missed = plan && this.time() > plan.mixStart + 2;
     const automixOn = this._automixOn();
-    const xf = automixOn ? ((!plan || missed) && this._styleFor(this.track?.id, this._nextTrack()?.id) !== 'none' ? 6 : 0) : Number(setting('crossfade', 0));
+    const xf = automixOn ? ((!plan || missed) && this._styleFor(this.track?.id, this._nextTrack()?.id) !== 'none' ? 6 : 0) : (isNative ? 0 : Number(setting('crossfade', 0)));
     if (xf > 0 && ownTransitions && this.engine.name === 'audio' && !this.paused && !this._xfading && this.repeat !== 'one' && !this.sleep?.endOfTrack && !this.remoteSender) {
       const d = this.duration();
       if (d > xf * 2 + 5 && d - this.time() <= xf + 0.5) {
@@ -1264,7 +1268,15 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
     if (wasPlaying && (resume || short)) setTimeout(() => (player.paused ? player.play() : kick()), 400);
     wasPlaying = false;
   });
-  P.addListener('audioActive', () => setTimeout(kick, 300));
+  P.addListener('audioActive', () => setTimeout(() => {
+    // Pause imposée par iOS il y a moins de 10 min (et pas par toi depuis) : on relance
+    const sys = player._systemPauseAt || 0;
+    if (player.paused && player.track && Date.now() - sys < 600e3 && sys > (player._userPauseAt || 0)) {
+      player._systemPauseAt = 0;
+      return player.play();
+    }
+    kick();
+  }, 300));
 })();
 
 // Casque ou enceinte Bluetooth déconnecté → pause (comme Spotify), au lieu de continuer dans le haut-parleur

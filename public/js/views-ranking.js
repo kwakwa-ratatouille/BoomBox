@@ -6,7 +6,7 @@ import { db, collection, getDocs, query, limit } from './cloud.js';
 import { social } from './social.js';
 import { avatar } from './views-social.js';
 
-const PERIODS = [['week', 'Cette semaine'], ['month', 'Ce mois-ci'], ['year', 'Cette année']];
+const PERIODS = [['week', 'Cette semaine'], ['month', 'Ce mois-ci'], ['year', 'Cette année'], ['all', 'Depuis toujours']];
 const METRICS = [
   ['minutes', "Minutes d'écoute", (n) => `${n.toLocaleString('fr-FR')} min`],
   ['plays', 'Écoutes', (n) => plural(n, 'écoute')],
@@ -29,7 +29,7 @@ function valueOf(p, period, metric) {
   const s = p.stats;
   if (!s?.[period]) return 0;
   const now = new Date();
-  const start = { week: new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime(), month: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), year: new Date(now.getFullYear(), 0, 1).getTime() }[period];
+  const start = { week: new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime(), month: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), year: new Date(now.getFullYear(), 0, 1).getTime(), all: 0 }[period];
   if ((s[`${period}0`] || 0) < start) return 0;
   return s[period][metric] || 0;
 }

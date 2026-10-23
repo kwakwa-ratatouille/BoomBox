@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Classement depuis toujours et pauses iPhone",
+    "items": [
+      "Classement : nouvelle période « Depuis toujours ».",
+      "iPhone : la musique repart toute seule après une pause imposée par iOS (centre de notifications, veille, retour sur l’appli).",
+      "iPhone : plus de coupure nette entre les sons (les transitions par fondu y sont impossibles : les sons s’enchaînent simplement)."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1022.1848",
     "title": "Lancer Boombox ne coupe plus le son",
     "items": [

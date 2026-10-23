@@ -106,8 +106,8 @@ export const social = {
     // Chiffres pour le classement Boombox : semaine (depuis lundi), mois, année en cours
     const now = new Date();
     const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
-    const ranges = { week: monday, month: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), year: new Date(now.getFullYear(), 0, 1).getTime() };
-    const stats = { at: Date.now(), week0: monday, month0: ranges.month, year0: ranges.year };
+    const ranges = { week: monday, month: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), year: new Date(now.getFullYear(), 0, 1).getTime(), all: 0 };
+    const stats = { at: Date.now(), week0: monday, month0: ranges.month, year0: ranges.year, all0: 0 };
     for (const [k, since] of Object.entries(ranges)) {
       const r = await getStatsFull(0, { since, until: Date.now() }, 1).catch(() => null);
       stats[k] = r ? { minutes: r.minutes || 0, plays: r.plays || 0, artists: r.uniqueArtists || 0, tracks: r.uniqueTracks || 0 } : null;
