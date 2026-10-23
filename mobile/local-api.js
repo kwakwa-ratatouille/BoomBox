@@ -327,11 +327,13 @@ export function downloadAudio(id, { keep = false } = {}) {
       pruneCache();
       return audioIndex[id];
     }
-    // 3. Android : yt-dlp embarqué (fiable, mis à jour toutes les semaines)
-    if (!stat && androidYtdlp()) stat = await ytdlpDownload(id, path).catch((e) => ((lastErr = new Error(`yt-dlp : ${e.message}`)), null));
-    // 2. Directement chez YouTube, en changeant de client si l'un est refusé
+    // 2. Directement chez YouTube, en changeant de client si l'un est refusé. Android : yt-dlp d'abord s'il est
+    // le seul à avoir marché la dernière fois, et 2 clients seulement avant de passer à lui (il est plus sûr)
+    const ytdlp = androidYtdlp();
+    const viaYtdlp = () => ytdlpDownload(id, path).then((st) => (localStorage.setItem('boombox.ytClient', 'ytdlp'), st)).catch((e) => ((lastErr = new Error(`yt-dlp : ${e.message}`)), null));
+    if (!stat && ytdlp && localStorage.getItem('boombox.ytClient') === 'ytdlp') stat = await viaYtdlp();
     const tried = [];
-    while (!stat && tried.length < 5) {
+    while (!stat && tried.length < (ytdlp ? 2 : 5)) {
       const r = await remoteAudio(id, tried).catch((e) => ((lastErr = e), null));
       if (!r) break;
       tried.push(r.client);
@@ -342,6 +344,8 @@ export function downloadAudio(id, { keep = false } = {}) {
       });
       if (stat) localStorage.setItem('boombox.ytClient', r.client);
     }
+    // 3. Android : yt-dlp embarqué, en secours (fiable mais lent à démarrer : Python est relancé à chaque son)
+    if (!stat && ytdlp && localStorage.getItem('boombox.ytClient') !== 'ytdlp') stat = await viaYtdlp();
     // 3 bis. Cette version est bloquée chez YouTube : une autre version du même son (même titre, même artiste)
     if (!stat && trackMeta.has(id)) {
       const alt = await ytTwin(id, trackMeta.get(id)).catch(() => null);

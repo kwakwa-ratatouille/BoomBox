@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Android : notification de lecture et premier son plus rapide",
+    "items": [
+      "Android (Xiaomi, Redmi…) : l’appli demande l’autorisation « Notifications » au premier son. Sans elle, Android cachait la notification de lecture (nouvelle version de l’appli).",
+      "Android : un son jamais écouté démarre plus vite. Boombox télécharge directement chez YouTube en morceaux, et yt-dlp (plus lent à démarrer) ne sert plus que de secours. La méthode qui a marché la dernière fois est essayée en premier."
+    ],
+    "date": "2026-10-23"
+  },
+  {
     "version": "2026.1023.1743",
     "title": "Barre à glisser et Siri réparé",
     "items": [

@@ -19,6 +19,8 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.provider.Settings;
 import androidx.core.content.FileProvider;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -179,8 +181,20 @@ public class BoomboxNativePlugin extends Plugin {
         return new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(ctx, icon), title, pi).build();
     }
 
+    // Android 13+ (Xiaomi, Redmi…) : sans l'autorisation « Notifications », la notification de lecture est
+    // jetée sans rien dire. On la demande une fois, au premier son joué.
+    private boolean askedNotif = false;
+    private void askNotifPermission() {
+        if (askedNotif || Build.VERSION.SDK_INT < 33 || getActivity() == null) return;
+        askedNotif = true;
+        if (ContextCompat.checkSelfPermission(getContext(), "android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+            getActivity().runOnUiThread(() -> ActivityCompat.requestPermissions(getActivity(), new String[] { "android.permission.POST_NOTIFICATIONS" }, 4243));
+        }
+    }
+
     @PluginMethod
     public void mediaUpdate(PluginCall call) {
+        askNotifPermission();
         String title = call.getString("title", "");
         String artist = call.getString("artist", "");
         String url = call.getString("artwork", null);
@@ -220,6 +234,8 @@ public class BoomboxNativePlugin extends Plugin {
                     .setOngoing(playing)
                     .setShowWhen(false)
                     .setVisibility(Notification.VISIBILITY_PUBLIC)
+                    .setCategory(Notification.CATEGORY_TRANSPORT)
+                    .setOnlyAlertOnce(true)
                     .addAction(action(ctx, android.R.drawable.ic_media_previous, "Précédent", "prev", 1))
                     .addAction(playing ? action(ctx, android.R.drawable.ic_media_pause, "Pause", "pause", 2) : action(ctx, android.R.drawable.ic_media_play, "Lecture", "play", 2))
                     .addAction(action(ctx, android.R.drawable.ic_media_next, "Suivant", "next", 3))
