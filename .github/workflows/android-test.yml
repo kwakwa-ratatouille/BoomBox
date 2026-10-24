@@ -1,0 +1,63 @@
+# Test de l'appli Android sur un téléphone virtuel : installe le dernier APK publié, l'ouvre, lance l'écran
+# d'accueil puis récupère le journal système (plantages, erreurs). Le résultat apparaît dans les annotations
+# de l'exécution (lisibles sans connexion). Lancé à la main ou quand ce fichier change.
+name: Test Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/android-test.yml']
+
+jobs:
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: APK
+        run: curl -sL -o boombox.apk https://github.com/kwakwa-ratatouille/BoomBox/releases/latest/download/Boombox.apk && ls -l boombox.apk
+      - name: Téléphone virtuel
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r boombox.apk
+            adb logcat -c
+            adb shell monkey -p app.boombox.music -c android.intent.category.LAUNCHER 1
+            sleep 45
+            adb shell pidof app.boombox.music > pid.txt || true
+            adb shell screencap -p /sdcard/s1.png && adb pull /sdcard/s1.png s1.png || true
+            adb logcat -d > logcat.txt
+            echo "pid: $(cat pid.txt)"
+      - name: Résultat
+        if: always()
+        run: |
+          [ -f logcat.txt ] || { echo "::error::pas de journal"; exit 0; }
+          echo "Processus vivant après 45 s : $( [ -s pid.txt ] && echo oui || echo NON )"
+          enc() { python3 -c "import sys;print(sys.stdin.read().replace('%','%25').replace('\r','').replace('\n','%0A')[:60000])"; }
+          if grep -q "FATAL EXCEPTION\|AndroidRuntime" logcat.txt; then
+            msg=$(grep -A40 "FATAL EXCEPTION" logcat.txt | head -60 | enc)
+            echo "::error title=Plantage::$msg"
+          else
+            echo "::notice title=Pas de plantage Java::Processus vivant : $( [ -s pid.txt ] && echo oui || echo NON )"
+          fi
+          nat=$(grep -E "DEBUG   :|libc    :|Fatal signal|tombstone|ANR in" logcat.txt | head -40 | enc)
+          [ -n "$nat" ] && echo "::error title=Natif / ANR::$nat"
+          web=$(grep -iE "Capacitor|chromium|Console|boombox" logcat.txt | grep -viE "verbose" | tail -60 | enc)
+          echo "::warning title=Journal appli::$web"
+      - name: Capture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test
+          path: |
+            logcat.txt
+            s1.png
