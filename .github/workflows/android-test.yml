@@ -33,7 +33,12 @@ jobs:
             cat install.txt
             adb logcat -c || true
             adb shell monkey -p app.boombox.music -c android.intent.category.LAUNCHER 1 > launch.txt 2>&1 || true
-            sleep 45
+            sleep 50
+            adb shell pidof app.boombox.music > pid1.txt 2>/dev/null || true
+            adb shell am force-stop app.boombox.music || true
+            sleep 3
+            adb shell monkey -p app.boombox.music -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1 || true
+            sleep 40
             adb shell pidof app.boombox.music > pid.txt 2>/dev/null || true
             adb logcat -d > logcat.txt 2>/dev/null || true
             adb shell screencap -p /sdcard/s1.png > /dev/null 2>&1 || true
@@ -51,9 +56,9 @@ jobs:
           else
             echo "::notice title=Pas de plantage Java::Processus vivant : $( [ -s pid.txt ] && echo oui || echo NON )"
           fi
-          nat=$(grep -E "DEBUG   :|libc    :|Fatal signal|tombstone|ANR in" logcat.txt | head -40 | enc)
+          nat=$(grep -E "DEBUG   :|Fatal signal|tombstone|ANR in|E AndroidRuntime|Process app.boombox.music.*died|has died|crash" logcat.txt | grep -v "Access denied" | head -50 | enc)
           [ -n "$nat" ] && echo "::error title=Natif / ANR::$nat"
-          web=$(grep -iE "Capacitor|chromium|Console|boombox" logcat.txt | grep -viE "verbose" | tail -60 | enc)
+          web=$(grep -E "Capacitor/Console|chromium|E Capacitor|ActivityManager.*boombox|Displayed app.boombox" logcat.txt | grep -v " V " | tail -70 | cut -c1-400 | enc)
           echo "::warning title=Journal appli::$web"
       - name: Capture
         if: always()
