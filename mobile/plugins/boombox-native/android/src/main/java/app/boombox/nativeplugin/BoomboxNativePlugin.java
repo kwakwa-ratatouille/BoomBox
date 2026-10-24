@@ -161,6 +161,8 @@ public class BoomboxNativePlugin extends Plugin {
         if (session != null) return;
         Context ctx = getContext().getApplicationContext();
         session = new MediaSession(ctx, "Boombox");
+        // Rappels sur le fil principal : mediaUpdate tourne sur un fil à part (sans « Looper »), où Android refusait
+        // de créer le lecteur système → aucune notification de lecture sur Android
         session.setCallback(new MediaSession.Callback() {
             @Override public void onPlay() { emit("play"); }
             @Override public void onPause() { emit("pause"); }
@@ -172,7 +174,7 @@ public class BoomboxNativePlugin extends Plugin {
                 o.put("time", pos / 1000.0);
                 notifyListeners("mediaAction", o);
             }
-        });
+        }, new android.os.Handler(android.os.Looper.getMainLooper()));
         session.setActive(true);
         receiver = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent i) {
@@ -184,9 +186,6 @@ public class BoomboxNativePlugin extends Plugin {
         else ctx.registerReceiver(receiver, new IntentFilter(ACT));
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) nm.createNotificationChannel(new NotificationChannel(CH, "Lecture", NotificationManager.IMPORTANCE_LOW));
-        if (Build.VERSION.SDK_INT >= 33 && ctx.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED && getActivity() != null) {
-            getActivity().requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 4242);
-        }
     }
 
     private Notification.Action action(Context ctx, int icon, String title, String a, int code) {

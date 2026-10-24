@@ -55,5 +55,15 @@ export function setupErrorReports() {
     if (!r?.crash) return;
     const [head, ...trace] = String(r.crash).split('\n');
     reportError(`Plantage natif : ${(trace.find((l) => /Exception|Error/.test(l)) || trace[0] || '').trim()}`, `natif:${head.slice(0, 50)}`, trace.join('\n'));
+    // Affiché à l'écran aussi (capture à envoyer si le rapport automatique ne part pas)
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;inset:12px;z-index:99999;background:#1e1828;color:#fff;border-radius:14px;padding:16px;overflow:auto;font:12px/1.4 monospace;box-shadow:0 10px 40px #000';
+    box.innerHTML = '<b style="font:700 16px sans-serif">Boombox a planté la dernière fois</b><p style="font:14px sans-serif;opacity:.8">Fais une capture d’écran et envoie-la. Appuie ici pour fermer.</p>';
+    const pre = document.createElement('pre');
+    pre.style.whiteSpace = 'pre-wrap';
+    pre.textContent = String(r.crash).slice(0, 2500);
+    box.appendChild(pre);
+    box.onclick = () => box.remove();
+    document.body.appendChild(box);
   }).catch(() => {});
 }
