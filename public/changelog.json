@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Adresse courte pour la télé",
+    "items": [
+      "Pour afficher la party sur la télé, tape juste boomtv.web.app dans son navigateur (au lieu de la longue adresse)."
+    ],
+    "date": "2026-10-24"
+  },
+  {
     "version": "2026.1024.1113",
     "title": "La party sur la télé",
     "items": [

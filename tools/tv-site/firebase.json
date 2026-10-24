@@ -1,0 +1,7 @@
+{
+  "hosting": {
+    "site": "boomtv",
+    "public": "public",
+    "redirects": [{ "source": "**", "destination": "https://musikal-b72d1.web.app/tv", "type": 302 }]
+  }
+}

@@ -310,14 +310,14 @@ export async function jam(el, params) {
   return { onJam: render };
 }
 
-// Télé : elle ouvre musikal-b72d1.web.app/tv et affiche un code à 4 chiffres ; on le tape ici et elle affiche la party
+// Télé : elle ouvre boomtv.web.app (redirige vers musikal-b72d1.web.app/tv, voir tools/tv-site) et affiche un code à 4 chiffres ; on le tape ici et elle affiche la party
 async function connectTv(code) {
   const { db, doc, getDoc, updateDoc } = await import('./cloud.js');
   modal({
     title: 'Connecter une télé',
     body: `<ol style="padding-left:20px;line-height:1.7;margin-top:0">
         <li>Sur la télé, ouvre le <b>navigateur internet</b> (Smart TV, Fire TV, Android TV, console…).</li>
-        <li>Va sur <b style="color:var(--accent)">musikal-b72d1.web.app/tv</b></li>
+        <li>Tape juste <b style="color:var(--accent);font-size:20px">boomtv.web.app</b> (souvent, « boomtv » suffit et la télé complète)</li>
         <li>Tape ici le <b>code à 4 chiffres</b> affiché sur la télé :</li>
       </ol>
       <input class="input" id="tv-pin" inputmode="numeric" maxlength="4" placeholder="1234" style="width:100%;font-size:28px;text-align:center;letter-spacing:.3em">
