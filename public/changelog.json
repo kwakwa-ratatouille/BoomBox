@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1024.1804",
     "title": "Android : notification de lecture réparée",
     "items": [
       "Android : la notification du lecteur ne s’affichait sur aucun téléphone. Android refusait de créer le lecteur système depuis le fil de calcul utilisé. C’est corrigé dans la nouvelle version de l’appli.",
