@@ -10,7 +10,8 @@ on:
     # Seulement quand la partie native change : l'interface (public/, serveur embarqué) arrive déjà toute seule sur
     # les téléphones par la mise à jour en ligne. Avant, chaque publication créait une version et SideStore
     # pointait vers des versions déjà supprimées (« Boombox.ipa doesn't exist »).
-    paths: ['mobile/plugins/**', 'mobile/ios-app/**', 'resources/**', 'capacitor.config.json', 'package.json', '.github/workflows/mobile.yml']
+    # updater.js en fait partie : c'est lui qui installe les mises à jour, une erreur dedans ne peut pas se corriger en ligne.
+    paths: ['public/js/updater.js', 'mobile/plugins/**', 'mobile/ios-app/**', 'resources/**', 'capacitor.config.json', 'package.json', '.github/workflows/mobile.yml']
   workflow_dispatch:
 
 permissions:

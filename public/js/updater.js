@@ -93,11 +93,10 @@ export async function checkWebUpdate({ onReady } = {}) {
     const nativeBuild = Number((await App?.getInfo?.().catch(() => null))?.build || 1);
     if ((m.minNative || 1) > nativeBuild) return onReady?.(null, 'native');
     const dir = `${SNAP_DIR}/${m.version}`;
-    const zipPath = `web/${m.version}.zip`;
-    // Android : downloadFile ne crée pas le dossier (« open failed: ENOENT ») → on le crée avant
-    await Filesystem.mkdir({ path: 'web', directory: 'DATA', recursive: true }).catch(() => {});
-    await Filesystem.downloadFile({ url: BASE + m.url, path: zipPath, directory: 'DATA', recursive: true });
-    const { data } = await Filesystem.readFile({ path: zipPath, directory: 'DATA' });
+    // Directement dans le cache, sans sous-dossier : sur Android, downloadFile refusait d'écrire dans « web/ » (ENOENT)
+    const zipPath = `boombox-${m.version}.zip`;
+    await Filesystem.downloadFile({ url: BASE + m.url, path: zipPath, directory: 'CACHE' });
+    const { data } = await Filesystem.readFile({ path: zipPath, directory: 'CACHE' });
     const JSZip = await loadJsZip();
     const zip = await JSZip.loadAsync(data, { base64: true });
     const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
@@ -105,7 +104,7 @@ export async function checkWebUpdate({ onReady } = {}) {
       const b64 = await zip.files[name].async('base64');
       await Filesystem.writeFile({ path: `${dir}/${name}`, data: b64, directory: 'LIBRARY', recursive: true });
     }
-    await Filesystem.deleteFile({ path: zipPath, directory: 'DATA' }).catch(() => {});
+    await Filesystem.deleteFile({ path: zipPath, directory: 'CACHE' }).catch(() => {});
     if (!names.includes('index.html')) throw new Error('archive incomplète');
     const { uri } = await Filesystem.getUri({ path: dir, directory: 'LIBRARY' });
     ls.set(K.ready, JSON.stringify({ version: m.version, path: uri.replace(/^file:\/\//, '') }));
