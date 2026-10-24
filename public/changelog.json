@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1024.1241",
     "title": "Android : mises à jour automatiques (suite)",
     "items": [
       "Android : le téléchargement des mises à jour se fait maintenant directement dans le cache du téléphone, sans le dossier qui posait problème. Il faut installer la nouvelle version de l’appli une fois."
