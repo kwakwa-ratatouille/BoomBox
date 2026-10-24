@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Correction du plantage sur Samsung",
+    "items": [
+      "Android (Samsung…) : l’appli plantait au lancement d’un son, à cause de l’icône utilisée par la notification du lecteur. C’est corrigé dans la nouvelle version de l’appli."
+    ],
+    "date": "2026-10-24"
+  },
+  {
     "version": "2026.1023.2326",
     "title": "Tous les sons d’un artiste",
     "items": [

@@ -226,7 +226,9 @@ public class BoomboxNativePlugin extends Plugin {
                 Intent open = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
                 PendingIntent content = open == null ? null : PendingIntent.getActivity(ctx, 0, open, PendingIntent.FLAG_IMMUTABLE);
                 Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(ctx, CH) : new Notification.Builder(ctx);
-                b.setSmallIcon(ctx.getApplicationInfo().icon)
+                // Petite icône système (monochrome) : l'icône colorée de l'appli y est refusée par certains Android
+                // (Samsung…) et, avec le service de lecture, faisait planter l'appli (« Bad notification »)
+                b.setSmallIcon(android.R.drawable.ic_media_play)
                     .setContentTitle(title)
                     .setContentText(artist)
                     .setLargeIcon(art)
