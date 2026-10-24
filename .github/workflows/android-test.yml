@@ -5,6 +5,10 @@ name: Test Android
 
 on:
   workflow_dispatch:
+  # Après chaque nouvelle version de l'appli : on vérifie qu'elle s'ouvre sans planter
+  workflow_run:
+    workflows: ["Appli mobile"]
+    types: [completed]
   push:
     branches: [main]
     paths: ['.github/workflows/android-test.yml']

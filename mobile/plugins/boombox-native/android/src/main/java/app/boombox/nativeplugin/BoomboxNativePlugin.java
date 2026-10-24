@@ -26,6 +26,7 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.WebViewListener;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.yausername.youtubedl_android.YoutubeDL;
 import com.yausername.youtubedl_android.YoutubeDLRequest;
@@ -71,6 +72,29 @@ public class BoomboxNativePlugin extends Plugin {
         noisy = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent i) { notifyListeners("audioUnplugged", new JSObject()); }
         };
+        // Moteur d'affichage (WebView) arrêté par Android : manque de mémoire avec une grosse bibliothèque, ou
+        // plantage de Chrome. Sans réponse, Android ferme TOUTE l'appli d'un coup (le « crash » sur Samsung/Xiaomi).
+        // On note la cause et on recrée l'écran : l'appli se recharge au lieu de se fermer.
+        bridge.addWebViewListener(new WebViewListener() {
+            @Override
+            public boolean onRenderProcessGone(android.webkit.WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                boolean crashed = Build.VERSION.SDK_INT >= 26 && detail != null && detail.didCrash();
+                app.getSharedPreferences("boombox", Context.MODE_PRIVATE).edit()
+                    .putString("lastCrash", Build.MANUFACTURER + " " + Build.MODEL + " Android " + Build.VERSION.RELEASE + " · WebView\n"
+                        + (crashed ? "RenderProcessGone: le moteur d'affichage a planté" : "RenderProcessGone: arrêté par Android (manque de mémoire)"))
+                    .apply();
+                try {
+                    if (view != null) {
+                        android.view.ViewGroup parent = (android.view.ViewGroup) view.getParent();
+                        if (parent != null) parent.removeView(view);
+                        view.destroy();
+                    }
+                } catch (Throwable ignored) {
+                }
+                if (getActivity() != null) getActivity().runOnUiThread(() -> getActivity().recreate());
+                return true;
+            }
+        });
         IntentFilter nf = new IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY);
         if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(noisy, nf, Context.RECEIVER_EXPORTED);
         else app.registerReceiver(noisy, nf);
