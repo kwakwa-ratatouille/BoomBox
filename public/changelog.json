@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1024.1819",
     "title": "Android : fin des fermetures brutales",
     "items": [
       "Android : quand le téléphone manque de mémoire (grosse bibliothèque), Android arrêtait l’affichage de l’appli, et l’appli se fermait d’un coup. Maintenant elle se recharge toute seule au lieu de se fermer (nouvelle version de l’appli)."
