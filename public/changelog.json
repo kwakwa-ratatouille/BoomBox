@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Android : mises à jour réparées",
+    "items": [
+      "Android : les mises à jour automatiques échouaient (dossier manquant), donc les téléphones gardaient l’ancienne version. C’est corrigé.",
+      "Android : si l’appli plante, la cause est enregistrée et envoyée au lancement suivant, pour qu’on puisse la corriger."
+    ],
+    "date": "2026-10-24"
+  },
+  {
     "version": "2026.1024.1118",
     "title": "Adresse courte pour la télé",
     "items": [

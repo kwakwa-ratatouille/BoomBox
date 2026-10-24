@@ -54,6 +54,20 @@ public class BoomboxNativePlugin extends Plugin {
     @Override
     public void load() {
         Context app = getContext().getApplicationContext();
+        // Plantage : on garde la cause (rapport envoyé au prochain lancement par le JavaScript, voir takeCrash)
+        final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((th, ex) -> {
+            try {
+                java.io.StringWriter sw = new java.io.StringWriter();
+                ex.printStackTrace(new java.io.PrintWriter(sw));
+                String trace = sw.toString();
+                app.getSharedPreferences("boombox", Context.MODE_PRIVATE).edit()
+                    .putString("lastCrash", (Build.MANUFACTURER + " " + Build.MODEL + " Android " + Build.VERSION.RELEASE + " · " + th.getName() + "\n" + trace).substring(0, Math.min(3000, trace.length() + 120)))
+                    .commit();
+            } catch (Throwable ignored) {
+            }
+            if (prev != null) prev.uncaughtException(th, ex);
+        });
         noisy = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent i) { notifyListeners("audioUnplugged", new JSObject()); }
         };
@@ -317,6 +331,17 @@ public class BoomboxNativePlugin extends Plugin {
     }
 
     private static boolean serviceOn = false;
+
+    // Dernier plantage enregistré (puis effacé)
+    @PluginMethod
+    public void takeCrash(PluginCall call) {
+        SharedPreferences p = getContext().getSharedPreferences("boombox", Context.MODE_PRIVATE);
+        String c = p.getString("lastCrash", null);
+        p.edit().remove("lastCrash").apply();
+        JSObject r = new JSObject();
+        if (c != null) r.put("crash", c);
+        call.resolve(r);
+    }
 
     @PluginMethod
     public void mediaStop(PluginCall call) {

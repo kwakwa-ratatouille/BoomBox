@@ -94,6 +94,8 @@ export async function checkWebUpdate({ onReady } = {}) {
     if ((m.minNative || 1) > nativeBuild) return onReady?.(null, 'native');
     const dir = `${SNAP_DIR}/${m.version}`;
     const zipPath = `web/${m.version}.zip`;
+    // Android : downloadFile ne crée pas le dossier (« open failed: ENOENT ») → on le crée avant
+    await Filesystem.mkdir({ path: 'web', directory: 'DATA', recursive: true }).catch(() => {});
     await Filesystem.downloadFile({ url: BASE + m.url, path: zipPath, directory: 'DATA', recursive: true });
     const { data } = await Filesystem.readFile({ path: zipPath, directory: 'DATA' });
     const JSZip = await loadJsZip();

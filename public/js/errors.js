@@ -50,4 +50,10 @@ export function setupErrorReports() {
   fetch('changelog.json').then((r) => r.json()).then((j) => (version = j?.[0]?.version || '')).catch(() => {});
   addEventListener('error', (e) => reportError(e.message || e.error?.message, `js:${(e.filename || '').split('/').pop()}:${e.lineno || 0}`, e.error?.stack));
   addEventListener('unhandledrejection', (e) => reportError(e.reason?.message || String(e.reason), 'promise', e.reason?.stack));
+  // Android : plantage de l'appli au lancement précédent (enregistré par le module natif)
+  window.Capacitor?.Plugins?.BoomboxNative?.takeCrash?.().then((r) => {
+    if (!r?.crash) return;
+    const [head, ...trace] = String(r.crash).split('\n');
+    reportError(`Plantage natif : ${(trace.find((l) => /Exception|Error/.test(l)) || trace[0] || '').trim()}`, `natif:${head.slice(0, 50)}`, trace.join('\n'));
+  }).catch(() => {});
 }
