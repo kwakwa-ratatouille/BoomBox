@@ -29,17 +29,19 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            adb install -r boombox.apk
-            adb logcat -c
-            adb shell monkey -p app.boombox.music -c android.intent.category.LAUNCHER 1
+            adb install -r boombox.apk > install.txt 2>&1 || true
+            cat install.txt
+            adb logcat -c || true
+            adb shell monkey -p app.boombox.music -c android.intent.category.LAUNCHER 1 > launch.txt 2>&1 || true
             sleep 45
-            adb shell pidof app.boombox.music > pid.txt || true
-            adb shell screencap -p /sdcard/s1.png && adb pull /sdcard/s1.png s1.png || true
-            adb logcat -d > logcat.txt
-            echo "pid: $(cat pid.txt)"
+            adb shell pidof app.boombox.music > pid.txt 2>/dev/null || true
+            adb logcat -d > logcat.txt 2>/dev/null || true
+            adb shell screencap -p /sdcard/s1.png > /dev/null 2>&1 || true
+            adb pull /sdcard/s1.png s1.png > /dev/null 2>&1 || true
       - name: Résultat
         if: always()
         run: |
+          echo "::notice title=Installation::$(cat install.txt 2>/dev/null | tr '\n' ' ') | lancement: $(cat launch.txt 2>/dev/null | tr '\n' ' ' | tail -c 300)"
           [ -f logcat.txt ] || { echo "::error::pas de journal"; exit 0; }
           echo "Processus vivant après 45 s : $( [ -s pid.txt ] && echo oui || echo NON )"
           enc() { python3 -c "import sys;print(sys.stdin.read().replace('%','%25').replace('\r','').replace('\n','%0A')[:60000])"; }
