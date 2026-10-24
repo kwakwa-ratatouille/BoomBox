@@ -131,6 +131,11 @@ service cloud.firestore {
     }
 
     // Jams : ouvertes à tout utilisateur connecté qui connaît le code (pour inviter des amis).
+    // Télés du mode party : la télé crée son code à 4 chiffres, l'hôte y écrit le code de sa party
+    match /tvs/{pin} {
+      allow read, write: if signedIn();
+    }
+
     match /jams/{code} {
       allow read, write: if signedIn();
       match /{rest=**} {

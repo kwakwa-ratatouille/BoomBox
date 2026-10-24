@@ -276,7 +276,7 @@ export async function jam(el, params) {
           <div class="jam-code">${room.code}</div>
           <p class="muted pi-help">Les invités <b>scannent le QR code</b> avec l'appareil photo de leur téléphone : ils cherchent un son ou collent un lien Spotify, Deezer, YouTube. Tes amis Boombox entrent le <b>code</b> dans Mode party → Rejoindre.</p>
           ${host ? html`<div class="chips pi-chips"><button class="chip ${partyWide ? '' : 'active'}" data-wide="0">Même Wi-Fi</button><button class="chip ${partyWide ? 'active' : ''}" data-wide="1">Partout (4G)</button></div>
-          <div class="row-flex pi-actions"><button class="btn white" id="party-tv">${icon('fullscreen', 16)} Écran géant</button><button class="btn ghost" id="party-copy">${icon('copy', 16)} Copier le lien</button></div>` : ''}
+          <div class="row-flex pi-actions"><button class="btn primary" id="party-tvlink">📺 Connecter une télé</button><button class="btn white" id="party-tv">${icon('fullscreen', 16)} Écran géant</button><button class="btn ghost" id="party-copy">${icon('copy', 16)} Copier le lien</button></div>` : ''}
         </div>
       </div>
       <div class="row-flex jam-mode" style="gap:8px;margin:0 0 12px;flex-wrap:wrap"><span class="muted" style="font-size:13px">Mode :</span>
@@ -302,11 +302,47 @@ export async function jam(el, params) {
     if (host) {
       el.querySelector('#party-copy').onclick = () => navigator.clipboard.writeText(partyUrl).then(() => toast('Lien invité copié'));
       el.querySelector('#party-tv').onclick = () => partyScreen(partyUrl);
+      el.querySelector('#party-tvlink').onclick = () => connectTv(room.code);
       el.querySelectorAll('[data-wide]').forEach((b) => (b.onclick = () => (ls.set('boombox.partyWide', b.dataset.wide === '1'), render())));
     }
   };
   render();
   return { onJam: render };
+}
+
+// Télé : elle ouvre musikal-b72d1.web.app/tv et affiche un code à 4 chiffres ; on le tape ici et elle affiche la party
+async function connectTv(code) {
+  const { db, doc, getDoc, updateDoc } = await import('./cloud.js');
+  modal({
+    title: 'Connecter une télé',
+    body: `<ol style="padding-left:20px;line-height:1.7;margin-top:0">
+        <li>Sur la télé, ouvre le <b>navigateur internet</b> (Smart TV, Fire TV, Android TV, console…).</li>
+        <li>Va sur <b style="color:var(--accent)">musikal-b72d1.web.app/tv</b></li>
+        <li>Tape ici le <b>code à 4 chiffres</b> affiché sur la télé :</li>
+      </ol>
+      <input class="input" id="tv-pin" inputmode="numeric" maxlength="4" placeholder="1234" style="width:100%;font-size:28px;text-align:center;letter-spacing:.3em">
+      <p id="tv-err" style="color:var(--danger);min-height:1em"></p>
+      <p class="muted" style="font-size:13px;margin:0">Pas de navigateur sur la télé ? Chromecast, AirPlay ou câble HDMI : recopie l'écran du téléphone ou du PC, puis appuie sur « Écran géant ».</p>`,
+    actions: [{ label: 'Annuler' }, {
+      label: 'Connecter',
+      primary: true,
+      value: async (w) => {
+        const pin = w.querySelector('#tv-pin').value.trim();
+        const errEl = w.querySelector('#tv-err');
+        if (!/^\d{4}$/.test(pin)) return (errEl.textContent = 'Le code fait 4 chiffres'), false;
+        try {
+          const ref = doc(db, 'tvs', pin);
+          if (!(await getDoc(ref)).exists()) return (errEl.textContent = 'Code introuvable : vérifie celui affiché sur la télé'), false;
+          await updateDoc(ref, { jam: code });
+          toast('📺 Télé connectée à la party');
+          return true;
+        } catch (e) {
+          errEl.textContent = e.message;
+          return false;
+        }
+      },
+    }],
+  });
 }
 
 // QR code (librairie chargée à la demande depuis un CDN)

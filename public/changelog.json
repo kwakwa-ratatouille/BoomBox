@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "La party sur la télé",
+    "items": [
+      "Mode party → « 📺 Connecter une télé » : sur la télé, ouvre le navigateur et va sur musikal-b72d1.web.app/tv. Un code à 4 chiffres s’affiche : tape-le dans Boombox.",
+      "La télé affiche le QR code pour que les invités ajoutent leurs sons, le son en cours avec son clip et sa progression, et les 5 suivants avec qui les a ajoutés. Aucun compte n’est nécessaire sur la télé.",
+      "Pas de navigateur sur la télé ? Recopie l’écran (Chromecast, AirPlay, HDMI) et utilise « Écran géant »."
+    ],
+    "date": "2026-10-24"
+  },
+  {
     "version": "2026.1024.1103",
     "title": "Correction du plantage sur Samsung",
     "items": [
