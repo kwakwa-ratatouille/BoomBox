@@ -1143,7 +1143,7 @@ export async function discography(el, { id }, ctx) {
         <button class="btn ghost" data-all="old">${icon('play')} Tout écouter, du plus ancien</button>
       </div>
       <div class="row-flex" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">${groups.map(([g, l]) => html`<button class="chip ${g === group ? 'active' : ''}" data-g="${g}">${l}</button>`)}</div>
-      ${shown().length ? html`<div class="cards">${shown().map((i) => card(i, { sub: [i.year, i.group === 'feat' ? 'Apparition' : i.kind].filter(Boolean).join(' · ') }))}</div>` : html`<div class="empty"><h2>Rien à afficher</h2></div>`}
+      ${shown().length ? html`<div class="cards">${shown().map((i) => card(i, { sub: [i.year, i.group === 'feat' ? 'Apparition' : i.kind, i.reissue && `réédition ${i.reissue}`].filter(Boolean).join(' · ') }))}</div>` : html`<div class="empty"><h2>Rien à afficher</h2></div>`}
     </div>`);
     el.querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => ((group = b.dataset.g), render())));
     el.querySelectorAll('[data-all]').forEach((b) => (b.onclick = () => playAll(b.dataset.all === 'old')));
@@ -1196,7 +1196,7 @@ export async function allTracks(el, { id }, ctx) {
       <button class="btn ghost" data-at="queue" disabled>Ajouter à la file</button>
     </div>
     <div id="at-list">${items.map((a, i) => html`<section class="at-album" data-i="${i}">
-      <a class="at-head" href="#/album/${a.id}">${cover(a, '', 120)}<div><small class="muted">${a.group === 'feat' ? 'FEATURING' : (a.kind || 'Album').toUpperCase()}${a.year ? ` · ${a.year}` : ''}</small><h2 class="ellipsis">${a.title}</h2>${a.group === 'feat' ? html`<div class="muted ellipsis">${(a.artists || []).map((x) => x.name).join(', ')}</div>` : ''}</div></a>
+      <a class="at-head" href="#/album/${a.id}">${cover(a, '', 120)}<div><small class="muted">${a.group === 'feat' ? 'FEATURING' : (a.kind || 'Album').toUpperCase()}${a.year ? ` · ${a.year}` : ''}${a.reissue ? ` · réédition ${a.reissue}` : ''}</small><h2 class="ellipsis">${a.title}</h2>${a.group === 'feat' ? html`<div class="muted ellipsis">${(a.artists || []).map((x) => x.name).join(', ')}</div>` : ''}</div></a>
       <div class="at-tracks"><div class="sk-page"><div class="sk sk-title"></div></div></div></section>`)}</div>
   </div>`);
   const isHim = (t) => (t.artists || []).some((a) => a.id === id || (a.name || '').toLowerCase() === name.toLowerCase());

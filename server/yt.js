@@ -338,6 +338,23 @@ async function artistPage(id, { light = false } = {}) {
 
 // Discographie complète d'un artiste : albums, singles et EP, apparitions (rubriques « Tout afficher » de YouTube
 // Music), du plus récent au plus ancien. group : 'album' | 'single' | 'feat'.
+const REISSUE = /deluxe|expanded|edition|[ée]dition|anniversary|anniversaire|remaster|super|from the vault|version|reissue|r[ée][ée]dition/i;
+// Année de première sortie d'un album (MusicBrainz), pour ranger une réédition à sa vraie place
+async function originalYear(artist, title) {
+  const base = title.replace(/\s*[([].*?[)\]]\s*/g, ' ').replace(/\s+-\s+.*$/, '').trim();
+  if (!base || !artist) return null;
+  const q = encodeURIComponent(`releasegroup:"${base.replace(/"/g, '')}" AND artist:"${artist.replace(/"/g, '')}" AND primarytype:album`);
+  const r = await fetch(`https://musicbrainz.org/ws/2/release-group/?query=${q}&fmt=json&limit=5`, { headers: { 'User-Agent': 'Boombox/1.0 (https://github.com/kwakwa-ratatouille/BoomBox)', Accept: 'application/json' } });
+  if (!r.ok) return null;
+  const j = await r.json();
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const years = (j['release-groups'] || [])
+    .filter((g) => norm(g.title) === norm(base) && (g.score || 0) >= 90)
+    .map((g) => Number(String(g['first-release-date'] || '').slice(0, 4)))
+    .filter(Boolean);
+  return years.length ? Math.min(...years) : null;
+}
+
 export async function discography(id) {
   return cached(`disco:${id}`, 6 * 60 * 60e3, async () => {
     const yt = await getYt();
@@ -365,6 +382,13 @@ export async function discography(id) {
         out.push({ ...n, group, year: n.year || (sub.match(/\b(19|20)\d{2}\b/) || [])[0] || '', kind: n.kind || (/single/i.test(sub) ? 'Single' : /\bEP\b/.test(sub) ? 'EP' : 'Album') });
       }
     }
+    // Rééditions (« Night Visions (Expanded Edition) » datée 2022 alors que l'album est de 2012) : YouTube Music
+    // ne donne que l'année de la réédition. On cherche l'année d'origine dans MusicBrainz (gratuit, sans clé).
+    const artistName = txt(a.header?.title);
+    await Promise.all(out.filter((x) => x.group === 'album' && REISSUE.test(x.title)).slice(0, 6).map(async (x) => {
+      const y = await originalYear(artistName, x.title).catch(() => null);
+      if (y && y < Number(x.year)) Object.assign(x, { reissue: x.year, year: String(y) });
+    }));
     // Du plus récent au plus ancien (même année : ordre de YouTube Music, déjà du plus récent au plus ancien)
     out.forEach((x, i) => (x._i = i));
     out.sort((x, y) => (Number(y.year) || 0) - (Number(x.year) || 0) || x._i - y._i);
