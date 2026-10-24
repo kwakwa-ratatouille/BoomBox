@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1024.1129",
     "title": "Android : mises à jour réparées",
     "items": [
       "Android : les mises à jour automatiques échouaient (dossier manquant), donc les téléphones gardaient l’ancienne version. C’est corrigé.",
