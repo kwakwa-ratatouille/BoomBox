@@ -346,12 +346,15 @@ export function downloadAudio(id, { keep = false } = {}) {
     }
     // 3. Android : yt-dlp embarqué, en secours (fiable mais lent à démarrer : Python est relancé à chaque son)
     if (!stat && ytdlp && localStorage.getItem('boombox.ytClient') !== 'ytdlp') stat = await viaYtdlp();
-    // 3 bis. Cette version est bloquée chez YouTube : une autre version du même son (même titre, même artiste)
-    if (!stat && trackMeta.has(id)) {
-      const alt = await ytTwin(id, trackMeta.get(id)).catch(() => null);
-      if (alt) {
+    // 3 bis. Cette version est bloquée chez YouTube (« +18 », compte exigé…) : une autre mise en ligne du même son
+    if (!stat) {
+      const m = trackMeta.get(id);
+      const alts = await yt.alternatives(id, m && { title: m.title, artist: m.artist, duration: m.duration }).catch(() => []);
+      const twin = m && (await ytTwin(id, m).catch(() => null));
+      for (const alt of [...new Set([...alts, twin].filter(Boolean))].slice(0, 3)) {
         const r = await remoteAudio(alt).catch((e) => ((lastErr = e), null));
         if (r) stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => ((lastErr = e), null));
+        if (stat) break;
       }
     }
     // 4. YouTube refuse (fréquent sans PC, surtout sur iPhone) : le même son sur SoundCloud

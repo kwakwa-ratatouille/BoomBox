@@ -1,5 +1,6 @@
 import { isLocalId, localPath } from './localfiles.js';
 import { isScId, scUrl, setScBin } from './soundcloud.js';
+import { alternatives } from './yt.js';
 // Lecture audio directe via yt-dlp (optionnel). Permet la lecture écran éteint sur téléphone
 // et les contrôles sur l'écran de verrouillage. Sans yt-dlp, l'app utilise le lecteur YouTube intégré.
 import { execFile, execFileSync, spawn } from 'node:child_process';
@@ -68,10 +69,34 @@ const CACHE_MAX = 4 * 1024 ** 3;
 const cacheSize = () => { try { return fs.readdirSync(AUDIO_DIR).filter((f) => f.endsWith('.m4a')).reduce((s, f) => s + fs.statSync(path.join(AUDIO_DIR, f)).size, 0); } catch { return 0; } };
 let lastStream = 0; // dernière lecture : le pré-téléchargement se met en pause pendant l'écoute active
 const downloads = new Map();
-export function download(id) {
+// Vidéo bloquée sans compte (« Sign in to confirm your age », réservée aux membres, indisponible ici…)
+const NEEDS_ACCOUNT = /confirm your age|age-restricted|inappropriate for some users|Sign in to confirm|members-only|not available in your country|Video unavailable/i;
+export function download(id, { noAlt = false } = {}) {
   const file = path.join(AUDIO_DIR, `${id}.m4a`);
   if (fs.existsSync(file)) return Promise.resolve(file);
   if (downloads.has(id)) return downloads.get(id);
+  if (!noAlt && !isScId(id)) {
+    const p = rawDownload(id).catch(async (err) => {
+      if (!NEEDS_ACCOUNT.test(String(err?.message || err))) throw err;
+      // Même son mis en ligne ailleurs : on le télécharge et on le range sous l'id d'origine
+      for (const alt of await alternatives(id).catch(() => [])) {
+        try {
+          const f = await download(alt, { noAlt: true });
+          fs.copyFileSync(f, file);
+          console.log(`[lecture] ${id} bloqué par YouTube (compte exigé) : version ${alt} utilisée`);
+          return file;
+        } catch {}
+      }
+      throw err;
+    });
+    downloads.set(id, p);
+    p.finally(() => downloads.delete(id)).catch(() => {});
+    return p;
+  }
+  return rawDownload(id);
+}
+function rawDownload(id) {
+  const file = path.join(AUDIO_DIR, `${id}.m4a`);
   fs.mkdirSync(AUDIO_DIR, { recursive: true });
   const p = new Promise((resolve, reject) => {
     // Téléchargé sous un nom temporaire, renommé seulement une fois complet

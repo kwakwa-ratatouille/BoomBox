@@ -582,6 +582,34 @@ function saveMatches() {
   }, 2000);
 }
 
+// Son bloqué par YouTube (vidéo « +18 » qui exige un compte, etc.) : la même chanson mise en ligne ailleurs
+// (chaîne de l'artiste, « Audio officiel »…), même titre et même durée à 4 s près. Renvoie jusqu'à 3 ids à essayer.
+export async function alternatives(id, meta = null) {
+  let title = meta?.title;
+  let artist = meta?.artist;
+  let duration = meta?.duration || 0;
+  if (!title) {
+    const yt = await getYt();
+    const info = await yt.getBasicInfo(id).catch(() => null);
+    title = info?.basic_info?.title;
+    artist = (info?.basic_info?.author || '').replace(/\s*-\s*Topic$/i, '');
+    duration = info?.basic_info?.duration || 0;
+  }
+  if (!title) return [];
+  const clean = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+  const t = clean(title);
+  const bad = /remix|live|cover|karaok|instrumental|slowed|sped|reverb|8d|nightcore|extended|1 ?hour|1h/i;
+  const q = `${artist || ''} ${title}`.trim();
+  const [songs, videos] = await Promise.all([search(q, 'song').catch(() => ({ items: [] })), search(q, 'video').catch(() => ({ items: [] }))]);
+  return [...songs.items, ...videos.items]
+    .filter((x) => x.id && x.id !== id && /^[\w-]{11}$/.test(x.id))
+    .filter((x) => clean(x.title).includes(t) && !(bad.test(x.title) && !bad.test(title)))
+    .filter((x) => !duration || !x.duration || Math.abs(x.duration - duration) <= 4)
+    .map((x) => x.id)
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .slice(0, 3);
+}
+
 export async function matchTrack(item) {
   const key = `${clean(item.title)}|${clean(item.artist)}`;
   // Certains résultats YouTube Music arrivent sans artiste (« Artiste inconnu ») : on met celui qu'on cherchait
