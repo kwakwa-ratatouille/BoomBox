@@ -393,6 +393,90 @@ public class BoomboxNativePlugin extends Plugin {
         call.reject("aucune appli", "none");
     }
 
+    // ---------- Chromecast : l'écran du mode soirée sur la télé ----------
+    // On choisit la télé (liste Google Cast), la télé lance l'appli réceptrice de Boombox (cast.html) et reçoit le
+    // code de la party. Ensuite elle est autonome : le téléphone peut se mettre en veille.
+    private static final String CAST_NS = "urn:x-cast:app.boombox.tv";
+    private String pendingCast = null;
+    private boolean castListening = false;
+
+    private void castEvent(String state, String device) {
+        JSObject o = new JSObject();
+        o.put("state", state);
+        if (device != null) o.put("device", device);
+        notifyListeners("castState", o);
+    }
+
+    @PluginMethod
+    public void castParty(PluginCall call) {
+        String code = call.getString("code");
+        if (code == null || getActivity() == null) {
+            call.reject("code manquant");
+            return;
+        }
+        String msg = "{\"code\":\"" + code.replaceAll("[^A-Za-z0-9]", "") + "\"}";
+        getActivity().runOnUiThread(() -> {
+            try {
+                com.google.android.gms.cast.framework.CastContext cc = com.google.android.gms.cast.framework.CastContext.getSharedInstance(getContext());
+                com.google.android.gms.cast.framework.SessionManager sm = cc.getSessionManager();
+                if (!castListening) {
+                    castListening = true;
+                    sm.addSessionManagerListener(new com.google.android.gms.cast.framework.SessionManagerListener<com.google.android.gms.cast.framework.CastSession>() {
+                        @Override public void onSessionStarted(com.google.android.gms.cast.framework.CastSession s, String id) { sendPending(s); }
+                        @Override public void onSessionResumed(com.google.android.gms.cast.framework.CastSession s, boolean b) { sendPending(s); }
+                        @Override public void onSessionStartFailed(com.google.android.gms.cast.framework.CastSession s, int e) { castEvent("failed", null); }
+                        @Override public void onSessionEnded(com.google.android.gms.cast.framework.CastSession s, int e) { castEvent("ended", null); }
+                        @Override public void onSessionStarting(com.google.android.gms.cast.framework.CastSession s) { castEvent("connecting", null); }
+                        @Override public void onSessionEnding(com.google.android.gms.cast.framework.CastSession s) {}
+                        @Override public void onSessionResuming(com.google.android.gms.cast.framework.CastSession s, String id) {}
+                        @Override public void onSessionResumeFailed(com.google.android.gms.cast.framework.CastSession s, int e) {}
+                        @Override public void onSessionSuspended(com.google.android.gms.cast.framework.CastSession s, int r) {}
+                    }, com.google.android.gms.cast.framework.CastSession.class);
+                }
+                com.google.android.gms.cast.framework.CastSession cur = sm.getCurrentCastSession();
+                pendingCast = msg;
+                if (cur != null && cur.isConnected()) {
+                    sendPending(cur);
+                } else {
+                    androidx.mediarouter.app.MediaRouteChooserDialog d = new androidx.mediarouter.app.MediaRouteChooserDialog(new android.view.ContextThemeWrapper(getActivity(), androidx.mediarouter.R.style.Theme_MediaRouter));
+                    d.setRouteSelector(cc.getMergedSelector());
+                    d.setTitle("Afficher la party sur…");
+                    d.show();
+                }
+                call.resolve();
+            } catch (Throwable e) {
+                call.reject(e.getMessage() == null ? "Chromecast indisponible" : e.getMessage());
+            }
+        });
+    }
+
+    private void sendPending(com.google.android.gms.cast.framework.CastSession s) {
+        if (pendingCast == null || s == null) return;
+        String m = pendingCast;
+        pendingCast = null;
+        try {
+            s.sendMessage(CAST_NS, m);
+            castEvent("connected", s.getCastDevice() != null ? s.getCastDevice().getFriendlyName() : null);
+        } catch (Throwable e) {
+            castEvent("failed", null);
+        }
+    }
+
+    @PluginMethod
+    public void castStop(PluginCall call) {
+        if (getActivity() == null) {
+            call.resolve();
+            return;
+        }
+        getActivity().runOnUiThread(() -> {
+            try {
+                com.google.android.gms.cast.framework.CastContext.getSharedInstance(getContext()).getSessionManager().endCurrentSession(true);
+            } catch (Throwable ignored) {
+            }
+            call.resolve();
+        });
+    }
+
     // Dernier plantage enregistré (puis effacé)
     @PluginMethod
     public void takeCrash(PluginCall call) {

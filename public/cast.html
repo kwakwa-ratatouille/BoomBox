@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boombox · Télé</title>
+  <!-- Récepteur Chromecast de Boombox (Application ID 43163073, console Google Cast). Le téléphone envoie le code
+       de la party sur le canal urn:x-cast:app.boombox.tv ; la télé affiche alors la soirée toute seule (tv.js),
+       même quand le téléphone est en veille. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    html, body { height: 100%; overflow: hidden; background: #131019; cursor: none; }
+    .tv-pair { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 18px; padding: 40px; isolation: isolate; overflow: hidden; }
+    .tv-pair > * { position: relative; z-index: 3; }
+    .tv-pair h1 { font-size: clamp(32px, 4vw, 60px); font-weight: 900; margin: 0; }
+    .tv-pair p { color: var(--muted); font-size: clamp(18px, 2vw, 28px); margin: 0; }
+    .tv-progress { height: 6px; border-radius: 6px; background: rgba(255, 255, 255, .15); overflow: hidden; margin-top: 14px; max-width: 520px; }
+    .tv-progress i { display: block; height: 100%; background: var(--accent, #b07cf7); width: 0; transition: width 1s linear; }
+    .party-screen .ps-close, .party-screen .ps-btns { display: none; }
+  </style>
+  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <script>window.__castMode = true;</script>
+</head>
+<body>
+  <div id="tv"></div>
+  <script type="module">
+    const NS = 'urn:x-cast:app.boombox.tv';
+    await import('/js/tv.js');
+    try {
+      const ctx = cast.framework.CastReceiverContext.getInstance();
+      ctx.addCustomMessageListener(NS, (e) => {
+        let d = e.data;
+        try { if (typeof d === 'string') d = JSON.parse(d); } catch {}
+        if (d?.code) window.__tvShow?.(String(d.code).toUpperCase());
+      });
+      const opts = new cast.framework.CastReceiverOptions();
+      opts.disableIdleTimeout = true; // la télé reste allumée sur la soirée même quand le téléphone se déconnecte
+      opts.skipPlayersLoad = true;
+      ctx.start(opts);
+    } catch (e) {
+      console.warn('Pas sur un Chromecast', e);
+    }
+  </script>
+</body>
+</html>

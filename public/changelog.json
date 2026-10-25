@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Caster la party sur la télé (Android)",
+    "items": [
+      "Mode party → « 📡 Caster sur la télé » : choisis ta télé (Chromecast intégré, comme les Sony), et l’écran de la soirée s’y affiche tout seul : QR code, son en cours, file d’attente.",
+      "Une fois affiché, tu peux verrouiller ton téléphone : la télé continue toute seule (nouvelle version de l’appli)."
+    ],
+    "date": "2026-10-25"
+  },
+  {
     "version": "2026.1025.1036",
     "title": "Quel est ce son ? (Android)",
     "items": [

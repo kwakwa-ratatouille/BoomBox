@@ -276,7 +276,7 @@ export async function jam(el, params) {
           <div class="jam-code">${room.code}</div>
           <p class="muted pi-help">Les invités <b>scannent le QR code</b> avec l'appareil photo de leur téléphone : ils cherchent un son ou collent un lien Spotify, Deezer, YouTube. Tes amis Boombox entrent le <b>code</b> dans Mode party → Rejoindre.</p>
           ${host ? html`<div class="chips pi-chips"><button class="chip ${partyWide ? '' : 'active'}" data-wide="0">Même Wi-Fi</button><button class="chip ${partyWide ? 'active' : ''}" data-wide="1">Partout (4G)</button></div>
-          <div class="row-flex pi-actions"><button class="btn primary" id="party-tvlink">📺 Connecter une télé</button><button class="btn white" id="party-tv">${icon('fullscreen', 16)} Écran géant</button><button class="btn ghost" id="party-copy">${icon('copy', 16)} Copier le lien</button></div>` : ''}
+          <div class="row-flex pi-actions">${window.Capacitor?.getPlatform?.() === 'android' ? html`<button class="btn primary" id="party-cast">📡 Caster sur la télé</button>` : ''}<button class="btn ${window.Capacitor?.getPlatform?.() === 'android' ? 'ghost' : 'primary'}" id="party-tvlink">📺 Connecter une télé</button><button class="btn white" id="party-tv">${icon('fullscreen', 16)} Écran géant</button><button class="btn ghost" id="party-copy">${icon('copy', 16)} Copier le lien</button></div>` : ''}
         </div>
       </div>
       <div class="row-flex jam-mode" style="gap:8px;margin:0 0 12px;flex-wrap:wrap"><span class="muted" style="font-size:13px">Mode :</span>
@@ -303,11 +303,32 @@ export async function jam(el, params) {
       el.querySelector('#party-copy').onclick = () => navigator.clipboard.writeText(partyUrl).then(() => toast('Lien invité copié'));
       el.querySelector('#party-tv').onclick = () => partyScreen(partyUrl);
       el.querySelector('#party-tvlink').onclick = () => connectTv(room.code);
+      el.querySelector('#party-cast')?.addEventListener('click', () => castParty(room.code));
       el.querySelectorAll('[data-wide]').forEach((b) => (b.onclick = () => (ls.set('boombox.partyWide', b.dataset.wide === '1'), render())));
     }
   };
   render();
   return { onJam: render };
+}
+
+// Chromecast (Android) : la télé lance l'appli réceptrice de Boombox et affiche la party toute seule
+let castWired = false;
+async function castParty(code) {
+  const P = window.Capacitor?.Plugins?.BoomboxNative;
+  if (!P?.castParty) return toast('Mets l’appli à jour pour caster sur la télé');
+  if (!castWired) {
+    castWired = true;
+    P.addListener?.('castState', (e) => {
+      if (e.state === 'connected') toast(`📡 Party affichée sur ${e.device || 'la télé'} : tu peux verrouiller ton téléphone`, { timeout: 5000 });
+      else if (e.state === 'connecting') toast('Connexion à la télé…');
+      else if (e.state === 'failed') toast('Impossible de se connecter à la télé (même Wi-Fi ?)', { timeout: 5000 });
+    });
+  }
+  try {
+    await P.castParty({ code });
+  } catch (e) {
+    toast(`Chromecast indisponible : ${e.message}`);
+  }
 }
 
 // Télé : elle ouvre boomtv.web.app (redirige vers musikal-b72d1.web.app/tv, voir tools/tv-site) et affiche un code à 4 chiffres ; on le tape ici et elle affiche la party

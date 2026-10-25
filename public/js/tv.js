@@ -24,6 +24,15 @@ async function start() {
   await signInAnonymously(getAuth(app));
   const direct = (new URLSearchParams(location.search).get('code') || '').toUpperCase();
   if (direct) return showRoom(direct);
+  // Chromecast (cast.html) : le téléphone envoie le code de la party ; en attendant, la dernière party affichée
+  if (window.__castMode) {
+    window.__tvShow = (c) => (localStorage.setItem('boombox.tvLast', c), showRoom(c));
+    const last = localStorage.getItem('boombox.tvLast');
+    root.innerHTML = String(html`<div class="tv-pair"><img src="/assets/logo-symbol.png?v=2" alt="" style="width:110px"><h1>Boombox</h1><p>Connexion à la party…</p></div>`);
+    stopBg = pixelBackdrop(root.firstElementChild, PARTY_PALETTE, { accents: PARTY_ACCENTS, speed: 0.3, cell: 16, fps: 8 });
+    if (last) setTimeout(() => !stopRoom && showRoom(last), 6000);
+    return;
+  }
   pair();
 }
 
@@ -110,7 +119,7 @@ function showRoom(code) {
     const room = s.exists() ? s.data() : null;
     if (!room || room.ended) {
       root.querySelector('.ps-now') && (root.querySelector('.ps-now').innerHTML = String(html`<h2>${room?.ended ? 'La party est terminée' : `Party ${code} introuvable`}</h2>`));
-      setTimeout(pair, room?.ended ? 8000 : 4000);
+      if (!window.__castMode) setTimeout(pair, room?.ended ? 8000 : 4000);
       return unsub();
     }
     st = room.state || null;
@@ -122,7 +131,7 @@ function showRoom(code) {
     const q = room.queue || [];
     ov.querySelector('.ps-queue').innerHTML = String(html`<h3>À suivre</h3>${q.slice(0, 5).map((x) => html`<div class="ps-q">${cover(x, 64)}<div><b>${x.title}</b><span>${artists(x)}${x.addedBy ? ` · ${x.addedBy}` : ''}</span></div></div>`)}${q.length ? '' : raw('<p class="muted">Personne n’a encore ajouté de son : scanne le QR code !</p>')}`);
     progress();
-  }, () => setTimeout(pair, 4000));
+  }, () => !window.__castMode && setTimeout(pair, 4000));
   const timer = setInterval(progress, 1000);
   stopRoom = () => (unsub(), clearInterval(timer));
 }

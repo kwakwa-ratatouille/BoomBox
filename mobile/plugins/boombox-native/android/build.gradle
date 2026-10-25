@@ -23,4 +23,7 @@ dependencies {
     implementation project(':capacitor-android')
     implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
+    // Chromecast : écran du mode soirée sur la télé (appli réceptrice 43163073)
+    implementation 'com.google.android.gms:play-services-cast-framework:21.5.0'
+    implementation 'androidx.mediarouter:mediarouter:1.7.0'
 }
