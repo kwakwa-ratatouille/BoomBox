@@ -403,12 +403,15 @@ export async function search(el, params, ctx) {
   const type = params.type || 'all';
   const recents = ls.get('boombox.recentSearches', []);
   if (!q) {
+    const idf = window.Capacitor?.getPlatform?.() === 'android';
     el.innerHTML = String(html`<div class="page">
+      ${idf ? html`<button class="idf-btn" id="idf-go"><span class="idf-ic">🎵</span><span><b>Quel est ce son ?</b><small>Fais écouter le son qui passe autour de toi, puis écoute-le ici</small></span></button>` : ''}
       ${recents.length ? html`<div class="section-head"><h2>Recherches récentes</h2><button class="more" id="clear-recents">Effacer</button></div>
       <div class="history-chips">${recents.map((r) => html`<a class="chip" href="#/search?q=${encodeURIComponent(r)}">${r}</a>`)}</div>` : ''}
       <div class="section-head"><h2>Parcourir tout</h2></div>
       <div class="genres">${GENRES.map(([g, c]) => html`<a class="genre" style="background:${c}" href="#/search?q=${encodeURIComponent(g + ' playlist')}">${g}</a>`)}</div>
     </div>`);
+    el.querySelector('#idf-go')?.addEventListener('click', () => import('./identify.js').then((m) => m.identifySong()));
     el.querySelector('#clear-recents')?.addEventListener('click', () => {
       ls.set('boombox.recentSearches', []);
       search(el, params, ctx);

@@ -1541,6 +1541,7 @@ async function boot() {
       // Retour de la connexion Spotify
       if (/^boombox:\/\/spotify/.test(e.url)) return import('./spotify-sync.js').then((m) => m.handleSpotifyLink(e.url));
       // « Dis Siri, … » (Raccourcis) : lancer une playlist, un son, une party, pause / suivant…
+      if (/^boombox:\/\/identify/i.test(e.url)) return import('./identify.js').then((m) => m.identifySong());
       if (/^boombox:\/\/(play|playlist|artist|jam|control)/i.test(e.url)) return import('./voice.js').then((m) => m.runVoiceLink(e.url));
       if (parseInvite(e.url) && (await confirmBox('Lier cet appareil ?', 'Cet appareil affichera la bibliothèque de ce lien.', 'Lier'))) {
         location.hash = '#/join?' + e.url.split('?')[1];
@@ -1801,6 +1802,7 @@ async function handleLaunchLink() {
     const l = await window.Capacitor.Plugins.App?.getLaunchUrl?.();
     if (l?.url && parseInvite(l.url)) history.replaceState(null, '', '#/join?' + l.url.split('?')[1]);
     if (l?.url && /^boombox:\/\/(play|playlist|artist|jam|control)/i.test(l.url)) pendingVoice = l.url;
+    if (l?.url && /^boombox:\/\/identify/i.test(l.url)) setTimeout(() => import('./identify.js').then((m) => m.identifySong()), 1200);
   } catch {}
 }
 

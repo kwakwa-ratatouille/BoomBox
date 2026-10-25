@@ -95,6 +95,21 @@ public class BoomboxNativePlugin extends Plugin {
                 return true;
             }
         });
+        // Appui long sur l'icône de l'appli → « Quel est ce son ? » (ouvre Boombox sur boombox://identify)
+        if (Build.VERSION.SDK_INT >= 25) {
+            try {
+                android.content.pm.ShortcutManager sm = app.getSystemService(android.content.pm.ShortcutManager.class);
+                Intent si = new Intent(Intent.ACTION_VIEW, Uri.parse("boombox://identify")).setPackage(app.getPackageName());
+                android.content.pm.ShortcutInfo sc = new android.content.pm.ShortcutInfo.Builder(app, "identify")
+                    .setShortLabel("Quel est ce son ?")
+                    .setLongLabel("Trouver le son qui passe")
+                    .setIcon(android.graphics.drawable.Icon.createWithResource(app, android.R.drawable.ic_btn_speak_now))
+                    .setIntent(si)
+                    .build();
+                sm.setDynamicShortcuts(java.util.Collections.singletonList(sc));
+            } catch (Throwable ignored) {
+            }
+        }
         IntentFilter nf = new IntentFilter(android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY);
         if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(noisy, nf, Context.RECEIVER_EXPORTED);
         else app.registerReceiver(noisy, nf);
@@ -354,6 +369,29 @@ public class BoomboxNativePlugin extends Plugin {
     }
 
     private static boolean serviceOn = false;
+
+    // Reconnaissance d'un son (gratuite) : on ouvre « Rechercher un titre » de Google ; à défaut Shazam s'il est installé
+    @PluginMethod
+    public void soundSearch(PluginCall call) {
+        Context ctx = getContext();
+        Intent[] tries = {
+            new Intent("com.google.android.googlequicksearchbox.MUSIC_SEARCH"),
+            new Intent("android.media.action.MEDIA_SEARCH").setPackage("com.google.android.googlequicksearchbox"),
+            new Intent("com.shazam.android.intent.actions.START_TAGGING"),
+        };
+        for (Intent i : tries) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(i);
+                JSObject r = new JSObject();
+                r.put("app", i.getAction().contains("shazam") ? "shazam" : "google");
+                call.resolve(r);
+                return;
+            } catch (Throwable ignored) {
+            }
+        }
+        call.reject("aucune appli", "none");
+    }
 
     // Dernier plantage enregistré (puis effacé)
     @PluginMethod

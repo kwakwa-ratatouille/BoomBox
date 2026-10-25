@@ -2231,3 +2231,14 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .at-album .track-head { display: none; }
 .at-head h2 { font-size: 24px; margin: 2px 0; }
 @media (max-width: 768px) { .at-head .cover { width: 84px; height: 84px; } .at-head h2 { font-size: 19px; } }
+
+/* « Quel est ce son ? » : carte en haut de la page Recherche (Android) et fenêtre au retour de Google */
+.idf-btn { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; margin-bottom: 20px; border-radius: 14px; color: #fff; background: linear-gradient(120deg, color-mix(in srgb, var(--accent, #b07cf7) 55%, #131019), #2a2236); border: 1px solid rgba(255, 255, 255, .08); }
+.idf-btn:active { transform: scale(.98); }
+.idf-ic { font-size: 26px; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .12); flex: none; }
+.idf-btn b { display: block; font-size: 17px; }
+.idf-btn small { display: block; color: rgba(255, 255, 255, .75); font-size: 13px; margin-top: 2px; }
+.idf-sheet { position: fixed; inset: 0; z-index: 500; background: rgba(0, 0, 0, .55); display: flex; align-items: flex-end; justify-content: center; padding: 12px; animation: fadeIn .2s; }
+.idf-card { width: 100%; max-width: 480px; background: var(--elev, #2a2433); border-radius: 18px; padding: 18px; margin-bottom: env(safe-area-inset-bottom); box-shadow: 0 -10px 40px rgba(0, 0, 0, .5); }
+.idf-card b { font-size: 18px; }
+.idf-card p { margin: 6px 0 12px; }

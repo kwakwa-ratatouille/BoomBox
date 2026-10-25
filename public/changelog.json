@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Quel est ce son ? (Android)",
+    "items": [
+      "Reste appuyé sur l’icône de Boombox, puis « Quel est ce son ? ». La reconnaissance de son gratuite de Google écoute le son qui passe (ou Shazam, s’il est installé).",
+      "Revenu dans Boombox, tape le titre trouvé pour l’écouter tout de suite.",
+      "Le bouton est aussi en haut de la page Recherche."
+    ],
+    "date": "2026-10-25"
+  },
+  {
     "version": "2026.1024.1914",
     "title": "Rééditions rangées à leur vraie année",
     "items": [
