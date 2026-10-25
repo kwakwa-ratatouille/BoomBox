@@ -743,10 +743,16 @@ export function setupDelegation() {
   // vers la gauche = panneau « Ajouter à une playlist » ; appui long = menu du titre (panneau en bas).
   let sw = null;
   // Son d'une ligne : liste de sons, ou ligne de la file d'attente (« Suivant dans la file », panneau File d'attente)
+  // Dans la file d'attente, glisser à droite retire le son (il y est déjà) ; ailleurs, il l'ajoute à la file
+  const inQueue = (row) => row?.dataset?.qjump != null;
+  const swipeLabels = (row) => inQueue(row)
+    ? `<span class="sb-q sb-del">${icon('trash', 22)}<b>Retirer de la file</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`
+    : `<span class="sb-q">${icon('addQueue', 22)}<b>File d'attente</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`;
+  const swipeRight = (row, track) => (inQueue(row) ? (ctl.removeUpcoming(Number(row.dataset.qjump)), toast(`« ${track.title} » retiré de la file`)) : ctl.addToQueue(track));
   const swipeTrack = (row) => rowInfo(row)?.track || (row.dataset.qjump != null ? player.upcoming?.()[Number(row.dataset.qjump)] : null);
   document.addEventListener('touchstart', (e) => {
     const row = e.target.closest('.track, .q-item[data-qjump]');
-    if (!row || e.touches.length > 1) return;
+    if (!row || e.touches.length > 1 || e.target.closest('.q-grip')) return;
     sw = { row, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, locked: null };
     sw.long = setTimeout(() => {
       if (!sw || sw.locked) return;
@@ -779,7 +785,7 @@ export function setupDelegation() {
       sw.bg = document.createElement('div');
       sw.bg.className = 'swipe-bg';
       sw.bg.style.cssText = `top:${sw.row.offsetTop}px;left:${sw.row.offsetLeft}px;width:${sw.row.offsetWidth}px;height:${sw.row.offsetHeight}px`;
-      sw.bg.innerHTML = `<span class="sb-q">${icon('addQueue', 22)}<b>File d'attente</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`;
+      sw.bg.innerHTML = swipeLabels(sw.row);
       sw.row.before(sw.bg);
     }
     sw.bg.dataset.dir = sw.dx > 0 ? 'right' : 'left';
@@ -807,7 +813,7 @@ export function setupDelegation() {
     const track = swipeTrack(row);
     if (!track) return;
     if (dx > 70) {
-      ctl.addToQueue(track);
+      swipeRight(row, track);
       navigator.vibrate?.(15);
     } else if (dx < -70) openPlaylistPicker(track);
   };
@@ -831,7 +837,7 @@ export function setupDelegation() {
       wsw.bg = document.createElement('div');
       wsw.bg.className = 'swipe-bg';
       wsw.bg.style.cssText = `top:${row.offsetTop}px;left:${row.offsetLeft}px;width:${row.offsetWidth}px;height:${row.offsetHeight}px`;
-      wsw.bg.innerHTML = `<span class="sb-q">${icon('addQueue', 22)}<b>File d'attente</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`;
+      wsw.bg.innerHTML = swipeLabels(row);
       row.before(wsw.bg);
     }
     // deltaX positif = doigts vers la gauche : la ligne part à gauche (ajout à une playlist)
@@ -852,7 +858,7 @@ export function setupDelegation() {
       setTimeout(() => ((r.style.transition = ''), r.classList.remove('swiping')), 400);
       const track = Math.abs(dx) > 70 && swipeTrack(r);
       if (!track) return;
-      if (dx > 0) ctl.addToQueue(track);
+      if (dx > 0) swipeRight(r, track);
       else openPlaylistPicker(track, { x: r.getBoundingClientRect().left + 200, y: r.getBoundingClientRect().top });
     }, 180);
   }, { passive: false });
@@ -872,7 +878,7 @@ export function setupDelegation() {
     const bg = document.createElement('div');
     bg.className = 'swipe-bg';
     bg.style.cssText = `top:${row.offsetTop}px;left:${row.offsetLeft}px;width:${row.offsetWidth}px;height:${row.offsetHeight}px`;
-    bg.innerHTML = `<span class="sb-q">${icon('addQueue', 22)}<b>File d'attente</b></span><span class="sb-a"><b>Ajouter à une playlist</b>${icon('plus', 22)}</span>`;
+    bg.innerHTML = swipeLabels(row);
     row.before(bg);
     return bg;
   };
@@ -917,7 +923,7 @@ export function setupDelegation() {
     setTimeout(() => ((row.style.transition = ''), row.classList.remove('swiping')), 400);
     const track = Math.abs(dx) > 70 && swipeTrack(row);
     if (!track) return;
-    if (dx > 0) ctl.addToQueue(track);
+    if (dx > 0) swipeRight(row, track);
     else openPlaylistPicker(track, { x: row.getBoundingClientRect().left + 200, y: row.getBoundingClientRect().top });
   });
 

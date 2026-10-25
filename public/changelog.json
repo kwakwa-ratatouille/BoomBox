@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "File d’attente plus pratique",
+    "items": [
+      "Dans la file d’attente, glisser un son vers la droite le retire (fond rouge), au lieu de le rajouter. Vers la gauche, il s’ajoute à une playlist.",
+      "Nouvelle poignée ≡ sur chaque son de la file : maintiens-la et fais glisser pour changer l’ordre."
+    ],
+    "date": "2026-10-25"
+  },
+  {
     "version": "2026.1025.1138",
     "title": "Sons « +18 » de nouveau lisibles",
     "items": [

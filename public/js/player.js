@@ -637,6 +637,15 @@ export const player = {
     emit('player:queue');
   },
 
+  // Retire le son n de upcoming() (glissé vers la droite dans la file d'attente)
+  removeUpcoming(n) {
+    const uq = this.userQueue.length;
+    if (n < uq) this.userQueue.splice(n, 1);
+    else this.order.splice(this.pos + 1 + (n - uq), 1);
+    this._preparedFor = this.track?.id;
+    emit('player:queue');
+  },
+
   clearQueue() {
     this.userQueue = [];
     emit('player:queue');
@@ -1252,7 +1261,7 @@ export const player = {
 };
 
 // ---------- Contrôleur : local, ou télécommande d'un autre appareil ----------
-const ACTIONS = ['toggle', 'play', 'pause', 'next', 'prev', 'seek', 'setVolume', 'toggleMute', 'toggleShuffle', 'cycleRepeat', 'playList', 'playTrack', 'addToQueue', 'playNext', 'jumpTo', 'removeFromQueue', 'clearQueue', 'playRadio'];
+const ACTIONS = ['toggle', 'play', 'pause', 'next', 'prev', 'seek', 'setVolume', 'toggleMute', 'toggleShuffle', 'cycleRepeat', 'playList', 'playTrack', 'addToQueue', 'playNext', 'jumpTo', 'removeFromQueue', 'removeUpcoming', 'clearQueue', 'playRadio'];
 export const ctl = {};
 for (const a of ACTIONS) {
   ctl[a] = (...args) => {

@@ -779,9 +779,9 @@ function renderPanel() {
     rp.innerHTML = String(html`<div class="rp-head"><h3>File d'attente</h3>${closeBtn}</div><div class="rp-body">
       ${t ? html`<div class="q-label">En cours de lecture</div><div class="q-item current">${cover(t, '', 96)}<div class="t-text"><span class="t-title">${t.title}</span><span class="t-artists muted">${artistLinks(t)}</span></div>${mixTag(t.id)}</div>${mixPlanInfo()}` : ''}
       ${uq.length ? html`<div class="row-flex" style="justify-content:space-between"><div class="q-label">Prochains titres de la file</div><button class="more muted" id="q-clear">Effacer</button></div>
-        ${uq.map((u, i) => html`<div class="q-item" data-qjump="${i}">${cover(u, '', 96)}<div class="t-text"><span class="t-title">${u.title}</span><span class="t-artists muted">${artistLinks(u)}</span></div>${mixTag(u.id)}<button class="q-x icon-btn" data-qrm="${u.qid}">${icon('close')}</button></div>`)}` : ''}
+        ${uq.map((u, i) => html`<div class="q-item" data-qjump="${i}">${cover(u, '', 96)}<div class="t-text"><span class="t-title">${u.title}</span><span class="t-artists muted">${artistLinks(u)}</span></div>${mixTag(u.id)}<button class="q-x icon-btn" data-qrm="${u.qid}">${icon('close')}</button>${sync.target ? '' : html`<button class="q-grip icon-btn" aria-label="Déplacer" title="Maintenir et glisser pour déplacer">${icon('drag', 20)}</button>`}</div>`)}` : ''}
       ${ctxUp.length ? html`<div class="q-label">Ensuite${v.context?.name ? ` : ${v.context.name}` : ''}</div>
-        ${ctxUp.map((u, i) => html`<div class="q-item" data-qjump="${i + uq.length}">${cover(u, '', 96)}<div class="t-text"><span class="t-title">${u.title}</span><span class="t-artists muted">${u.autoplay ? html`<span class="tag">AUTO</span>` : ''}${artistLinks(u)}</span></div>${mixTag(u.id)}</div>`)}` : ''}
+        ${ctxUp.map((u, i) => html`<div class="q-item" data-qjump="${i + uq.length}">${cover(u, '', 96)}<div class="t-text"><span class="t-title">${u.title}</span><span class="t-artists muted">${u.autoplay ? html`<span class="tag">AUTO</span>` : ''}${artistLinks(u)}</span></div>${mixTag(u.id)}${sync.target ? '' : html`<button class="q-grip icon-btn" aria-label="Déplacer" title="Maintenir et glisser pour déplacer">${icon('drag', 20)}</button>`}</div>`)}` : ''}
       ${!t && !up.length ? html`<p class="muted">La file d'attente est vide.</p>` : ''}
       ${sync.jam ? html`<a class="outline-btn" href="#/jam" style="display:inline-block;margin-top:16px">File de la party (${sync.jam.queue.length})</a>` : ''}
     </div>`);
@@ -850,6 +850,51 @@ function renderPanel() {
     });
   }
   rp.querySelectorAll('[data-qrm]').forEach((b) => (b.onclick = () => ctl.removeFromQueue(b.dataset.qrm)));
+  // Téléphone : poignée ≡ à maintenir pour déplacer un son dans la file (le glisser-déposer du PC ne marche pas au doigt)
+  rp.querySelectorAll('.q-grip').forEach((g) => {
+    g.onclick = (e) => e.stopPropagation();
+    g.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const row = g.closest('[data-qjump]');
+      const from = Number(row.dataset.qjump);
+      const rows = [...rp.querySelectorAll('[data-qjump]')];
+      const body = rp.querySelector('.rp-body') || rp;
+      const y0 = e.touches[0].clientY;
+      const top0 = body.scrollTop;
+      let ins = from;
+      row.classList.add('q-lift');
+      navigator.vibrate?.(10);
+      const move = (ev) => {
+        ev.preventDefault();
+        const y = ev.touches[0].clientY;
+        // Bord du panneau : on fait défiler pour atteindre la suite
+        const br = body.getBoundingClientRect();
+        if (y < br.top + 50) body.scrollTop -= 12;
+        else if (y > br.bottom - 50) body.scrollTop += 12;
+        row.style.transform = `translateY(${y - y0 + body.scrollTop - top0}px)`;
+        ins = rows.length;
+        for (const r of rows) {
+          if (r === row) continue;
+          const b = r.getBoundingClientRect();
+          if (y < b.top + b.height / 2) { ins = Number(r.dataset.qjump); break; }
+        }
+        rows.forEach((r) => r.classList.toggle('drop-before', r !== row && Number(r.dataset.qjump) === ins));
+      };
+      const end = () => {
+        g.removeEventListener('touchmove', move);
+        g.removeEventListener('touchend', end);
+        g.removeEventListener('touchcancel', end);
+        row.classList.remove('q-lift');
+        row.style.transform = '';
+        rows.forEach((r) => r.classList.remove('drop-before'));
+        const to = ins > from ? ins - 1 : ins;
+        if (to !== from) player.moveUpcoming(from, to);
+      };
+      g.addEventListener('touchmove', move, { passive: false });
+      g.addEventListener('touchend', end);
+      g.addEventListener('touchcancel', end);
+    }, { passive: false });
+  });
 }
 
 // Le clip YouTube est un iframe fixe qu'on positionne au-dessus de l'emplacement voulu
