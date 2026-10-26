@@ -11,7 +11,8 @@ on:
     # les téléphones par la mise à jour en ligne. Avant, chaque publication créait une version et SideStore
     # pointait vers des versions déjà supprimées (« Boombox.ipa doesn't exist »).
     # updater.js en fait partie : c'est lui qui installe les mises à jour, une erreur dedans ne peut pas se corriger en ligne.
-    paths: ['public/js/updater.js', 'mobile/plugins/**', 'mobile/ios-app/**', 'resources/**', 'capacitor.config.json', 'package.json', '.github/workflows/mobile.yml']
+    # server/, Boombox.cmd, tray.ps1, boombox.iss : dans l'installateur PC, qui ne se met pas à jour en ligne
+    paths: ['public/js/updater.js', 'server/**', 'Boombox.cmd', 'scripts/tray.ps1', 'scripts/boombox.iss','mobile/plugins/**', 'mobile/ios-app/**', 'resources/**', 'capacitor.config.json', 'package.json', '.github/workflows/mobile.yml']
   workflow_dispatch:
 
 permissions:
