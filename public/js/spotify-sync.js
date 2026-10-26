@@ -10,8 +10,9 @@ import { toast, plural } from './ui.js';
 // Identifiant (public) de l'application Spotify « Boombox » du tableau de bord développeur Spotify
 export const SPOTIFY_CLIENT_ID = '02d03bc4117947269cbfc2cacc04cfb0';
 const SCOPES = 'playlist-modify-private playlist-modify-public user-library-modify user-library-read user-read-private';
-const isPc = () => /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const native = () => !!window.Capacitor?.isNativePlatform?.();
+// L'appli téléphone tourne aussi sur « localhost » (Capacitor) : ce n'est pas le PC pour autant
+const isPc = () => !native() && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 // Adresse de retour (à déclarer telle quelle dans le tableau de bord Spotify)
 const redirectUri = () => (isPc() ? 'http://127.0.0.1:8787/spotify-callback.html' : 'https://musikal-b72d1.web.app/spotify-callback.html');
 
