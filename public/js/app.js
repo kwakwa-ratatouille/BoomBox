@@ -1704,7 +1704,8 @@ async function boot() {
   if (isNative) setupSiri();
   setTimeout(() => localStorage.removeItem("boombox.booting"), 4000); // démarrage réussi
 
-  setTimeout(showWhatsNew, 1500);
+  // Visite guidée au premier lancement (une fois par appareil) ; sinon, les nouveautés depuis la dernière visite
+  setTimeout(() => import('./tour.js').then((m) => (m.tourDone() ? showWhatsNew() : m.startTour())).catch(() => showWhatsNew()), 1200);
   import('./alarm.js').then((m) => m.startAlarm()).catch(() => {}); // réveil en musique
   import('./drunk.js').then((m) => m.setupDrunkTrigger()).catch(() => {}); // mode caché
   // Un son = une entrée : versions SoundCloud rattachées à YouTube Music, doublons fusionnés (en arrière-plan)

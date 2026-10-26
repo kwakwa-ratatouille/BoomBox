@@ -552,6 +552,7 @@ export async function settings(el) {
 
     <h2 style="font-size:20px;margin-top:32px">À propos</h2>
 <div class="settings-row"><div><b>Version</b><p id="s-version">…</p></div><button class="btn white" id="s-apk" hidden>Mettre à jour l'appli</button></div>
+    <div class="settings-row"><div><b>Visite guidée</b><p>Le petit tour de Boombox du premier lancement : où trouver chaque chose.</p></div><button class="btn ghost" id="s-tour">Revoir</button></div>
     ${isNative ? html`<div class="settings-row"><div><b>Diagnostic lecture</b><p>Si les sons ne se lancent pas : teste chaque étape (PC, YouTube, téléchargement) et envoie une capture du résultat.</p></div><button class="btn ghost" id="s-diag">Lancer</button></div>` : ''}
     ${isNative ? '' : html`<div class="settings-row"><div><b>Raccourcis clavier</b><p>Espace : lecture/pause · Ctrl+→ / Ctrl+← : suivant/précédent · Maj+→ / Maj+← : ±10 s · Ctrl+↑/↓ : volume · L : liker · / : rechercher</p></div></div>`}
   </div>`);
@@ -737,6 +738,10 @@ export async function settings(el) {
     }));
   };
   drawMembers();
+  el.querySelector('#s-tour')?.addEventListener('click', () => {
+    location.hash = '#/';
+    setTimeout(() => import('./tour.js').then((m) => m.startTour({ force: true })), 400);
+  });
   el.querySelector('#s-diag')?.addEventListener('click', () => {
     modal({
       title: 'Diagnostic lecture',

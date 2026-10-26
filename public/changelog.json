@@ -1,8 +1,9 @@
 [
   {
     "version": "2026.1026.1842",
-    "title": "Lecture des sons hors playlist plus fiable",
+    "title": "Visite guidée et lecture plus fiable",
     "items": [
+      "Nouveau : une visite guidée au premier lancement montre où trouver chaque chose (recherche, bibliothèque, import, IA, lecteur, amis…). Bouton « Passer le tuto » à tout moment, et Paramètres → Visite guidée pour la revoir.",
       "Sans PC (en 4G par exemple), les sons pas encore téléchargés sont récupérés par morceaux même quand YouTube ne donne pas leur taille : il refuse maintenant qu’on télécharge un son d’un seul coup.",
       "Paramètres → Diagnostic lecture teste aussi la lecture par le PC, et le téléchargement YouTube comme pendant une vraie écoute."
     ],
