@@ -9,11 +9,17 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { report } from './report.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUB = path.join(ROOT, 'public');
 const WEB = 'https://musikal-b72d1.web.app/';
 const REPO = 'kwakwa-ratatouille/BoomBox';
+// Dernière installation lancée : si la version installée n'a pas suivi, elle a échoué (rapport, et pas de nouvel
+// essai de la même version avant 24 h). Journal de l'installateur dans le dossier temporaire (pas dans celui de
+// Boombox : l'installateur arrête tout ce qui y fait référence).
+const ATTEMPT = path.join(ROOT, 'cache', 'update-attempt.json');
+const SETUP_LOG = path.join(os.tmpdir(), 'Boombox-update.log');
 
 const installed = () => process.platform === 'win32' && fs.existsSync(path.join(ROOT, 'node', 'node.exe')) && !fs.existsSync(path.join(ROOT, '.git'));
 const readJson = (f) => {
@@ -75,6 +81,18 @@ async function updateApp() {
   const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { 'user-agent': 'Boombox' } }).then((x) => (x.ok ? x.json() : null));
   const asset = r?.assets?.find((a) => a.name === 'Boombox-Setup.exe');
   if (!asset || !newer(r.tag_name, local.version)) return;
+  const tried = readJson(ATTEMPT);
+  if (tried?.version === r.tag_name && newer(tried.version, local.version)) {
+    if (!tried.reported) {
+      let log = '';
+      try {
+        log = fs.readFileSync(SETUP_LOG, 'utf8').split('\n').filter((l) => /error|erreur|abort|in use|failed|échoué/i.test(l)).slice(-12).join('\n');
+      } catch {}
+      report(`Mise à jour ${local.version} → ${r.tag_name} ratée`, 'pc-update', log);
+      fs.writeFileSync(ATTEMPT, JSON.stringify({ ...tried, reported: true }));
+    }
+    if (Date.now() - tried.at < 24 * 3600e3) return;
+  }
   if (Date.now() - lastPlay < 10 * 60e3) return; // musique en cours : on réessaiera plus tard
   installing = true;
   const exe = path.join(os.tmpdir(), `Boombox-Setup-${r.tag_name}.exe`);
@@ -86,7 +104,9 @@ async function updateApp() {
     }
     console.log(`  Mise à jour de Boombox : ${r.tag_name} (redémarrage du serveur)`);
     // Détaché : l'installateur arrête ce serveur puis le relance (voir scripts/boombox.iss)
-    spawn(exe, ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    fs.mkdirSync(path.dirname(ATTEMPT), { recursive: true });
+    fs.writeFileSync(ATTEMPT, JSON.stringify({ version: r.tag_name, at: Date.now() }));
+    spawn(exe, ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', `/LOG=${SETUP_LOG}`], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
   } catch (e) {
     installing = false;
     throw e;
@@ -94,8 +114,8 @@ async function updateApp() {
 }
 
 async function check() {
-  await updateInterface().catch((e) => console.error('  Mise à jour de l’interface impossible :', e.message));
-  await updateApp().catch((e) => console.error('  Mise à jour de Boombox impossible :', e.message));
+  await updateInterface().catch((e) => (console.error('  Mise à jour de l’interface impossible :', e.message), report(`Mise à jour de l’interface impossible : ${e.message}`, 'pc-update')));
+  await updateApp().catch((e) => (console.error('  Mise à jour de Boombox impossible :', e.message), report(`Mise à jour de Boombox impossible : ${e.message}`, 'pc-update')));
 }
 
 export function startAutoUpdate() {

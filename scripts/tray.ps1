@@ -20,6 +20,12 @@ function Start-Server {
   # Version installée (setup Windows) : Node est fourni avec l'appli ; sinon celui du PC
   $node = Join-Path $root 'node\node.exe'
   if (-not (Test-Path $node)) { $node = 'node' }
+  # Serveur qui s'arrête en boucle (3 relances en 3 min) : rapport de plantage, une fois (server\report.js)
+  $script:starts = @(@($script:starts) + (Get-Date) | Where-Object { $_ -and $_ -gt (Get-Date).AddMinutes(-3) })
+  if ($script:starts.Count -ge 3 -and -not $script:reported) {
+    $script:reported = $true
+    Start-Process -FilePath $node -ArgumentList 'server\report.js', '"Le serveur s''arrete en boucle"', 'icone' -WorkingDirectory $root -WindowStyle Hidden
+  }
   $script:server = Start-Process -FilePath $node -ArgumentList 'server\index.js' -WorkingDirectory $root -WindowStyle Hidden -PassThru
 }
 
@@ -32,7 +38,8 @@ function Stop-Server {
 
 function Open-Boombox {
   # Appli Chrome installée : même fenêtre que l'icône épinglée dans la barre des tâches
-  $pwa = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter 'Boombox.lnk' -ErrorAction SilentlyContinue | Where-Object { $_.DirectoryName -notmatch 'Startup|Démarrage' } | Select-Object -First 1
+  # (raccourci vers chrome_proxy / msedge_proxy seulement : celui de l'installateur pointe vers Boombox.cmd)
+  $pwa = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter 'Boombox.lnk' -ErrorAction SilentlyContinue | Where-Object { (New-Object -ComObject WScript.Shell).CreateShortcut($_.FullName).TargetPath -match '_proxy.exe$' } | Select-Object -First 1
   if ($pwa) { Start-Process $pwa.FullName; return }
   $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LocalAppData\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
   if ($chrome) { Start-Process $chrome "--app=$url" } else { Start-Process $url }

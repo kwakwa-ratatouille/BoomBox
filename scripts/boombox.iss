@@ -47,11 +47,18 @@ Filename: "{app}\Boombox.cmd"; WorkingDir: "{app}"; Description: "Ouvrir Boombox
 Filename: "{app}\Boombox.cmd"; Parameters: "/serveur"; WorkingDir: "{app}"; Flags: nowait runhidden; Check: WizardSilent
 
 [Code]
-// Avant d'installer une mise à jour ou de désinstaller : on arrête le serveur Boombox en cours (sinon fichiers verrouillés)
+// Avant d'installer une mise à jour ou de désinstaller : on arrête tout ce qui tourne depuis le dossier de Boombox
+// (sinon fichiers verrouillés et installation annulée) : node, cloudflared, yt-dlp, et l'icône / le lanceur
+// (powershell, cmd). Par WMI (Get-CimInstance) : l'installateur est en 32 bits, et un PowerShell 32 bits ne voit
+// pas le chemin des programmes 64 bits avec Get-Process.
 procedure StopBoombox();
 var R: Integer;
 begin
-  Exec('powershell.exe', '-NoProfile -WindowStyle Hidden -Command "Get-Process node,powershell -ErrorAction SilentlyContinue | Where-Object { $_.Path -like ''' + ExpandConstant('{app}') + '*'' -or ($_.Name -eq ''powershell'' -and (Get-CimInstance Win32_Process -Filter (''ProcessId='' + $_.Id)).CommandLine -like ''*Boombox*tray.ps1*'') } | Stop-Process -Force"', '', SW_HIDE, ewWaitUntilTerminated, R);
+  Exec('powershell.exe', '-NoProfile -WindowStyle Hidden -Command "$a = ''' + ExpandConstant('{app}') + '\''; ' +
+    'Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.Name -notlike ''unins*'' -and (' +
+    '($_.ExecutablePath -and $_.ExecutablePath.StartsWith($a, [StringComparison]::OrdinalIgnoreCase)) -or ' +
+    '($_.Name -in ''cmd.exe'',''powershell.exe'' -and $_.CommandLine -and $_.CommandLine.IndexOf($a, [StringComparison]::OrdinalIgnoreCase) -ge 0)) } | ' +
+    'ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 800"', '', SW_HIDE, ewWaitUntilTerminated, R);
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

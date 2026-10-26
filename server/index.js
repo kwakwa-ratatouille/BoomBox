@@ -18,6 +18,7 @@ import { askAi, pickModel, resolveAiResult } from './ai.js';
 import { findLyrics, searchByLyrics } from './lyrics.js';
 import { discover } from './discover.js';
 import { startAutoUpdate, activity } from './pc-update.js';
+import { startLog, report } from './report.js';
 import { resolveInput } from './resolve.js';
 import * as relay from './relay.js';
 import { setPresence } from './discord.js';
@@ -30,8 +31,9 @@ try {
 const PORT = Number(process.env.PORT || cfg.port || 8787);
 
 // Le serveur ne doit jamais s'arrêter à cause d'une erreur réseau ponctuelle (YouTube injoignable, etc.)
-process.on('uncaughtException', (e) => console.error('Erreur inattendue (le serveur continue) :', e.message));
-process.on('unhandledRejection', (e) => console.error('Erreur inattendue (le serveur continue) :', e?.message || e));
+startLog(); // PC installé : journal dans cache/boombox.log, joint aux rapports de plantage
+process.on('uncaughtException', (e) => (console.error('Erreur inattendue (le serveur continue) :', e.message), report(e.message, 'serveur', e.stack)));
+process.on('unhandledRejection', (e) => (console.error('Erreur inattendue (le serveur continue) :', e?.message || e), report(e?.message || String(e), 'serveur:promesse', e?.stack)));
 
 const app = express();
 app.use(activity); // dernière écoute : la mise à jour auto du PC attend la fin de la musique
