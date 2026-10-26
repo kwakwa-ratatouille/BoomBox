@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// Node qui fait tourner ce serveur (celui fourni par l'installateur Windows n'est pas dans le PATH)
+const JS_RUNTIME = `node:${process.execPath}`;
 
 function findYtDlp() {
   const local = path.join(ROOT, 'bin', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
@@ -46,8 +48,8 @@ function resolveUrl(id, low = false) {
   const p = new Promise((resolve, reject) => {
     execFile(
       ytDlpPath,
-      // --js-runtimes node : yt-dlp utilise Node (déjà installé) pour déchiffrer les liens YouTube
-      ['--js-runtimes', 'node', '-f', low ? 'worstaudio[ext=m4a]/bestaudio[ext=m4a]/bestaudio' : 'bestaudio[ext=m4a]/bestaudio', '-g', '--no-playlist', '--no-warnings', `https://www.youtube.com/watch?v=${id}`],
+      // --js-runtimes : yt-dlp utilise ce même Node pour déchiffrer les liens YouTube
+      ['--js-runtimes', JS_RUNTIME, '-f', low ? 'worstaudio[ext=m4a]/bestaudio[ext=m4a]/bestaudio' : 'bestaudio[ext=m4a]/bestaudio', '-g', '--no-playlist', '--no-warnings', `https://www.youtube.com/watch?v=${id}`],
       { timeout: 30e3, windowsHide: true },
       (err, stdout) => {
         pending.delete(key);
@@ -102,7 +104,7 @@ function rawDownload(id) {
     // Téléchargé sous un nom temporaire, renommé seulement une fois complet
     const tmp = file + '.dl';
     fs.rmSync(tmp, { force: true });
-    execFile(ytDlpPath, ['--js-runtimes', 'node', '-f', 'bestaudio[ext=m4a]/bestaudio', '-o', tmp, '--no-part', '--no-playlist', '--no-warnings', '--quiet', isScId(id) ? scUrl(id) : `https://www.youtube.com/watch?v=${id}`], { timeout: 150e3, windowsHide: true }, (err) => {
+    execFile(ytDlpPath, ['--js-runtimes', JS_RUNTIME, '-f', 'bestaudio[ext=m4a]/bestaudio', '-o', tmp, '--no-part', '--no-playlist', '--no-warnings', '--quiet', isScId(id) ? scUrl(id) : `https://www.youtube.com/watch?v=${id}`], { timeout: 150e3, windowsHide: true }, (err) => {
       downloads.delete(id);
       if (err || !fs.existsSync(tmp) || !fs.statSync(tmp).size) {
         fs.rmSync(tmp, { force: true });
