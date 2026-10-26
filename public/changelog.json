@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1026.1620",
+    "title": "Boombox sur PC se met à jour tout seul",
+    "items": [
+      "Boombox installé sur PC vérifie les nouveautés au démarrage puis toutes les 6 h et s’installe tout seul, sans rien demander et jamais pendant une écoute.",
+      "Il faut installer une dernière fois la version actuelle à la main (Paramètres → Boombox sur PC → Télécharger)."
+    ],
+    "date": "2026-10-26"
+  },
+  {
     "version": "2026.1026.1612",
     "title": "Connexion Spotify et Boombox sur PC",
     "items": [
