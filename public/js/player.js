@@ -1104,7 +1104,9 @@ export const player = {
       return;
     }
     toast(`« ${t.title} » ne peut pas être lu (${code}). Titre suivant…`);
-    import('./errors.js').then((m) => m.reportError(`Lecture impossible : ${code}`, `player:${this.engine?.name || '?'}`, `${t.id} · ${t.title}`)).catch(() => {});
+    // Appli : tous les essais ratés du téléchargement (PC, chaque client YouTube, SoundCloud) pour trouver la cause
+    const trail = isNative ? await localApi().then((l) => l.media.failTrail?.(playId(t.id)) || '').catch(() => '') : '';
+    import('./errors.js').then((m) => m.reportError(`Lecture impossible : ${code}`, `player:${this.engine?.name || '?'}`, `${t.id} · ${t.title}${trail ? `\n${trail}` : ''}`)).catch(() => {});
     setTimeout(() => this.next(), 800);
   },
 

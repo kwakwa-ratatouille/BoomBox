@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1026.1830",
+    "title": "Sons qui ne se lancent pas : meilleur diagnostic",
+    "items": [
+      "Quand un son ne peut pas être lu sur téléphone, le rapport envoyé automatiquement détaille chaque essai (PC, YouTube, SoundCloud) pour corriger la vraie cause."
+    ],
+    "date": "2026-10-26"
+  },
+  {
     "version": "2026.1026.1620",
     "title": "Boombox sur PC se met à jour tout seul",
     "items": [

@@ -94,6 +94,7 @@ async function remoteAudio(id, exclude = []) {
   if (hit && hit.exp > Date.now() && !exclude.includes(hit.client)) return hit;
   const y = await playerYt();
   let lastErr = null;
+  const all = []; // erreur de chaque client, jointe au rapport « Lecture impossible »
   const good = localStorage.getItem('boombox.ytClient');
   const order = [...CLIENTS].sort((a, b) => (b[0] === good) - (a[0] === good));
   for (const [client, ua] of order) {
@@ -104,9 +105,10 @@ async function remoteAudio(id, exclude = []) {
       return r;
     } catch (e) {
       lastErr = new Error(`${client} : ${e.message}`);
+      all.push(lastErr.message);
     }
   }
-  throw lastErr || new Error('Audio introuvable');
+  throw Object.assign(lastErr || new Error('Audio introuvable'), { all });
 }
 // Compatibilité (autres appels) : lien seul
 async function remoteAudioUrl(id) {
@@ -303,6 +305,10 @@ async function ytTwin(id, meta) {
   })?.id || null;
 }
 
+// Dernier échec de téléchargement de chaque son : liste des essais ratés (rapport de bug du lecteur)
+const failTrails = new Map();
+export const failTrail = (id) => (failTrails.get(id) || []).join(' / ');
+
 export function downloadAudio(id, { keep = false } = {}) {
   if (audioIndex[id]) {
     audioIndex[id].used = Date.now();
@@ -316,12 +322,19 @@ export function downloadAudio(id, { keep = false } = {}) {
     await Filesystem.mkdir({ path: 'audio', directory: Directory.Data, recursive: true }).catch(() => {});
     let stat = null;
     let lastErr = null;
+    // Chaque essai raté (PC, chaque client YouTube, SoundCloud…), joint au rapport « Lecture impossible »
+    const trail = [];
+    const fail = (e) => {
+      trail.push(...(e?.all?.length ? e.all : [String(e?.message || e)]));
+      lastErr = e;
+      return null;
+    };
     // 1. Par le PC (même Wi-Fi)
-    if (relay) stat = await fetchTo(path, relayUrl(`/api/audio-file/${id}`)).catch((e) => ((lastErr = e), null));
+    if (relay) stat = await fetchTo(path, relayUrl(`/api/audio-file/${id}`)).catch((e) => fail(e));
     // 2. SoundCloud (sans PC) : le mini-serveur donne le lien, le téléphone télécharge directement chez SoundCloud
-    if (!stat && /^sc_/.test(id)) stat = await scDownload(id, path).catch((e) => ((lastErr = new Error(`SoundCloud : ${e.message}`)), null));
+    if (!stat && /^sc_/.test(id)) stat = await scDownload(id, path).catch((e) => fail(new Error(`SoundCloud : ${e.message}`)));
     if (/^sc_/.test(id)) {
-      if (!stat) throw lastErr || new Error('SoundCloud indisponible');
+      if (!stat) throw Object.assign(lastErr || new Error('SoundCloud indisponible'), { trail });
       audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep };
       saveIndex();
       pruneCache();
@@ -330,17 +343,16 @@ export function downloadAudio(id, { keep = false } = {}) {
     // 2. Directement chez YouTube, en changeant de client si l'un est refusé. Android : yt-dlp d'abord s'il est
     // le seul à avoir marché la dernière fois, et 2 clients seulement avant de passer à lui (il est plus sûr)
     const ytdlp = androidYtdlp();
-    const viaYtdlp = () => ytdlpDownload(id, path).then((st) => (localStorage.setItem('boombox.ytClient', 'ytdlp'), st)).catch((e) => ((lastErr = new Error(`yt-dlp : ${e.message}`)), null));
+    const viaYtdlp = () => ytdlpDownload(id, path).then((st) => (localStorage.setItem('boombox.ytClient', 'ytdlp'), st)).catch((e) => fail(new Error(`yt-dlp : ${e.message}`)));
     if (!stat && ytdlp && localStorage.getItem('boombox.ytClient') === 'ytdlp') stat = await viaYtdlp();
     const tried = [];
     while (!stat && tried.length < (ytdlp ? 2 : 5)) {
-      const r = await remoteAudio(id, tried).catch((e) => ((lastErr = e), null));
+      const r = await remoteAudio(id, tried).catch((e) => fail(e));
       if (!r) break;
       tried.push(r.client);
       stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => {
-        lastErr = new Error(`${r.client} : ${e.message}`);
         urlCache.delete(id);
-        return null;
+        return fail(new Error(`${r.client} : téléchargement ${e.message}`));
       });
       if (stat) localStorage.setItem('boombox.ytClient', r.client);
     }
@@ -352,17 +364,21 @@ export function downloadAudio(id, { keep = false } = {}) {
       const alts = await yt.alternatives(id, m && { title: m.title, artist: m.artist, duration: m.duration }).catch(() => []);
       const twin = m && (await ytTwin(id, m).catch(() => null));
       for (const alt of [...new Set([...alts, twin].filter(Boolean))].slice(0, 3)) {
-        const r = await remoteAudio(alt).catch((e) => ((lastErr = e), null));
-        if (r) stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => ((lastErr = e), null));
+        const r = await remoteAudio(alt).catch((e) => fail(e));
+        if (r) stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => fail(e));
         if (stat) break;
       }
     }
     // 4. YouTube refuse (fréquent sans PC, surtout sur iPhone) : le même son sur SoundCloud
     if (!stat && trackMeta.has(id)) {
       const twin = await scTwin(trackMeta.get(id)).catch(() => null);
-      if (twin) stat = await scDownload(twin.id, path).catch((e) => ((lastErr = new Error(`SoundCloud : ${e.message}`)), null));
+      if (twin) stat = await scDownload(twin.id, path).catch((e) => fail(new Error(`SoundCloud : ${e.message}`)));
+      else trail.push('SoundCloud : aucun équivalent');
+    } else if (!stat) trail.push('SoundCloud : infos du son absentes');
+    if (!stat) {
+      failTrails.set(id, trail);
+      throw Object.assign(lastErr || new Error('téléchargement impossible'), { trail });
     }
-    if (!stat) throw lastErr || new Error('téléchargement impossible');
     audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep };
     saveIndex();
     pruneCache();
@@ -551,4 +567,4 @@ export function unkeep(id) {
   if (audioIndex[id]) (audioIndex[id].keep = false), saveIndex();
 }
 
-export const media = { rememberMeta, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
+export const media = { rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
