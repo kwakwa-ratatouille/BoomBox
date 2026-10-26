@@ -12,7 +12,7 @@ on:
     # pointait vers des versions déjà supprimées (« Boombox.ipa doesn't exist »).
     # updater.js en fait partie : c'est lui qui installe les mises à jour, une erreur dedans ne peut pas se corriger en ligne.
     # server/, Boombox.cmd, tray.ps1, boombox.iss : dans l'installateur PC, qui ne se met pas à jour en ligne
-    paths: ['public/js/updater.js', 'server/**', 'Boombox.cmd', 'scripts/tray.ps1', 'scripts/boombox.iss','mobile/plugins/**', 'mobile/ios-app/**', 'resources/**', 'capacitor.config.json', 'package.json', '.github/workflows/mobile.yml']
+    paths: ['public/js/updater.js', 'server/**', 'Boombox.cmd', 'scripts/tray.ps1', 'scripts/open.ps1', 'scripts/boombox.iss','mobile/plugins/**', 'mobile/ios-app/**', 'resources/**', 'capacitor.config.json', 'package.json', '.github/workflows/mobile.yml']
   workflow_dispatch:
 
 permissions:
@@ -183,7 +183,7 @@ jobs:
           $d = "dist/win"
           New-Item -ItemType Directory -Force "$d/node", "$d/bin", "$d/scripts", "$d/resources" | Out-Null
           Copy-Item -Recurse server, public "$d/"
-          Copy-Item scripts/tray.ps1 "$d/scripts/"
+          Copy-Item scripts/tray.ps1, scripts/open.ps1 "$d/scripts/"
           Copy-Item resources/boombox.ico "$d/resources/"
           Copy-Item Boombox.cmd, package.json, package-lock.json "$d/"
           Copy-Item -Recurse mobile/plugins "$d/mobile/plugins"

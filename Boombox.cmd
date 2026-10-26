@@ -16,24 +16,6 @@ if errorlevel 1 (
 rem « Boombox.cmd /serveur » : démarre seulement le serveur (lancement automatique avec Windows)
 if /i "%~1"=="/serveur" exit /b 0
 
-set "URL=http://localhost:8787"
-rem Boombox installé comme appli Chrome (menu ⋮ → Installer) : on ouvre CETTE appli, pour que l'icône épinglée
-rem dans la barre des tâches soit la même fenêtre (sinon Windows la range avec Chrome).
-rem Seulement un raccourci d'appli Chrome / Edge (*_proxy.exe) : celui du menu Démarrer créé par l'installateur
-rem s'appelle aussi « Boombox » mais pointe vers ce lanceur, qui se relancerait alors sans fin.
-for /f "usebackq delims=" %%L in (`powershell -NoProfile -Command "Get-ChildItem \"$env:APPDATA\Microsoft\Windows\Start Menu\Programs\" -Recurse -Filter 'Boombox.lnk' -ErrorAction SilentlyContinue | Where-Object { (New-Object -ComObject WScript.Shell).CreateShortcut($_.FullName).TargetPath -match '_proxy.exe$' } | Select-Object -First 1 -ExpandProperty FullName"`) do set "PWA=%%L"
-if defined PWA (
-  start "" "%PWA%"
-  exit /b 0
-)
-if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
-  start "" "%ProgramFiles%\Google\Chrome\Application\chrome.exe" --app=%URL%
-) else if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" (
-  start "" "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" --app=%URL%
-) else if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" (
-  start "" "%LocalAppData%\Google\Chrome\Application\chrome.exe" --app=%URL%
-) else if exist "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" (
-  start "" "%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe" --app=%URL%
-) else (
-  start "" %URL%
-)
+rem Ouverture dans sa propre fenêtre : appli Boombox installée, sinon navigateur par défaut (s'il le permet),
+rem sinon Chrome ou Edge (détails dans scripts\open.ps1, partagé avec l'icône près de l'horloge)
+powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0scripts\open.ps1"

@@ -37,12 +37,8 @@ function Stop-Server {
 }
 
 function Open-Boombox {
-  # Appli Chrome installée : même fenêtre que l'icône épinglée dans la barre des tâches
-  # (raccourci vers chrome_proxy / msedge_proxy seulement : celui de l'installateur pointe vers Boombox.cmd)
-  $pwa = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Recurse -Filter 'Boombox.lnk' -ErrorAction SilentlyContinue | Where-Object { (New-Object -ComObject WScript.Shell).CreateShortcut($_.FullName).TargetPath -match '_proxy.exe$' } | Select-Object -First 1
-  if ($pwa) { Start-Process $pwa.FullName; return }
-  $chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LocalAppData\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
-  if ($chrome) { Start-Process $chrome "--app=$url" } else { Start-Process $url }
+  # Appli installée, navigateur par défaut ou Chrome / Edge : voir scripts\open.ps1 (partagé avec Boombox.cmd)
+  Start-Process powershell -ArgumentList '-NoProfile', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $PSScriptRoot 'open.ps1'), '-Url', $url -WindowStyle Hidden
 }
 
 $icon = New-Object System.Windows.Forms.NotifyIcon
