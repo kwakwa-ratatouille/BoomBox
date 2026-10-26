@@ -119,6 +119,17 @@ async function remoteAudioUrl(id) {
 export async function diagnose(id, log) {
   log(`Réseau : ${net.connected ? (net.wifi ? 'Wi-Fi' : 'données mobiles') : 'hors ligne'}`);
   log(`PC relais : ${relay || 'non trouvé'}`);
+  // Chemin utilisé en premier quand le PC est joignable : le son entier, préparé par le PC
+  if (relay) {
+    const t = Date.now();
+    try {
+      const st = await fetchTo('diag-pc.m4a', relayUrl(`/api/audio-file/${id}`));
+      log(`Par le PC : OK ${Math.round(st.size / 1024)} Ko en ${Date.now() - t} ms`);
+      await Filesystem.deleteFile({ path: 'diag-pc.m4a', directory: Directory.Data }).catch(() => {});
+    } catch (e) {
+      log(`Par le PC : ÉCHEC ${String(e?.message || e).slice(0, 120)}`);
+    }
+  }
   let y;
   try {
     const t = Date.now();
@@ -152,7 +163,7 @@ export async function diagnose(id, log) {
       const path = `diag-${client}.m4a`;
       const t = Date.now();
       try {
-        const st = await fetchTo(path, r.url, { 'User-Agent': r.ua });
+        const st = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size); // comme la vraie lecture (par morceaux)
         log(`${client}${r.withToken ? ' (jeton)' : ''} : téléchargement OK ${Math.round(st.size / 1024)} Ko en ${Date.now() - t} ms`);
         await Filesystem.deleteFile({ path, directory: Directory.Data }).catch(() => {});
       } catch (e) {
@@ -231,7 +242,10 @@ async function fetchTo(path, url, headers = {}) {
 // en Wi-Fi) : on le télécharge en morceaux de 1 Mo (paramètre range=), 4 à la fois, puis on les recolle.
 const CHUNK = 1024 * 1024;
 async function fetchChunked(path, url, headers, size) {
-  if (!size) return fetchTo(path, url, headers);
+  // YouTube refuse désormais un lien téléchargé d'un seul coup (403) : taille inconnue → morceaux l'un après
+  // l'autre jusqu'au dernier, plus court (lien du PC ou de SoundCloud : fichier entier, comme avant)
+  if (!size && !/googlevideo\.com/.test(url)) return fetchTo(path, url, headers);
+  if (!size) return fetchSequential(path, url, headers);
   const parts = [];
   for (let a = 0; a < size; a += CHUNK) parts.push([a, Math.min(size, a + CHUNK) - 1]);
   const queue = parts.map((p, i) => i);
@@ -253,6 +267,27 @@ async function fetchChunked(path, url, headers, size) {
   if (Math.abs(stat.size - size) > 1024) {
     await Filesystem.deleteFile({ path, directory: Directory.Data }).catch(() => {});
     throw new Error(`fichier incomplet (${stat.size}/${size} o)`);
+  }
+  return stat;
+}
+
+async function fetchSequential(path, url, headers) {
+  let n = 0;
+  for (;; n++) {
+    const part = `${path}.p${n}`;
+    await Filesystem.downloadFile({ url: `${url}&range=${n * CHUNK}-${(n + 1) * CHUNK - 1}`, path: part, directory: Directory.Data, recursive: true, headers });
+    const { size } = await Filesystem.stat({ path: part, directory: Directory.Data });
+    if (size < CHUNK || n > 60) break;
+  }
+  for (let i = 0; i <= n; i++) {
+    const { data } = await Filesystem.readFile({ path: `${path}.p${i}`, directory: Directory.Data });
+    await (i ? Filesystem.appendFile : Filesystem.writeFile)({ path, data, directory: Directory.Data });
+    await Filesystem.deleteFile({ path: `${path}.p${i}`, directory: Directory.Data }).catch(() => {});
+  }
+  const stat = await Filesystem.stat({ path, directory: Directory.Data });
+  if (stat.size < 30 * 1024) {
+    await Filesystem.deleteFile({ path, directory: Directory.Data }).catch(() => {});
+    throw new Error(`réponse invalide (${stat.size} o)`);
   }
   return stat;
 }

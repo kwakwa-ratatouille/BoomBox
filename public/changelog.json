@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1026.1842",
+    "title": "Lecture des sons hors playlist plus fiable",
+    "items": [
+      "Sans PC (en 4G par exemple), les sons pas encore téléchargés sont récupérés par morceaux même quand YouTube ne donne pas leur taille : il refuse maintenant qu’on télécharge un son d’un seul coup.",
+      "Paramètres → Diagnostic lecture teste aussi la lecture par le PC, et le téléchargement YouTube comme pendant une vraie écoute."
+    ],
+    "date": "2026-10-26"
+  },
+  {
     "version": "2026.1026.1830",
     "title": "Sons qui ne se lancent pas : meilleur diagnostic",
     "items": [
