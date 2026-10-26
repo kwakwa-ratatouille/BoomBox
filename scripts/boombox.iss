@@ -35,13 +35,14 @@ Name: "autostart"; Description: "Lancer le serveur Boombox au démarrage de Wind
 Source: "..\dist\win\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{group}\Boombox"; Filename: "{app}\Boombox.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\resources\boombox.ico"
+; runminimized : la fenêtre noire du lanceur (Boombox.cmd) reste dans la barre des tâches le temps du démarrage
+Name: "{group}\Boombox"; Filename: "{app}\Boombox.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\resources\boombox.ico"; Flags: runminimized
 Name: "{group}\Désinstaller Boombox"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\Boombox"; Filename: "{app}\Boombox.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\resources\boombox.ico"; Tasks: desktopicon
-Name: "{userstartup}\Boombox (serveur)"; Filename: "{app}\Boombox.cmd"; Parameters: "/serveur"; WorkingDir: "{app}"; IconFilename: "{app}\resources\boombox.ico"; Tasks: autostart
+Name: "{userdesktop}\Boombox"; Filename: "{app}\Boombox.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\resources\boombox.ico"; Tasks: desktopicon; Flags: runminimized
+Name: "{userstartup}\Boombox (serveur)"; Filename: "{app}\Boombox.cmd"; Parameters: "/serveur"; WorkingDir: "{app}"; IconFilename: "{app}\resources\boombox.ico"; Tasks: autostart; Flags: runminimized
 
 [Run]
-Filename: "{app}\Boombox.cmd"; WorkingDir: "{app}"; Description: "Ouvrir Boombox"; Flags: postinstall nowait skipifsilent shellexec
+Filename: "{app}\Boombox.cmd"; WorkingDir: "{app}"; Description: "Ouvrir Boombox"; Flags: postinstall nowait skipifsilent shellexec runminimized
 ; Mise à jour automatique (installateur lancé en silencieux par le serveur, server/pc-update.js) : on relance le serveur
 Filename: "{app}\Boombox.cmd"; Parameters: "/serveur"; WorkingDir: "{app}"; Flags: nowait runhidden; Check: WizardSilent
 

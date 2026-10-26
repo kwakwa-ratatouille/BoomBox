@@ -2,12 +2,13 @@
 rem Lance Boombox sur le PC : démarre le serveur (fenêtre réduite) s'il ne tourne pas déjà,
 rem puis ouvre l'appli dans sa propre fenêtre (Chrome ou Edge en mode application).
 cd /d "%~dp0"
+rem 127.0.0.1 et pas localhost : Windows PowerShell essaie d'abord IPv6 (::1), où le serveur n'écoute pas, et met 2 s à abandonner
 
-powershell -NoProfile -Command "try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:8787/api/status) | Out-Null; exit 0 } catch { exit 1 }"
+powershell -NoProfile -Command "try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://127.0.0.1:8787/api/status) | Out-Null; exit 0 } catch { exit 1 }"
 if errorlevel 1 (
   rem Serveur en arrière-plan, sans fenêtre, avec une icône près de l'horloge (scripts\tray.ps1)
   start "" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0scripts\tray.ps1"
-  powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://localhost:8787/api/status) | Out-Null; break } catch { Start-Sleep -Milliseconds 500 } }"
+  powershell -NoProfile -Command "for ($i = 0; $i -lt 30; $i++) { try { (Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 http://127.0.0.1:8787/api/status) | Out-Null; break } catch { Start-Sleep -Milliseconds 500 } }"
 )
 
 rem « Boombox.cmd /serveur » : démarre seulement le serveur (lancement automatique avec Windows)
