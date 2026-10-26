@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1026.1612",
+    "title": "Connexion Spotify et Boombox sur PC",
+    "items": [
+      "Se connecter à Spotify depuis l’appli téléphone ne renvoie plus vers une page « serveur éteint » : la connexion revient bien dans Boombox.",
+      "Boombox installé sur PC : la lecture directe des sons YouTube est plus fiable (le déchiffrage des liens utilise le Node fourni avec l’appli)."
+    ],
+    "date": "2026-10-26"
+  },
+  {
     "version": "2026.1025.1158",
     "title": "File d’attente plus pratique",
     "items": [
