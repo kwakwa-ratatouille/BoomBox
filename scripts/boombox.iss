@@ -42,6 +42,8 @@ Name: "{userstartup}\Boombox (serveur)"; Filename: "{app}\Boombox.cmd"; Paramete
 
 [Run]
 Filename: "{app}\Boombox.cmd"; WorkingDir: "{app}"; Description: "Ouvrir Boombox"; Flags: postinstall nowait skipifsilent shellexec
+; Mise à jour automatique (installateur lancé en silencieux par le serveur, server/pc-update.js) : on relance le serveur
+Filename: "{app}\Boombox.cmd"; Parameters: "/serveur"; WorkingDir: "{app}"; Flags: nowait runhidden; Check: WizardSilent
 
 [Code]
 // Avant d'installer une mise à jour ou de désinstaller : on arrête le serveur Boombox en cours (sinon fichiers verrouillés)

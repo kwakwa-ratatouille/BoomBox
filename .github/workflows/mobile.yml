@@ -187,6 +187,8 @@ jobs:
           Copy-Item resources/boombox.ico "$d/resources/"
           Copy-Item Boombox.cmd, package.json, package-lock.json "$d/"
           Copy-Item -Recurse mobile/plugins "$d/mobile/plugins"
+          # Version installée : la mise à jour auto du PC (server/pc-update.js) la compare à la dernière publiée
+          @{ version = $env:VERSION } | ConvertTo-Json | Set-Content -Encoding utf8NoBOM "$d/pc-version.json"
           Push-Location $d
           npm ci --omit=dev --ignore-scripts
           Pop-Location

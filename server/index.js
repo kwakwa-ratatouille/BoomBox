@@ -17,6 +17,7 @@ import { execFile } from 'node:child_process';
 import { askAi, pickModel, resolveAiResult } from './ai.js';
 import { findLyrics, searchByLyrics } from './lyrics.js';
 import { discover } from './discover.js';
+import { startAutoUpdate, activity } from './pc-update.js';
 import { resolveInput } from './resolve.js';
 import * as relay from './relay.js';
 import { setPresence } from './discord.js';
@@ -33,6 +34,7 @@ process.on('uncaughtException', (e) => console.error('Erreur inattendue (le serv
 process.on('unhandledRejection', (e) => console.error('Erreur inattendue (le serveur continue) :', e?.message || e));
 
 const app = express();
+app.use(activity); // dernière écoute : la mise à jour auto du PC attend la fin de la musique
 app.use(relay.guard); // requêtes arrivant par le tunnel Internet : clé secrète obligatoire
 app.use(express.json({ limit: '15mb' }));
 app.use(express.static(path.join(ROOT, 'public'), { extensions: ['html'] }));
@@ -341,4 +343,5 @@ http.createServer(app).listen(PORT, '0.0.0.0', () => {
   console.log(`  Lecture audio directe (yt-dlp) : ${ytDlpPath ? 'activée' : 'non installée → lecteur YouTube intégré'}\n`);
   relay.startTunnel(PORT, lanUrls);
   relay.announce().catch(() => {});
+  startAutoUpdate();
 });
