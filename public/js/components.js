@@ -485,9 +485,29 @@ export function trackMenu(track, x, y, { playlistId, index } = {}) {
         : { label: 'Ne plus proposer ce titre', icon: 'close', action: async () => { await toggleBan(track); if (player.track?.id === track.id && !player.remoteSender) player.next(); } },
       onPc && !track.local && { label: 'Télécharger sur le PC', icon: 'import', action: () => import('./views-local.js').then((m) => m.downloadToPc([track])) },
       window.Capacitor?.isNativePlatform?.() && !track.local && { label: window.__bbOfflineKept?.(track.id) ? 'Retirer du téléphone' : 'Télécharger sur le téléphone', icon: window.__bbOfflineKept?.(track.id) ? 'trash' : 'import', action: () => import('./offline.js').then((m) => m.offline.toggleTrack(track)) },
+      !track.local && { label: 'Son bizarre ? Le retélécharger', icon: 'sync', action: () => redownloadTrack(track) },
       !track.local && { label: 'Copier le lien YouTube', icon: 'link', action: () => navigator.clipboard?.writeText(`https://music.youtube.com/watch?v=${track.id}`).then(() => toast('Lien copié')) },
     ] },
   ]);
+}
+
+// Son abîmé ou mauvaise version (bruits, clip au lieu du son, copie SoundCloud…) : le fichier gardé est supprimé et
+// le son repris à la source ; sur téléphone, l'autre version utilisée à la place de l'originale est écartée
+async function redownloadTrack(track) {
+  const id = twinsMod.playId(track.id);
+  try {
+    if (window.Capacitor?.isNativePlatform?.()) {
+      const { localApi } = await import('./native.js');
+      await (await localApi()).media.redownload(id);
+    } else await api(`/api/audio-cache/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  } catch (e) {
+    return toast(`Impossible : ${e.message}`);
+  }
+  if (player.track?.id === track.id && player.engine?.name === 'audio' && !player.remoteSender) {
+    player.buffering = true;
+    player.engine.load(track.id, player.time(), !player.paused, true);
+  }
+  toast('Son retéléchargé depuis la source', { timeout: 4000 });
 }
 
 // « Regarder le clip » (comme « Passer à la vidéo » sur Spotify) : le clip officiel du son en grand ;

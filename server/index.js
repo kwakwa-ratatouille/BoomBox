@@ -11,7 +11,7 @@ import * as yt from './yt.js';
 import { startImport, getJob, spotifyApiToken, startMatch, syncPlaylist } from './importers.js';
 import { concertsFor, spotifyLatest, norm, searchSpotifyUsers, spotifyUserProfile } from './spotify-stats.js';
 import { autostartStatus, setAutostart } from './autostart.js';
-import { streamHandler, prefetchHandler, audioFileHandler, ytDlpPath, predownload, predownloadStatus, download, clipHandler } from './stream.js';
+import { streamHandler, prefetchHandler, audioFileHandler, ytDlpPath, predownload, predownloadStatus, download, clipHandler, forget } from './stream.js';
 import * as local from './localfiles.js';
 import { execFile } from 'node:child_process';
 import { askAi, pickModel, resolveAiResult } from './ai.js';
@@ -147,6 +147,7 @@ $f = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true; ShowInTa
 if ($d.ShowDialog($f) -eq 'OK') { $d.SelectedPath }`;
   return new Promise((resolve) => execFile('powershell.exe', ['-NoProfile', '-STA', '-Command', ps], { env: { ...process.env, BBX_START: start }, windowsHide: true, timeout: 10 * 60e3 }, (e, out) => resolve(e ? '' : String(out).trim())));
 }
+app.delete('/api/audio-cache/:id', (req, res) => res.json({ ok: forget(req.params.id) }));
 app.post('/api/prefetch/:id', prefetchHandler);
 app.get('/api/audio-file/:id', audioFileHandler);
 

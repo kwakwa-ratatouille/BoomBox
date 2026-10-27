@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1028.0019",
+    "title": "Plus de version « bizarre » d’un son",
+    "items": [
+      "Quand YouTube refuse un son, Boombox prenait parfois une copie mise en ligne par un fan (paroles traduites, intro, bruitages…). Il ne garde maintenant que les versions publiées par l’artiste lui-même, sur YouTube comme sur SoundCloud.",
+      "Nouveau : menu ⋯ d’un son → Plus → « Son bizarre ? Le retélécharger ». Le fichier gardé est supprimé et le son repris à la source ; sur téléphone, la version de remplacement fautive n’est plus jamais reprise pour ce son."
+    ],
+    "date": "2026-10-27"
+  },
+  {
     "version": "2026.1028.0003",
     "title": "Fondu et mix sur Android, fin des sons superposés",
     "items": [

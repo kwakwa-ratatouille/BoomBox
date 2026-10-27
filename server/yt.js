@@ -598,12 +598,17 @@ export async function alternatives(id, meta = null) {
   if (!title) return [];
   const clean = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
   const t = clean(title);
-  const bad = /remix|live|cover|karaok|instrumental|slowed|sped|reverb|8d|nightcore|extended|1 ?hour|1h/i;
+  // Clips et vidéos « paroles » exclus : bruitages, dialogues ou intro ajoutés par-dessus la musique
+  const bad = /remix|live|cover|karaok|instrumental|slowed|sped|reverb|8d|nightcore|extended|1 ?hour|1h|lyric|paroles|clip|music video|official video|visuali[sz]er|tiktok|mashup/i;
   const q = `${artist || ''} ${title}`.trim();
+  const a = clean(artist).split(' ')[0];
   const [songs, videos] = await Promise.all([search(q, 'song').catch(() => ({ items: [] })), search(q, 'video').catch(() => ({ items: [] }))]);
   return [...songs.items, ...videos.items]
     .filter((x) => x.id && x.id !== id && /^[\w-]{11}$/.test(x.id))
     .filter((x) => clean(x.title).includes(t) && !(bad.test(x.title) && !bad.test(title)))
+    // Mise en ligne par l'artiste (sa chaîne, « - Topic », VEVO) : pas les copies de fans, souvent retouchées
+    // (traduction des paroles, intro, bruitages… : un son « bizarre » qui ne correspond pas à l'original)
+    .filter((x) => !a || clean((x.artists || []).map((z) => z.name).join(' ')).includes(a))
     .filter((x) => !duration || !x.duration || Math.abs(x.duration - duration) <= 4)
     .map((x) => x.id)
     .filter((v, i, a) => a.indexOf(v) === i)

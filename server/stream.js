@@ -73,6 +73,12 @@ let lastStream = 0; // dernière lecture : le pré-téléchargement se met en pa
 const downloads = new Map();
 // Vidéo bloquée sans compte (« Sign in to confirm your age », réservée aux membres, indisponible ici…)
 const NEEDS_ACCOUNT = /confirm your age|age-restricted|inappropriate for some users|Sign in to confirm|members-only|not available in your country|Video unavailable/i;
+// « Retélécharger ce son » : le fichier gardé est oublié, la prochaine écoute le reprend chez YouTube
+export function forget(id) {
+  if (!/^[\w-]{1,64}$/.test(id)) return false;
+  fs.rmSync(path.join(AUDIO_DIR, `${id}.m4a`), { force: true });
+  return true;
+}
 export function download(id, { noAlt = false } = {}) {
   const file = path.join(AUDIO_DIR, `${id}.m4a`);
   if (fs.existsSync(file)) return Promise.resolve(file);

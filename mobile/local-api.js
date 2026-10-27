@@ -309,21 +309,28 @@ export function rememberMeta(t) {
   if (t?.id && t.title) trackMeta.set(t.id, { title: t.title, artist: (t.artists || [])[0]?.name || '', duration: t.duration || 0 });
 }
 const normTxt = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\(.*?\)|\[.*?\]|feat\.?.*$|ft\..*$/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-// Même son sur SoundCloud : titre qui correspond, artiste présent, durée proche (si connue)
-async function scTwin(meta) {
-  return (await scTwinFor(meta, `${meta.artist} ${meta.title}`)) || scTwinFor(meta, meta.title);
+// Versions remplaçantes à éviter : remix, accéléré, live, reprise… (sauf si le son d'origine en est une), et
+// celles signalées « mauvaise version » avec « Retélécharger ce son » (boombox.badAlt : { id: [autres ids] })
+const VARIANT = /\b(remix|rmx|sped|speed|slowed|reverb|nightcore|live|cover|instrumental|karaoke|8d|acoustic|edit|mashup|bootleg|flip|extended|lyrics?|clip|video|tiktok|loop)\b/;
+const isVariant = (orig, cand) => (cand.match(new RegExp(VARIANT, 'g')) || []).some((w) => !orig.includes(w));
+const badAlts = () => JSON.parse(localStorage.getItem('boombox.badAlt') || '{}');
+const isBadAlt = (id, alt) => (badAlts()[id] || []).includes(alt);
+// Même son sur SoundCloud : titre qui correspond, artiste présent, pas une variante, durée proche (5 s)
+async function scTwin(meta, id) {
+  return (await scTwinFor(meta, `${meta.artist} ${meta.title}`, id)) || scTwinFor(meta, meta.title, id);
 }
-async function scTwinFor(meta, q) {
+async function scTwinFor(meta, q, id) {
   const list = await scWorker(`/sc/search?q=${encodeURIComponent(q)}`).catch(() => []);
   const t = normTxt(meta.title);
   const a = normTxt(meta.artist).split(' ')[0];
   return (list || []).find((x) => {
+    if (isBadAlt(id, x.id)) return false;
     const xt = normTxt(x.title);
     const xa = normTxt((x.artists || [])[0]?.name);
     const titleOk = xt === t || xt.includes(t) || t.includes(xt);
-    const artistOk = !a || xa.includes(a) || xt.includes(a);
-    const durOk = !meta.duration || !x.duration || Math.abs(x.duration - meta.duration) < 15;
-    return titleOk && artistOk && durOk;
+    const artistOk = !a || xa.includes(a); // compte de l'artiste, pas une copie de fan
+    const durOk = !meta.duration || !x.duration || Math.abs(x.duration - meta.duration) < 5;
+    return titleOk && artistOk && durOk && !isVariant(normTxt(meta.title), normTxt(x.title));
   }) || null;
 }
 
@@ -333,10 +340,10 @@ async function ytTwin(id, meta) {
   const t = normTxt(meta.title);
   const a = normTxt(meta.artist).split(' ')[0];
   return (r?.songs || r?.items || []).find((x) => {
-    if (!x?.id || x.id === id) return false;
+    if (!x?.id || x.id === id || isBadAlt(id, x.id)) return false;
     const xt = normTxt(x.title);
     const xa = normTxt((x.artists || []).map((z) => z.name).join(' '));
-    return (xt === t || xt.includes(t) || t.includes(xt)) && (!a || xa.includes(a)) && (!meta.duration || !x.duration || Math.abs(x.duration - meta.duration) < 20);
+    return (xt === t || xt.includes(t) || t.includes(xt)) && (!a || xa.includes(a)) && !isVariant(t, xt) && (!meta.duration || !x.duration || Math.abs(x.duration - meta.duration) < 8);
   })?.id || null;
 }
 
@@ -357,6 +364,7 @@ export function downloadAudio(id, { keep = false } = {}) {
     await Filesystem.mkdir({ path: 'audio', directory: Directory.Data, recursive: true }).catch(() => {});
     let stat = null;
     let lastErr = null;
+    let from = null; // autre version utilisée à la place (gardée pour « Retélécharger ce son »)
     // Chaque essai raté (PC, chaque client YouTube, SoundCloud…), joint au rapport « Lecture impossible »
     const trail = [];
     const fail = (e) => {
@@ -398,23 +406,27 @@ export function downloadAudio(id, { keep = false } = {}) {
       const m = trackMeta.get(id);
       const alts = await yt.alternatives(id, m && { title: m.title, artist: m.artist, duration: m.duration }).catch(() => []);
       const twin = m && (await ytTwin(id, m).catch(() => null));
-      for (const alt of [...new Set([...alts, twin].filter(Boolean))].slice(0, 3)) {
+      for (const alt of [...new Set([...alts, twin].filter(Boolean))].filter((x) => !isBadAlt(id, x)).slice(0, 3)) {
         const r = await remoteAudio(alt).catch((e) => fail(e));
         if (r) stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => fail(e));
-        if (stat) break;
+        if (stat) {
+          from = alt;
+          break;
+        }
       }
     }
     // 4. YouTube refuse (fréquent sans PC, surtout sur iPhone) : le même son sur SoundCloud
     if (!stat && trackMeta.has(id)) {
-      const twin = await scTwin(trackMeta.get(id)).catch(() => null);
+      const twin = await scTwin(trackMeta.get(id), id).catch(() => null);
       if (twin) stat = await scDownload(twin.id, path).catch((e) => fail(new Error(`SoundCloud : ${e.message}`)));
+      if (stat) from = twin.id;
       else trail.push('SoundCloud : aucun équivalent');
     } else if (!stat) trail.push('SoundCloud : infos du son absentes');
     if (!stat) {
       failTrails.set(id, trail);
       throw Object.assign(lastErr || new Error('téléchargement impossible'), { trail });
     }
-    audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep };
+    audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep, ...(from && { from }) };
     saveIndex();
     pruneCache();
     return audioIndex[id];
@@ -435,6 +447,20 @@ export async function localAudioSrc(id, { stream = false, low = false } = {}) {
   await downloadAudio(id);
   const { uri } = await Filesystem.getUri({ path: `audio/${id}.m4a`, directory: Directory.Data });
   return Capacitor.convertFileSrc(uri);
+}
+
+// « Retélécharger ce son » (son abîmé ou mauvaise version) : le fichier est supprimé, et l'autre version utilisée
+// à la place de l'originale (clip, copie SoundCloud…) ne sera plus reprise pour ce son
+export async function redownload(id) {
+  const x = audioIndex[id];
+  if (x?.from) {
+    const b = badAlts();
+    b[id] = [...new Set([...(b[id] || []), x.from])];
+    localStorage.setItem('boombox.badAlt', JSON.stringify(b));
+  }
+  const keep = !!x?.keep;
+  await deleteAudio(id);
+  return { keep, wasAlt: !!x?.from };
 }
 
 export async function deleteAudio(id) {
@@ -602,4 +628,4 @@ export function unkeep(id) {
   if (audioIndex[id]) (audioIndex[id].keep = false), saveIndex();
 }
 
-export const media = { rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
+export const media = { redownload, rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
