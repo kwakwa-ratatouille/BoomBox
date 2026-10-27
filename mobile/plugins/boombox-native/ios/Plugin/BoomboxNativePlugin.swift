@@ -14,7 +14,8 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getInfo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setVoicePlaylists", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "takeVoiceCommand", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setAudioMode", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setAudioMode", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setKeepAwake", returnType: CAPPluginReturnPromise)
     ]
 
     override public func load() {
@@ -56,6 +57,15 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
             guard let url = note.userInfo?["url"] as? String else { return }
             UserDefaults.standard.removeObject(forKey: "boombox.voice")
             self?.notifyListeners("voice", data: ["url": url])
+        }
+    }
+
+    // Écran gardé allumé (paroles affichées pendant la lecture)
+    @objc func setKeepAwake(_ call: CAPPluginCall) {
+        let on = call.getBool("on") ?? false
+        DispatchQueue.main.async {
+            UIApplication.shared.isIdleTimerDisabled = on
+            call.resolve()
         }
     }
 

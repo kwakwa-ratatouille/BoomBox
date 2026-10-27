@@ -2,6 +2,7 @@
 import { api, on } from './state.js';
 import { player, ctl } from './player.js';
 import { esc, artistNames, icon, fmtTime } from './ui.js';
+import { keepAwake } from './awake.js';
 
 const cache = new Map();
 
@@ -104,10 +105,16 @@ export function mountLyrics(el, track) {
       }
     }
   }
-  const iv = setInterval(tick, 200);
+  // Paroles à l'écran pendant que le son joue : l'appareil ne se met pas en veille
+  const awakeKey = {};
+  const iv = setInterval(() => {
+    tick();
+    keepAwake(awakeKey, alive && !player.paused && player.track?.id === track.id && el.isConnected && el.getClientRects().length > 0);
+  }, 200);
   return () => {
     alive = false;
     clearInterval(iv);
+    keepAwake(awakeKey, false);
     scroller.removeEventListener('wheel', onScroll);
     scroller.removeEventListener('touchmove', onScroll);
   };

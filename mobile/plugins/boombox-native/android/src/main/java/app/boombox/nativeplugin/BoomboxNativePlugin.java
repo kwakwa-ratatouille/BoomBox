@@ -477,6 +477,21 @@ public class BoomboxNativePlugin extends Plugin {
         });
     }
 
+    // Écran gardé allumé (paroles affichées pendant la lecture) : la WebView Android n'a pas l'API Wake Lock
+    @PluginMethod
+    public void setKeepAwake(PluginCall call) {
+        boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        if (getActivity() == null) {
+            call.resolve();
+            return;
+        }
+        getActivity().runOnUiThread(() -> {
+            if (on) getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            call.resolve();
+        });
+    }
+
     // Dernier plantage enregistré (puis effacé)
     @PluginMethod
     public void takeCrash(PluginCall call) {

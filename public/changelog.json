@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1027.1023",
+    "title": "L'écran reste allumé pendant les paroles",
+    "items": [
+      "Paroles affichées pendant qu’un son joue (lecteur, panneau, plein écran karaoké) : le téléphone, la tablette ou le PC ne se met plus en veille. Dès que la musique est en pause ou que les paroles sont fermées, la veille revient normalement."
+    ],
+    "date": "2026-10-27"
+  },
+  {
     "version": "2026.1026.1842",
     "title": "Visite guidée et lecture plus fiable",
     "items": [
