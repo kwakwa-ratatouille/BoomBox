@@ -627,8 +627,10 @@ function setupPlayerBar() {
       { label: 'Raccourcis clavier', icon: 'keyboard', action: showShortcuts },
     ]);
   };
+  const IOS_NO_MIX = 'Sur iPhone, le mix et le fondu ne sont pas possibles : iOS ne laisse pas régler le volume des sons. Les titres s’enchaînent directement.';
   async function toggleAutomix() {
     const on = !setting('automix', false);
+    if (on && isNative && platform === 'ios') return toast(IOS_NO_MIX, { timeout: 6000 });
     if (on && player.engine?.name !== 'audio') return toast('L’automix nécessite la lecture audio directe (yt-dlp)');
     await saveSettings({ automix: on });
     player.setAutomix(on);
@@ -1030,6 +1032,7 @@ function renderFullPlayer() {
   // Vitesse (speed up) et mix, comme sur PC
   $('#fp-speed').onclick = (e) => contextMenu(e.clientX - 120, e.clientY - 260, [0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.5].map((v) => ({ label: `×${String(v).replace('.', ',')}${v === 1 ? ' (normal)' : v > 1 ? ' (speed up)' : ' (slowed)'}`, icon: (player.rate || 1) === v ? 'check' : null, action: () => (player.setRate(v), renderFullPlayer()) })));
   $('#fp-mix').onclick = (e) => {
+    if (isNative && platform === 'ios') return toast('Sur iPhone, le mix et le fondu ne sont pas possibles : iOS ne laisse pas régler le volume des sons. Les titres s’enchaînent directement.', { timeout: 6000 });
     const on = setting('automix', false);
     const smart = on && setting('mixSmart', false);
     const start = async (smartMode) => {

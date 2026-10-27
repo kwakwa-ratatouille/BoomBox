@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.1028.0003",
+    "title": "Fondu et mix sur Android, fin des sons superposés",
+    "items": [
+      "Android : le fondu enchaîné et le mix marchent maintenant (ils étaient coupés sur tous les téléphones à cause d’une limite de l’iPhone). Sur iPhone, iOS ne laisse pas régler le volume des sons : les titres s’y enchaînent directement, et le bouton Mix l’explique.",
+      "Deux sons pouvaient rester superposés si on changeait de titre pile pendant un fondu ou un mix, ou quand le lecteur passait de l’audio direct au lecteur YouTube. L’ancien son s’arrête maintenant à chaque fois.",
+      "Couper le mix remet bien ton réglage de fondu enchaîné, tel que tu l’avais choisi."
+    ],
+    "date": "2026-10-27"
+  },
+  {
     "version": "2026.1027.2342",
     "title": "Corrections : retour Android, changement de son, dossier des téléchargements",
     "items": [

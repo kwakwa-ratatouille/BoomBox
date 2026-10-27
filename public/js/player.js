@@ -3,7 +3,11 @@
 import { state, emit, bus, api, ls, setting, addHistory } from './state.js';
 import { toast, artistNames } from './ui.js';
 import { automix } from './automix.js';
-import { isNative, localApi } from './native.js';
+import { isNative, platform, localApi } from './native.js';
+
+// iPhone : une page web ne peut pas régler le volume d'un son (iOS l'ignore) → pas de fondu ni de mix (coupure nette).
+// Android, PC et navigateur règlent le volume : fondu et mix y marchent.
+const noOverlap = isNative && platform === 'ios';
 import { playId } from './twins.js';
 
 // Source audio d'un titre : serveur du PC (flux yt-dlp) ou, dans l'appli, fichier téléchargé sur le téléphone
@@ -317,11 +321,9 @@ class AudioEngine {
     inn.preservesPitch = inn.webkitPreservesPitch = true;
     this.cur = 1 - this.cur;
     this.pending = null;
-    try {
-      await inn.play();
-    } catch {
-      this.h.onPaused();
-    }
+    // Pas d'attente du démarrage avant de poser le fondu : un autre titre lancé pendant ce temps laissait
+    // l'ancien jouer par-dessus (rien ne l'arrêtait) → deux sons en même temps
+    inn.play().catch(() => gen === this.gen && this.h.onPaused());
     const t0 = performance.now();
     const dur = seconds * 1000;
     // setInterval (et non requestAnimationFrame) pour que le fondu continue onglet en arrière-plan
@@ -378,15 +380,9 @@ class AudioEngine {
     this.cur = iIn;
     this.pending = null;
     this.graph?.ctx.resume();
-    const startIn = async () => {
-      try {
-        await inn.play();
-      } catch {
-        this.h.onPaused();
-      }
-    };
+    const startIn = () => inn.play().catch(() => gen === this.gen && this.h.onPaused());
     const a = Math.min(0.95, Math.max(0, inAt / mixLen));
-    if (!a) await startIn();
+    if (!a) startIn(); // sans attendre (voir crossfade : sinon deux sons peuvent rester superposés)
     else this.pending = { start: inStart }; // affichage : le titre entrant (à son départ) pendant la montée
     T.setup?.(this, out, inn, mixLen, beatOut, a);
     const t0 = performance.now();
@@ -739,7 +735,10 @@ export const player = {
     this.buffering = true;
     this._loadAt = Date.now();
     this._restoreAt = 0;
-    if (this.engine.name === 'audio' && this._preferredEngine().name !== 'audio') this.engine = this._preferredEngine();
+    if (this.engine.name === 'audio' && this._preferredEngine().name !== 'audio') {
+      this.engine.stop(); // sinon le son en cours continuait sous le lecteur YouTube
+      this.engine = this._preferredEngine();
+    }
     if (mix && mix.id === track.id && this.engine.name === 'audio' && !this.paused) this.engine.mixTo(mix);
     else if ((crossfade || mix) && this.engine.name === 'audio' && !this.paused) this.engine.crossfade(track.id, crossfade || 6, this.rate, this._gainFor(track.id));
     else {
@@ -957,11 +956,9 @@ export const player = {
   _ctxPlaylist() {
     return this.context?.type === 'playlist' ? state.library?.playlists?.find((p) => p.id === this.context.id) || null : null;
   },
-  // iPhone : une page web ne peut pas régler le volume d'un son (iOS l'ignore) ni filtrer sans couper le son écran
-  // verrouillé → les transitions s'y faisaient à plein volume (coupure nette). Là-bas, les sons s'enchaînent
-  // simplement, sans chevauchement.
+  // iPhone : pas de mix (voir noOverlap), les sons s'y enchaînent simplement, sans chevauchement
   _automixOn() {
-    if (isNative) return false;
+    if (noOverlap) return false;
     return setting('automix', false) || !!this._ctxPlaylist()?.mixed;
   },
   // Transition voulue entre deux titres : celle choisie dans la playlist mixée, sinon le réglage général
@@ -1017,7 +1014,7 @@ export const player = {
     if (!d || this.repeat === 'one' || this.engine?.name !== 'audio' || this.sleep?.endOfTrack || this.remoteSender) return d;
     const p = this._mixPlan;
     if (p && this._automixOn() && p.mixStart > 0 && p.mixStart < d && this.time() <= p.mixStart + 2) return p.mixStart;
-    const xf = this._automixOn() ? (this._styleFor(this.track?.id, this._nextTrack()?.id) !== 'none' ? 6 : 0) : (isNative ? 0 : Number(setting('crossfade', 0)));
+    const xf = this._automixOn() ? (this._styleFor(this.track?.id, this._nextTrack()?.id) !== 'none' ? 6 : 0) : (noOverlap ? 0 : Number(setting('crossfade', 0)));
     if (xf > 0 && d > xf * 2 + 5) return d - xf;
     return d;
   },
@@ -1138,7 +1135,7 @@ export const player = {
     // Fondu de secours (6 s) seulement si l'analyse n'est pas prête ou si le moment du mix est passé ; rien si « Aucune transition ».
     const missed = plan && this.time() > plan.mixStart + 2;
     const automixOn = this._automixOn();
-    const xf = automixOn ? ((!plan || missed) && this._styleFor(this.track?.id, this._nextTrack()?.id) !== 'none' ? 6 : 0) : (isNative ? 0 : Number(setting('crossfade', 0)));
+    const xf = automixOn ? ((!plan || missed) && this._styleFor(this.track?.id, this._nextTrack()?.id) !== 'none' ? 6 : 0) : (noOverlap ? 0 : Number(setting('crossfade', 0)));
     if (xf > 0 && ownTransitions && this.engine.name === 'audio' && !this.paused && !this._xfading && this.repeat !== 'one' && !this.sleep?.endOfTrack && !this.remoteSender) {
       const d = this.duration();
       if (d > xf * 2 + 5 && d - this.time() <= xf + 0.5) {
