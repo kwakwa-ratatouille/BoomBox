@@ -124,6 +124,29 @@ app.post('/api/download/open', (req, res) => {
   execFile('explorer.exe', [dir], () => {});
   res.json({ ok: true });
 });
+// Dossier où vont les téléchargements : lu, choisi dans la fenêtre « Parcourir » de Windows, ou remis par défaut
+app.get('/api/download/folder', (req, res) => res.json({ dir: local.downloadRoot(), default: local.DEFAULT_DOWNLOADS }));
+app.post('/api/download/folder', wrap(async (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).json({ error: 'Depuis ce PC uniquement' });
+  let dir = req.body?.dir;
+  if (req.body?.pick) {
+    dir = await pickFolder(local.downloadRoot());
+    if (!dir) return res.json({ dir: local.downloadRoot(), default: local.DEFAULT_DOWNLOADS, cancelled: true });
+  }
+  res.json({ dir: local.setDownloadRoot(dir), default: local.DEFAULT_DOWNLOADS });
+}));
+// Fenêtre Windows « Choisir un dossier », au premier plan ; renvoie le chemin choisi, ou '' si annulé
+function pickFolder(start) {
+  const ps = `[Console]::OutputEncoding = [Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Windows.Forms
+$d = New-Object System.Windows.Forms.FolderBrowserDialog
+$d.Description = 'Dossier où Boombox range les sons téléchargés'
+$d.ShowNewFolderButton = $true
+$d.SelectedPath = $env:BBX_START
+$f = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true; ShowInTaskbar = $false }
+if ($d.ShowDialog($f) -eq 'OK') { $d.SelectedPath }`;
+  return new Promise((resolve) => execFile('powershell.exe', ['-NoProfile', '-STA', '-Command', ps], { env: { ...process.env, BBX_START: start }, windowsHide: true, timeout: 10 * 60e3 }, (e, out) => resolve(e ? '' : String(out).trim())));
+}
 app.post('/api/prefetch/:id', prefetchHandler);
 app.get('/api/audio-file/:id', audioFileHandler);
 

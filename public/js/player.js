@@ -138,7 +138,10 @@ class AudioEngine {
       const mine = () => el === this.a;
       el.addEventListener('ended', () => mine() && h.onEnded());
       el.addEventListener('playing', () => mine() && h.onPlaying());
-      el.addEventListener('pause', () => mine() && !el.ended && h.onPaused());
+      el.addEventListener('pause', () => {
+        if (this.silentPause === el) return void (this.silentPause = null); // arrêt de l'ancien son au changement de titre
+        if (mine() && !el.ended) h.onPaused();
+      });
       el.addEventListener('waiting', () => mine() && h.onBuffering());
       // Code du lecteur : 2 = réseau, 3 = décodage, 4 = format non pris en charge (ou fichier invalide)
       el.addEventListener('error', () => mine() && el.getAttribute('src') && h.onError(`lecteur ${el.error?.code || '?'}${el.error?.message ? ' : ' + el.error.message.slice(0, 50) : ''}`));
@@ -272,13 +275,17 @@ class AudioEngine {
   }
   async load(id, start = 0, autoplay = true, fresh = false) {
     this._endFade();
-    this.gen++;
+    const gen = ++this.gen;
     this.pending = null;
     this.preloaded = null;
     const el = this.a;
+    // L'ancien son s'arrête tout de suite : sur téléphone le nouveau peut mettre quelques secondes à arriver
+    // (téléchargement), et l'ancien continuait pendant que l'écran affichait déjà le nouveau titre
+    if (!el.paused) (this.silentPause = el), el.pause();
     // Raison précise affichée (ex. « IOS : réponse invalide ») : utile pour comprendre un échec sur téléphone
-    await this._setSrc(el, id, start, fresh).catch((e) => this.h.onError(String(e?.message || 'audio').slice(0, 80)));
-    if (el !== this.a) return;
+    await this._setSrc(el, id, start, fresh).catch((e) => gen === this.gen && this.h.onError(String(e?.message || 'audio').slice(0, 80)));
+    // Un autre titre a été lancé pendant la préparation : surtout ne pas relancer le lecteur (il jouait encore l'ancien son)
+    if (el !== this.a || gen !== this.gen) return;
     el.playbackRate = 1;
     this._setLevel(this.a, 1);
     this._hp(this.a, 10);

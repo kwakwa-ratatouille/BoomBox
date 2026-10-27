@@ -1,13 +1,13 @@
 // Point d'entrée : profils, routeur, barre latérale, barre de lecture, panneau de droite, lecteur mobile.
 import { pixelBackdrop, PARTY_ACCENTS, accentPalette } from './pixel-bg.js';
-import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural, confirmBox } from './ui.js';
+import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural, confirmBox, closeMenu } from './ui.js';
 import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
 import { cloud, parseInvite, getDoc } from './cloud.js';
 import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
 import { lists, card, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
-import { mountLyrics, openKaraoke } from './lyrics.js';
+import { mountLyrics, openKaraoke, closeKaraoke } from './lyrics.js';
 import { openPlaylistPicker } from './components.js';
 import { pinPad, offerPinOnCreate } from './pin.js';
 import { webUpdateBoot, webUpdateConfirm, webUpdateReady, checkWebUpdate, applyWebUpdate } from './updater.js';
@@ -2101,4 +2101,27 @@ function setupSiri() {
   const take = () => P.takeVoiceCommand().then((r) => run(r?.url)).catch(() => {});
   take();
   window.Capacitor.Plugins.App?.addListener('appStateChange', (st) => st.isActive && setTimeout(take, 300));
+}
+
+// ---------- Bouton retour d'Android ----------
+// Ferme d'abord ce qui est ouvert par-dessus (visite, menu du bas, fenêtre, paroles plein écran, mode voiture,
+// lecteur en grand…), puis revient à la page d'avant ; sur l'accueil, l'appli passe en arrière-plan sans s'arrêter
+// (la musique continue). Avant, le retour ne faisait rien sur les paroles et laissait les menus ouverts.
+if (isNative && platform === 'android') {
+  const LAYERS = '.tour, .ctx, .modal-backdrop, .pl-picker, .clip-ov, .story-save, .party-screen, #karaoke, #carmode';
+  const CLOSERS = '.tour-skip, [data-close], [data-pp=close], [data-x=close], [data-c=close], [data-k=close], [aria-label=Fermer]';
+  window.Capacitor.Plugins.App?.addListener('backButton', () => {
+    const top = [...document.querySelectorAll(LAYERS)].filter((e) => e.isConnected && !e.classList.contains('closing')).pop();
+    if (top) {
+      if (top.matches('.ctx')) return closeMenu();
+      if (top.matches('#karaoke')) return closeKaraoke();
+      if (top.matches('.tour')) return dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      if (top.matches('.pl-picker')) return top.querySelector('[data-pp=close]')?.click();
+      const btn = top.querySelector(CLOSERS);
+      return btn ? btn.click() : top.remove();
+    }
+    if (fpOpen) return closeFullPlayer();
+    if (location.hash && !/^#\/?$/.test(location.hash)) return history.back();
+    window.Capacitor.Plugins.App?.minimizeApp?.();
+  });
 }

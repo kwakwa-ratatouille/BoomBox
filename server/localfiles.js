@@ -40,8 +40,8 @@ function walk(dir, out, depth = 0) {
   }
   for (const e of entries) {
     if (e.name.startsWith('.')) continue;
-    if (depth === 0 && dir === MUSIC && e.name === 'Boombox') continue; // nos propres téléchargements (déjà dans l'appli)
     const p = path.join(dir, e.name);
+    if (e.isDirectory() && samePath(p, downloadRoot())) continue; // nos propres téléchargements (déjà dans l'appli)
     if (e.isDirectory()) walk(p, out, depth + 1);
     else if (EXT.test(e.name)) out.push(p);
   }
@@ -118,7 +118,20 @@ export async function cover(id) {
 
 // ---------- Téléchargement dans Musique\Boombox ----------
 const clean = (s) => String(s || '').replace(/[<>:"/\\|?*\x00-\x1f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Sans titre';
-export const downloadDir = (sub) => path.join(MUSIC, 'Boombox', ...(sub ? [clean(sub)] : []));
+const samePath = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+// Dossier choisi dans les réglages, sinon Musique\Boombox
+export const DEFAULT_DOWNLOADS = path.join(MUSIC, 'Boombox');
+export const downloadRoot = () => conf.downloadDir || DEFAULT_DOWNLOADS;
+export const downloadDir = (sub) => path.join(downloadRoot(), ...(sub ? [clean(sub)] : []));
+// Nouveau dossier de téléchargement (vide : retour à Musique\Boombox). Les fichiers déjà téléchargés restent où ils sont.
+export function setDownloadRoot(dir) {
+  const d = String(dir || '').trim().replace(/^"|"$/g, '');
+  if (d && !path.isAbsolute(d)) throw new Error('Mets le chemin complet du dossier (ex. D:\\Musique)');
+  if (d) fs.mkdirSync(d, { recursive: true });
+  conf.downloadDir = d && !samePath(d, DEFAULT_DOWNLOADS) ? path.resolve(d) : undefined;
+  save();
+  return downloadRoot();
+}
 
 // tracks : [{ id, title, artists }] ; getFile(id) → chemin du fichier audio (cache yt-dlp)
 export async function downloadTracks(tracks, sub, getFile) {

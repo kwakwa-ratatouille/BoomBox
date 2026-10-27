@@ -14,7 +14,7 @@ const onJam = (fn) => {
   return () => bus.removeEventListener('jam', h);
 };
 import { spotifyDataFlow, loadJsZip } from './spotify-data.js';
-import { isNative, localApi } from './native.js';
+import { isNative, platform, localApi } from './native.js';
 import { offline } from './offline.js';
 import { setProfilePin, removeProfilePin } from './pin.js';
 import { social } from './social.js';
@@ -498,6 +498,7 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Automix (enchaînements façon DJ)</b><p>Analyse le tempo et la tonalité de chaque titre : les transitions démarrent sur un temps fort, le tempo est calé, les basses sont échangées et les volumes égalisés. En lecture aléatoire, le titre suivant est choisi pour bien s'enchaîner. ${st.ytdlp ? '' : 'Nécessite la lecture audio directe (yt-dlp).'}</p></div><label class="switch"><input type="checkbox" id="s-automix" ${setting('automix', false) ? 'checked' : ''} ${st.ytdlp ? '' : 'disabled'}><span></span></label></div>
     <div class="settings-row"><div><b>Normaliser le volume</b><p>Tous les sons sont joués au même niveau sonore : fini les titres beaucoup plus forts ou plus faibles que les autres. ${isNative ? 'Sur téléphone, les sons trop forts sont baissés (sans effet sur iPhone, qui ne laisse pas une appli régler le volume).' : ''}</p></div><label class="switch"><input type="checkbox" id="s-normalize" ${setting('normalize', true) ? 'checked' : ''} ${st.ytdlp || isNative ? '' : 'disabled'}><span></span></label></div>
     ${isNative ? '' : html`<div class="settings-row"><div><b>Lancer Boombox au démarrage de Windows</b><p>Le serveur démarre tout seul avec le PC : ton téléphone peut lire et télécommander dès que le PC est allumé, et l'appli s'ouvre instantanément.</p><label class="row-flex" style="font-size:13px;gap:8px;margin-top:6px"><input type="checkbox" id="s-autostart-win"> Ouvrir aussi la fenêtre Boombox</label></div><label class="switch"><input type="checkbox" id="s-autostart"><span></span></label></div>`}
+    ${!isNative && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? html`<div class="settings-row" id="s-dldir"><div style="min-width:0"><b>Dossier des téléchargements</b><p class="ellipsis">…</p></div><button class="btn ghost">Changer</button></div>` : ''}
     ${isNative ? '' : html`<div class="settings-row"><div><b>Pré-télécharger mes titres likés</b><p>En arrière-plan, quand rien ne joue : tes likes démarrent instantanément et Boombox sollicite beaucoup moins YouTube. Utilise jusqu'à 4 Go sur ce PC.</p><p class="muted" id="s-pre-status" style="font-size:12px"></p></div><label class="switch"><input type="checkbox" id="s-predownload" ${setting('predownload', true) ? 'checked' : ''}><span></span></label></div>`}
     <div class="settings-row"><div><b>Notifications</b><p>Nouvelles sorties des artistes que tu suis (au plus une toutes les 6 heures) et rappels de tes concerts favoris (★), la veille et le jour même.</p></div><label class="switch"><input type="checkbox" id="s-alerts" ${setting('releaseAlerts', true) && (isNative || (typeof Notification !== 'undefined' && Notification.permission === 'granted')) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Titres masqués</b><p>${plural(setting('banned', []).length, 'titre')} que tu as choisi de ne plus entendre (menu ⋯ → « Ne plus proposer »).</p></div>${setting('banned', []).length ? html`<button class="btn ghost" id="s-unban">Tout réautoriser</button>` : ''}</div>
@@ -611,6 +612,13 @@ export async function settings(el) {
       toast(e.target.checked ? 'Pré-téléchargement des likes activé' : 'Pré-téléchargement arrêté');
       show();
     };
+  }
+  // Dossier des sons téléchargés (Boombox ouvert sur le PC lui-même)
+  const dlRow = el.querySelector('#s-dldir');
+  if (dlRow) {
+    const show = (d) => (dlRow.querySelector('p').textContent = d);
+    api('/api/download/folder').then((r) => show(r.dir)).catch(() => dlRow.remove());
+    dlRow.querySelector('button').onclick = () => import('./views-local.js').then((m) => m.pickDownloadFolder()).then((d) => d && show(d));
   }
   // Démarrage automatique avec Windows (raccourci dans le dossier Démarrage, créé par le serveur)
   if (!isNative) {
@@ -774,8 +782,15 @@ export async function settings(el) {
     const apk = await import('./apk-update.js');
     const next = await apk.latestApk();
     const btn = el.querySelector('#s-apk');
+    // Appli Android déjà à jour : bouton grisé (sur PC et iPhone, l'appli se met à jour autrement : pas de bouton)
+    if (!next && btn && isNative && platform === 'android') {
+      btn.hidden = false;
+      btn.disabled = true;
+      btn.textContent = 'Appli à jour';
+    }
     if (next && btn) {
       btn.hidden = false;
+      btn.disabled = false;
       btn.textContent = `Mettre à jour (${next.version})`;
       btn.onclick = () => apk.installApk((p) => (btn.textContent = `${Math.round(p * 100)} %`)).finally(() => (btn.textContent = `Mettre à jour (${next.version})`));
     }

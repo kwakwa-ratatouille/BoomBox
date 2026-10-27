@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.1027.2342",
+    "title": "Corrections : retour Android, changement de son, dossier des téléchargements",
+    "items": [
+      "Téléphone : en lançant un autre son pendant que le précédent se préparait, l’ancien pouvait continuer à jouer alors que l’écran affichait le nouveau. L’ancien s’arrête maintenant tout de suite.",
+      "Android : le bouton retour ferme les paroles en plein écran, les menus du bas, les fenêtres et le lecteur en grand, puis revient à la page d’avant. Sur l’accueil, l’appli passe en arrière-plan et la musique continue.",
+      "PC : choisis où vont les sons téléchargés (Paramètres → Dossier des téléchargements, ou la page Mes fichiers). Par défaut : Musique\\Boombox.",
+      "Paramètres : le bouton « Mettre à jour l’appli » n’apparaît plus sur PC quand il n’y a rien à installer ; sur Android il est grisé (« Appli à jour »)."
+    ],
+    "date": "2026-10-27"
+  },
+  {
     "version": "2026.1027.1023",
     "title": "L'écran reste allumé pendant les paroles",
     "items": [

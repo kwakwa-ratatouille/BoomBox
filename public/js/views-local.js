@@ -14,6 +14,8 @@ export async function localPage(el, _p, ctx) {
   }
   let q = '';
   let data = null;
+  let dlDir = '';
+  api('/api/download/folder').then((r) => ctx.alive() && ((dlDir = r.dir), data && draw())).catch(() => {});
   const load = async (refresh = false) => {
     el.querySelector('#lf-list') && (el.querySelector('#lf-list').innerHTML = '<p class="muted">Lecture des dossiers…</p>');
     data = await api(`/api/local${refresh ? '?refresh=1' : ''}`).catch((e) => ({ folders: [], tracks: [], error: e.message }));
@@ -31,7 +33,7 @@ export async function localPage(el, _p, ctx) {
       <div class="np-card lf-folders"><b>Dossiers lus</b>
         ${(data?.folders || []).map((f, i) => html`<div class="lf-folder"><span class="code ellipsis">${f}</span><button class="icon-btn" data-rm="${i}" title="Retirer">${icon('close', 16)}</button></div>`)}
         <div class="row-flex" style="gap:8px;margin-top:8px"><button class="btn ghost sm" id="lf-add">+ Ajouter un dossier</button><button class="btn ghost sm" id="lf-dl">Ouvrir mes téléchargements</button></div>
-        <p class="muted" style="font-size:12px;margin:8px 0 0">Les sons que tu télécharges depuis Boombox vont dans Musique\\Boombox (pas besoin de l'ajouter ici).</p></div>
+        <div class="lf-dldir"><span class="muted">Les sons que tu télécharges depuis Boombox vont dans</span><span class="code ellipsis">${dlDir || 'Musique\\Boombox'}</span><button class="btn ghost sm" id="lf-dldir">Changer</button></div></div>
       ${all.length ? html`<div class="search-box" style="max-width:420px;margin:8px 0 16px"><input id="lf-q" placeholder="Rechercher dans mes fichiers" value="${q}" autocomplete="off"></div>` : ''}
       <div id="lf-list">${list.length ? trackList(list, { context: lctx, album: true }) : html`<div class="empty"><h2>${all.length ? 'Aucun résultat' : 'Aucune musique trouvée'}</h2><p class="muted">${all.length ? '' : 'Ajoute le dossier où sont tes .mp3 (par exemple Téléchargements ou une clé USB).'}</p></div>`}</div>
     </div>`);
@@ -51,6 +53,7 @@ export async function localPage(el, _p, ctx) {
       data = await api('/api/local/folders', { method: 'POST', body: { folders: [...(data?.folders || []), p.trim().replace(/^"|"$/g, '')] } }).catch((e) => (toast(e.message), data));
       draw();
     };
+    el.querySelector('#lf-dldir').onclick = () => pickDownloadFolder().then((d) => d && ctx.alive() && ((dlDir = d), draw()));
     el.querySelector('#lf-dl').onclick = () => api('/api/download/open', { method: 'POST', body: {} }).catch(() => {});
     el.querySelectorAll('[data-rm]').forEach((b) => (b.onclick = async () => {
       const folders = data.folders.filter((_, i) => i !== Number(b.dataset.rm));
@@ -73,5 +76,19 @@ export async function downloadToPc(tracks, name = '') {
     toast(`${plural(r.ok, 'son')} téléchargé${r.ok > 1 ? 's' : ''}${r.failed.length ? ` (${r.failed.length} en échec)` : ''}`, { action: 'Ouvrir le dossier', timeout: 8000, onAction: () => api('/api/download/open', { method: 'POST', body: { name } }) });
   } catch (e) {
     toast(e.message);
+  }
+}
+
+// Choix du dossier des téléchargements dans la fenêtre « Parcourir » de Windows. Renvoie le nouveau dossier, ou null.
+export async function pickDownloadFolder() {
+  toast('Choisis le dossier dans la fenêtre Windows qui vient de s’ouvrir', { timeout: 4000 });
+  try {
+    const r = await api('/api/download/folder', { method: 'POST', body: { pick: true } });
+    if (r.cancelled) return null;
+    toast(`Les prochains téléchargements iront dans ${r.dir}`);
+    return r.dir;
+  } catch (e) {
+    toast(e.message);
+    return null;
   }
 }
