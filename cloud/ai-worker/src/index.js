@@ -188,8 +188,10 @@ async function scStream(env, id) {
   const num = scNum(id);
   if (!num) throw new Error('Son SoundCloud invalide');
   const t = await scApi(env, `https://api-v2.soundcloud.com/tracks/${num}`);
-  const list = t.media?.transcodings || [];
-  const pick = list.find((x) => x.format?.protocol === 'progressive') || list.find((x) => x.format?.protocol === 'hls' && /mp4/.test(x.format?.mime_type)) || list.find((x) => x.format?.protocol === 'hls');
+  // Les extraits de 30 s (sons réservés aux abonnés Go+) sont écartés : ils donnaient un « son vide » sur le téléphone
+  const list = (t.media?.transcodings || []).filter((x) => !x.snipped && !/preview/.test(x.preset || ''));
+  const pick = list.find((x) => x.format?.protocol === 'progressive') || list.find((x) => x.format?.protocol === 'hls' && /mp4|aac/.test(x.format?.mime_type)) || list.find((x) => x.format?.protocol === 'hls');
+  if (!pick && t.policy === 'SNIP') throw new Error('Ce son est réservé aux abonnés SoundCloud Go+');
   if (!pick) throw new Error('Ce son n’est pas lisible sur SoundCloud');
   const u = await scApi(env, `${pick.url}?track_authorization=${t.track_authorization || ''}`);
   return { url: u.url, protocol: pick.format.protocol, mime: pick.format.mime_type, duration: Math.round((t.full_duration || 0) / 1000) };

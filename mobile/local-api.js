@@ -201,11 +201,19 @@ const toB64 = (u8) => {
 async function scDownload(id, path) {
   const st = await scWorker(`/sc/stream?id=${id}`);
   let parts = [];
+  // Morceau refusé (lien expiré, accès bloqué) : erreur claire au lieu d'un fichier vide
+  const bytes = async (u) => {
+    const r = await fetch(u);
+    if (!r.ok) throw new Error(`SoundCloud a refusé le son (${r.status})`);
+    return new Uint8Array(await r.arrayBuffer());
+  };
   if (st.protocol === 'progressive') {
-    parts = [new Uint8Array(await (await fetch(st.url)).arrayBuffer())];
+    parts = [await bytes(st.url)];
   } else {
     // HLS : segment d'initialisation (EXT-X-MAP) + morceaux, mis bout à bout = un fichier audio complet
-    const list = await (await fetch(st.url)).text();
+    const lr = await fetch(st.url);
+    if (!lr.ok) throw new Error(`SoundCloud a refusé le son (${lr.status})`);
+    const list = await lr.text();
     const base = st.url.replace(/[^/]*(\?.*)?$/, '');
     const abs = (u) => (/^https?:/.test(u) ? u : base + u);
     const urls = [];
@@ -214,7 +222,7 @@ async function scDownload(id, path) {
     for (const line of list.split('\n').map((l) => l.trim())) if (line && !line.startsWith('#')) urls.push(abs(line));
     if (!urls.length) throw new Error('liste vide');
     for (let k = 0; k < urls.length; k += 6) {
-      const got = await Promise.all(urls.slice(k, k + 6).map(async (u) => new Uint8Array(await (await fetch(u)).arrayBuffer())));
+      const got = await Promise.all(urls.slice(k, k + 6).map(bytes));
       parts.push(...got);
     }
   }
