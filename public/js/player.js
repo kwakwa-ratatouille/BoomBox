@@ -31,6 +31,9 @@ async function audioSrc(id, fresh = false, stream = false) {
   return `/api/stream/${id}${q ? `?${q}` : ''}`;
 }
 
+// Pause imprévue sur téléphone : la cause est envoyée aux rapports (une fois par heure et par cause au plus)
+const logPause = (why) => isNative && import('./errors.js').then((m) => m.reportError(`Pause imprévue : ${why}`, 'pause')).catch(() => {});
+
 // ---------- Moteur YouTube (iframe) ----------
 let ytApiPromise = null;
 function loadYtApi() {
@@ -435,8 +438,26 @@ class AudioEngine {
   }
   play(fromLoad = false) {
     this.graph?.ctx.resume();
-    const p = this.a.play();
-    return fromLoad ? p.catch(() => this.h.onPaused()) : p.catch(() => {});
+    const el = this.a;
+    const gen = this.gen;
+    const p = el.play();
+    if (!fromLoad) return p.catch(() => {});
+    return p.catch(async (e) => {
+      // iPhone : lancer le son suivant appli en arrière-plan est parfois refusé un instant (session audio pas encore
+      // rendue par iOS). On réessaie (en reprenant la main sur le son) avant d'afficher « pause ».
+      if (isNative) {
+        for (const wait of [400, 1200, 3000]) {
+          await new Promise((r) => setTimeout(r, wait));
+          if (gen !== this.gen || el !== this.a) return;
+          window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: false }).catch?.(() => {});
+          try {
+            await el.play();
+            return;
+          } catch {}
+        }
+      }
+      if (gen === this.gen) this.h.onPaused(`démarrage du son refusé (${e?.name || 'erreur'})`);
+    });
   }
   pause() { this._endFade(); this.a.pause(); }
   stop() { this._endFade(); this.gen++; this.a.pause(); this.a.removeAttribute('src'); this.a.load(); }
@@ -494,29 +515,44 @@ export const player = {
         if (this.rate !== 1) this.engine.setRate(this.rate);
         this._failStreak = 0;
         this._offlineSkips = 0;
+        this._interruptedAt = 0;
         this._prepareAutomix();
         this._prepareNormalize();
         // Audio direct : on prépare le titre suivant pour qu'il démarre sans attendre
         const nextId = this._nextTrack()?.id;
         if (this.engine.name === 'audio' && nextId && nextId !== this._prefetched) {
           this._prefetched = nextId;
-          if (isNative) this._prefetchPhone();
+          if (isNative) setTimeout(() => this.track?.id && this._prefetchPhone(), 20e3);
           else fetch(`/api/prefetch/${playId(nextId)}`, { method: 'POST' }).catch(() => {});
         }
         this.paused = false;
         this.buffering = false;
         emit('player:state');
       },
-      onPaused: () => {
+      onPaused: (why = 'iOS a mis le son en pause') => {
         if (this._drunkHold) return; // mode bourré (iPhone) : le lecteur normal est mis en silence exprès
-        // Téléphone, appli en arrière-plan : iOS met parfois le son en pause sans interruption (ouverture d'une
-        // autre appli). Si ce n'est ni une pause voulue ni une vraie interruption, on relance (2 essais max).
-        if (isNative && !this._interruptedAt && this.engine?.name === 'audio' && Date.now() - (this._userPauseAt || 0) > 2000 && (this._autoResumes || 0) < 2) {
-          this._autoResumes = (this._autoResumes || 0) + 1;
-          setTimeout(() => (this._autoResumes = 0), 30e3);
-          return void this.engine.play().catch?.(() => ((this.paused = true), emit('player:state')));
+        const wanted = Date.now() - (this._userPauseAt || 0) < 2000;
+        // Interruption en cours (appel, vocal, Siri) : on attend sa fin. iOS ne signale pas toujours cette fin : au-delà
+        // d'1 minute, elle ne bloque plus les relances (avant, plus rien ne relançait jusqu'à la fermeture de l'appli)
+        const interrupted = this._interruptedAt && Date.now() - this._interruptedAt < 60e3;
+        // Téléphone : iOS met parfois le son en pause tout seul (autre appli ouverte, notification, réseau). Si ce n'est
+        // ni une pause voulue ni une vraie interruption, on relance : 3 essais espacés par minute.
+        if (isNative && !wanted && !interrupted && this.engine?.name === 'audio' && this.track && (this._autoResumes || 0) < 3) {
+          const n = (this._autoResumes = (this._autoResumes || 0) + 1);
+          if (n === 1) setTimeout(() => (this._autoResumes = 0), 60e3);
+          const asked = this._userPauseAt || 0;
+          setTimeout(() => {
+            if ((this._userPauseAt || 0) !== asked || !this.engine.a?.paused) return; // tu as mis pause entre-temps, ou ça rejoue
+            window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: false }).catch?.(() => {});
+            this.engine.play().catch?.(() => {});
+          }, [0, 800, 2500][n - 1]);
+          if (n === 3) logPause(`${why} (3 relances d'affilée)`);
+          return;
         }
-        if (Date.now() - (this._userPauseAt || 0) > 2000) this._systemPauseAt = Date.now(); // pause imposée (pas par toi)
+        if (!wanted) {
+          this._systemPauseAt = Date.now(); // pause imposée (pas par toi)
+          logPause(interrupted ? `${why}, pendant une interruption` : why);
+        }
         this.paused = true;
         this.buffering = false;
         emit('player:state');
@@ -765,8 +801,10 @@ export const player = {
     this.paused = false;
     emit('player:state');
   },
-  pause() {
+  pause(from = 'app') {
     this._userPauseAt = Date.now(); // pause voulue (bouton, casque, commande) : jamais relancée toute seule
+    this._pauseFrom = from;
+    if (from !== 'app') logPause(from);
     this.engine.pause();
     this.paused = true;
     emit('player:state');
@@ -1223,7 +1261,7 @@ export const player = {
         if (e.action === 'next') ctl.next();
         else if (e.action === 'prev') ctl.prev();
         else if (e.action === 'play') ctl.play();
-        else if (e.action === 'pause') ctl.pause();
+        else if (e.action === 'pause') ctl.pause('commande de la notification');
         else if (e.action === 'seek') ctl.seek(e.time);
       });
       // Lecture / pause : la notification suit (au plus une mise à jour par 300 ms)
@@ -1256,7 +1294,7 @@ export const player = {
       } catch {}
     };
     set('play', () => ctl.play());
-    set('pause', () => ctl.pause());
+    set('pause', () => ctl.pause('commande de l’écran verrouillé ou des écouteurs'));
     set('previoustrack', () => ctl.prev());
     set('nexttrack', () => ctl.next());
     set('seekto', (d) => ctl.seek(d.seekTime));
@@ -1317,15 +1355,24 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
 
 // Casque ou enceinte Bluetooth déconnecté → pause (comme Spotify), au lieu de continuer dans le haut-parleur
 (function pauseOnUnplug() {
+  let unplugAt = 0;
   const pause = () => {
     if (!player.paused && !player.remoteSender) {
-      player.pause();
+      player.pause('casque ou enceinte Bluetooth déconnecté');
+      unplugAt = Date.now();
       toast('Appareil audio déconnecté : lecture en pause');
     }
   };
   const P = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.BoomboxNative;
   if (P?.addListener) {
     P.addListener('audioUnplugged', pause);
+    // Le même casque revient dans les 30 s (petite coupure Bluetooth) et tu n'as rien touché : la musique reprend
+    P.addListener('audioPlugged', () => {
+      if (player.paused && player.track && Date.now() - unplugAt < 30e3 && Math.abs((player._userPauseAt || 0) - unplugAt) < 1000) {
+        unplugAt = 0;
+        player.play();
+      }
+    });
     return;
   }
   // PC / navigateur : une sortie audio (casque, enceinte) disparaît de la liste

@@ -1,5 +1,16 @@
 [
   {
+    "version": "next",
+    "title": "Moins de pauses toutes seules sur iPhone",
+    "items": [
+      "iPhone : quand iOS met la musique en pause sans raison, Boombox la relance (jusqu’à 3 fois, espacées). Avant, une notification ou Siri pouvait bloquer ces relances jusqu’à la fermeture de l’appli.",
+      "Passage au son suivant appli en arrière-plan : si iOS refuse de le démarrer, Boombox réessaie plusieurs fois au lieu de rester en pause.",
+      "Écouteurs Bluetooth qui se coupent une seconde : la musique se met en pause puis reprend toute seule s’ils reviennent dans les 30 s (avec la prochaine version de l’appli dans SideStore).",
+      "Chaque pause imprévue est notée (sans données personnelles) pour trouver les dernières causes."
+    ],
+    "date": "2026-10-28"
+  },
+  {
     "version": "2026.1028.1417",
     "title": "Un vrai réveil",
     "items": [

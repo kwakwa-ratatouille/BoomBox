@@ -28,11 +28,13 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
                 self?.bridge?.webView?.configuration.preferences.inactiveSchedulingPolicy = .none
             }
         }
-        // Casque, écouteurs ou enceinte Bluetooth déconnecté : on prévient l'appli pour mettre en pause
+        // Casque, écouteurs ou enceinte Bluetooth déconnecté : on prévient l'appli pour mettre en pause ;
+        // reconnecté : l'appli reprend si la coupure était courte
         NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
             guard let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
-                  let reason = AVAudioSession.RouteChangeReason(rawValue: raw), reason == .oldDeviceUnavailable else { return }
-            self?.notifyListeners("audioUnplugged", data: [:])
+                  let reason = AVAudioSession.RouteChangeReason(rawValue: raw) else { return }
+            if reason == .oldDeviceUnavailable { self?.notifyListeners("audioUnplugged", data: [:]) }
+            if reason == .newDeviceAvailable { self?.notifyListeners("audioPlugged", data: [:]) }
         }
         // Interruption (vocal WhatsApp/Snap, appel, vidéo d'une autre appli) : début et fin transmis à l'appli,
         // qui reprend la musique quand iOS l'indique (fin d'un vocal). La session est réactivée à la fin,
