@@ -8,6 +8,9 @@ import { isNative, platform, localApi } from './native.js';
 // iPhone : une page web ne peut pas régler le volume d'un son (iOS l'ignore) → pas de fondu ni de mix (coupure nette).
 // Android, PC et navigateur règlent le volume : fondu et mix y marchent.
 const noOverlap = isNative && platform === 'ios';
+// iPhone : sortie audio rallumée avant de jouer. Après une interruption (appel, vidéo, autre appli) qui ne s'est pas
+// terminée par « reprends », iOS la laisse éteinte : le son « joue » (le temps avance) mais on n'entend rien.
+const wakeAudio = () => (isNative && platform === 'ios' ? Promise.resolve(window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: false })).catch(() => {}) : null);
 import { playId } from './twins.js';
 
 // Source audio d'un titre : serveur du PC (flux yt-dlp) ou, dans l'appli, fichier téléchargé sur le téléphone
@@ -804,7 +807,9 @@ export const player = {
     if (!this.track) return;
     if (this.engine.name === 'audio' && this.engine.a?.ended && this.repeat !== 'one') return this.next(true);
     if (this.engine.name === 'audio' && this._normSetFor !== this.track.id) this._presetNorm(); // relance de l'appli, reprise en cours de son
-    this.engine.play();
+    const w = wakeAudio();
+    if (w) w.then(() => !this.paused && this.engine.play());
+    else this.engine.play();
     this.paused = false;
     emit('player:state');
   },
@@ -1379,11 +1384,20 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
   const P = window.Capacitor?.isNativePlatform?.() && window.Capacitor.Plugins?.BoomboxNative;
   if (!P?.addListener) return;
   let wasPlaying = false;
-  // Relance de la sortie audio : pause puis lecture, sans que l'interface voie une pause
-  const kick = () => {
+  let silentRisk = false; // une interruption a eu lieu pendant la lecture : la sortie audio est peut-être éteinte
+  // Relance de la sortie audio : session réactivée, puis pause + lecture (sans que l'interface voie une pause).
+  // hard : même si le lecteur dit jouer (il peut « jouer » en silence après une interruption)
+  const kick = async (hard = false) => {
     const el = player.engine?.name === 'audio' ? player.engine.a : null;
     if (!el || player.paused || !player.track) return;
-    if (!el.paused) return; // il joue déjà : on n'y touche pas
+    if (!el.paused && !hard) return; // il joue déjà : on n'y touche pas
+    await wakeAudio();
+    if (player.paused || el !== player.engine.a) return;
+    if (!el.paused) {
+      player.engine.silentPause = el;
+      el.pause();
+    }
+    silentRisk = false;
     el.play().catch(() => {});
   };
   P.addListener('audioInterruption', ({ phase, resume }) => {
@@ -1391,11 +1405,12 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
       // Jouait juste avant (iOS peut avoir déjà mis le son en pause un instant avant de prévenir)
       wasPlaying = (!player.paused || Date.now() - (player._systemPauseAt || 0) < 2500) && Date.now() - (player._userPauseAt || 0) > 1000;
       player._interruptedAt = Date.now();
+      silentRisk = true;
       return;
     }
     const short = Date.now() - (player._interruptedAt || 0) < 90e3;
     player._interruptedAt = 0;
-    if (wasPlaying && (resume || short)) setTimeout(() => (player.paused ? player.play() : kick()), 400);
+    if (wasPlaying && (resume || short)) setTimeout(() => (player.paused ? player.play() : kick(true)), 400);
     wasPlaying = false;
   });
   P.addListener('audioActive', () => setTimeout(() => {
@@ -1405,7 +1420,7 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
       player._systemPauseAt = 0;
       return player.play();
     }
-    kick();
+    kick(silentRisk);
   }, 300));
 })();
 

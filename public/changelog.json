@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1028.1623",
+    "title": "iPhone : fin du son qui défile sans qu’on l’entende",
+    "items": [
+      "iPhone : après une interruption (appel, vocal, vidéo d’une autre appli), le son pouvait reprendre en silence : le temps défilait mais on n’entendait rien. Boombox rallume maintenant la sortie audio à chaque lecture et après chaque interruption."
+    ],
+    "date": "2026-10-28"
+  },
+  {
     "version": "2026.1028.1544",
     "title": "Paroles en plein écran : boutons plus grands",
     "items": [
