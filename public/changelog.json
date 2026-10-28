@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Un vrai réveil",
+    "items": [
+      "Réveil (Paramètres → Réveil en musique → Régler) : l’heure en grand, un tableau de la semaine pour choisir tes jours, avec les raccourcis « Tous les jours », « En semaine » et « Le week-end ».",
+      "Choisis un son précis et le passage où il démarre (avec « Écouter le passage »), ou une playlist en aléatoire comme avant.",
+      "Le prochain réveil est affiché (« Prochain réveil demain à 7 h 30, dans 9 h 12 »). Sur téléphone, une notification sonne chaque jour choisi."
+    ],
+    "date": "2026-10-28"
+  },
+  {
     "version": "2026.1028.1346",
     "title": "Connexion avec Google",
     "items": [

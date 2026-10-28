@@ -481,8 +481,8 @@ export async function settings(el) {
 
     <div class="settings-row"><div><b>Qualité du son en streaming</b><p>« Auto » : passe en son plus léger si la connexion est faible (au lieu de couper). « Économie » : toujours léger. « Haute » : toujours la meilleure qualité.</p></div>
       <div class="row-flex" style="gap:8px;flex:none">${[['auto', 'Auto'], ['low', 'Économie'], ['high', 'Haute']].map(([k, l]) => html`<button class="chip ${setting('audioQuality', 'auto') === k ? 'active' : ''}" data-aq="${k}">${l}</button>`)}</div></div>
-    <div class="settings-row"><div><b>Réveil en musique</b><p>À l'heure choisie, la musique se lance en aléatoire et le volume monte doucement pendant 1 minute. Sur téléphone, une notification sonne aussi (la toucher lance la musique).</p></div>
-      <div class="row-flex" style="gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end"><input type="time" class="input" id="s-al-time" style="width:auto"><select class="input" id="s-al-src" style="width:auto;max-width:180px"></select><label class="switch"><input type="checkbox" id="s-al-on"><span></span></label></div></div>
+    <div class="settings-row"><div><b>Réveil en musique</b><p id="s-al-sum">À l'heure et les jours choisis, un son (au passage de ton choix) ou une playlist se lance, et le volume monte doucement pendant 1 minute. Sur téléphone, une notification sonne aussi.</p></div>
+      <div class="row-flex" style="gap:8px;flex:none"><button class="btn ghost" id="s-al-edit">Régler</button><label class="switch"><input type="checkbox" id="s-al-on"><span></span></label></div></div>
     <div class="settings-row"><div><b>Animations</b><p>Fonds animés, bannières, logo du démarrage. Coupées : tout reste fixe (plus léger pour un vieil appareil). Réglé pour cet appareil.</p></div><label class="switch"><input type="checkbox" id="s-anim" ${animationsOff() ? '' : 'checked'}><span></span></label></div>
     <div class="settings-row"><div><b>Style de l'interface</b><p>« Boombox » : la nouvelle interface, icônes en pixel art. « DA Spotify » : l'ancienne, plus classique. Réglé pour cet appareil.</p></div>
       <div class="row-flex" style="gap:8px;flex:none"><button class="chip ${DA() === 'pixel' ? 'active' : ''}" data-da="pixel">Boombox</button><button class="chip ${DA() === 'spotify' ? 'active' : ''}" data-da="spotify">DA Spotify</button></div></div>
@@ -694,19 +694,28 @@ export async function settings(el) {
     show(val);
   }
   // Réveil en musique
-  import('./alarm.js').then(({ alarmConf, saveAlarm }) => {
-    const a = alarmConf();
-    const t = el.querySelector('#s-al-time');
-    const src = el.querySelector('#s-al-src');
+  import('./alarm.js').then(({ alarmConf, saveAlarm, openAlarmEditor, daysLabel, nextLabel }) => {
     const on = el.querySelector('#s-al-on');
-    if (!t) return;
-    t.value = a.time;
-    on.checked = a.on;
-    src.innerHTML = [['liked', 'Titres likés'], ...state.library.playlists.map((p) => [p.id, p.name])].map(([v, n]) => `<option value="${v}" ${v === a.source ? 'selected' : ''}>${String(n).replace(/[<>&]/g, '')}</option>`).join('');
-    const save = () => saveAlarm({ time: t.value || '07:30', source: src.value, on: on.checked }).then(() => on.checked && toast(`Réveil réglé à ${t.value}`));
-    t.onchange = save;
-    src.onchange = save;
-    on.onchange = save;
+    const sum = el.querySelector('#s-al-sum');
+    if (!on) return;
+    // Résumé : heure, jours, musique et prochain réveil
+    const paint = () => {
+      const a = alarmConf();
+      on.checked = a.on;
+      const music = a.source === 'track' && a.track ? `« ${a.track.title} »${a.start ? ` à partir de ${Math.floor(a.start / 60)}:${String(a.start % 60).padStart(2, '0')}` : ''}` : a.source === 'liked' ? 'tes titres likés en aléatoire' : `« ${state.library.playlists.find((p) => p.id === a.source)?.name || 'playlist'} » en aléatoire`;
+      if (setting('alarm', null)) sum.textContent = `${a.time.replace(':', ' h ')}, ${daysLabel(a.days)} : ${music}. ${a.on ? nextLabel(a) + '.' : 'Désactivé.'}`;
+    };
+    paint();
+    el.querySelector('#s-al-edit').onclick = async () => (await openAlarmEditor()) && paint();
+    on.onchange = async () => {
+      if (on.checked && !setting('alarm', null)) {
+        on.checked = false;
+        return (await openAlarmEditor()) && paint();
+      }
+      await saveAlarm({ on: on.checked });
+      paint();
+      if (on.checked) toast(nextLabel(alarmConf()));
+    };
   });
   el.querySelector('#s-anim')?.addEventListener('change', (e) => {
     try { localStorage.setItem('bb-anim', e.target.checked ? 'on' : 'off'); } catch {}

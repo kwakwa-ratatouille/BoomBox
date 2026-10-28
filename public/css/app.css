@@ -2293,3 +2293,21 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .btn.google-btn { background: #fff; color: #1f1f1f; display: flex; gap: 10px; align-items: center; justify-content: center; font-weight: 700; }
 .btn.google-btn:hover { background: #f1f1f1; }
 .sec-code { font: 800 26px/1.2 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing: 2px; text-align: center; padding: 18px 12px; margin: 8px 0 12px; border-radius: 14px; background: var(--panel, #1e1b26); border: 2px dashed var(--accent); user-select: all; word-break: break-all; }
+
+/* Réveil : heure, tableau de la semaine, musique et passage */
+.al-ed h3 { font-size: 15px; margin: 18px 0 8px; }
+.al-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.al-time { font-size: 44px; font-weight: 800; line-height: 1; font-family: inherit; background: none; border: 0; color: var(--text); padding: 0; color-scheme: dark; }
+.al-time:focus { outline: 2px solid var(--accent); border-radius: 8px; }
+.al-next { margin: 4px 0 0; font-size: 13px; }
+.al-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.al-day { aspect-ratio: 1; max-height: 48px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: var(--text); font-weight: 800; font-size: 15px; display: grid; place-items: center; transition: background .15s, color .15s; }
+.al-day.on { background: var(--accent); color: #111; }
+.al-presets, .al-src { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.al-src { margin-top: 0; margin-bottom: 10px; }
+.al-pick, .al-hit { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 6px; border-radius: 10px; }
+.al-pick { background: rgba(255, 255, 255, 0.06); margin-bottom: 4px; }
+.al-hit:hover { background: rgba(255, 255, 255, 0.08); }
+.al-pick .cover, .al-hit .cover { width: 44px; height: 44px; flex: none; margin: 0; }
+.al-pick .t-text, .al-hit .t-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.al-search #al-res { margin-top: 8px; max-height: 260px; overflow: auto; }
