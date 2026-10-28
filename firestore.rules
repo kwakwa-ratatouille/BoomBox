@@ -31,6 +31,11 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // Copie lisible du code de sécurité (pour le revoir dans les Paramètres) : appareils de la bibliothèque seulement
+      match /private/code {
+        allow read, write: if isMember(sid);
+      }
+
       // Appareils membres : on ne peut s'ajouter qu'avec le bon code secret.
       match /members/{uid} {
         allow create: if signedIn() && uid == request.auth.uid && (
@@ -60,6 +65,21 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.by == request.auth.uid
                     && request.resource.data.data is string && request.resource.data.data.size() < 2000;
       allow update, delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
+
+    // Compte Google → sa bibliothèque : lisible et modifiable seulement par ce compte.
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Connexion Google dans les applis : jeton chiffré déposé par la page google.html (navigateur), lu une fois par
+    // l'appli qui connaît le numéro (jamais de liste). Le contenu est illisible sans la clé, restée dans l'appli.
+    match /authRelay/{id} {
+      allow get: if signedIn();
+      allow list, update: if false;
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['d', 't'])
+                    && request.resource.data.d is string && request.resource.data.d.size() < 8000;
+      allow delete: if signedIn();
     }
 
     // Playlists partagées : lisibles par tout utilisateur connecté qui a le code ; modifiables par leur auteur.

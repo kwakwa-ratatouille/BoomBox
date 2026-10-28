@@ -79,6 +79,9 @@ export const cloud = {
     }
   },
 
+  isGoogle: () => !!auth.currentUser && !auth.currentUser.isAnonymous,
+  googleEmail: () => auth.currentUser?.providerData?.find((p) => p.providerId === 'google.com')?.email || auth.currentUser?.email || '',
+
   // Vérifie que cet appareil fait bien partie de l'espace enregistré.
   async checkSpace() {
     if (!this.spaceId) return false;
@@ -106,6 +109,8 @@ export const cloud = {
       return await fn();
     } catch (e) {
       if (!/permission|unauthenticated/i.test(e.code || e.message || '')) throw e;
+      // Connecté avec Google : on ne le déconnecte surtout pas (ce n'est pas un problème de connexion anonyme)
+      if (auth.currentUser && !auth.currentUser.isAnonymous) throw e;
       await signOut(auth).catch(() => {});
       this.uid = (await signInAnonymously(auth)).user.uid;
       return fn();

@@ -73,3 +73,22 @@ export async function recover(name, code, deviceName, wrongMsg = 'Nom ou code in
   }
   await cloud.joinSpace(inv.sid, inv.secret, deviceName);
 }
+
+// ---------- Code de sécurité (généré par Boombox, montré à la création de la bibliothèque) ----------
+// Même principe que le nom + code ci-dessus, avec un nom fixe : le code seul retrouve la bibliothèque. Une copie
+// lisible est gardée dans la bibliothèque (lisible seulement par ses appareils) pour pouvoir le revoir.
+const CODE_NAME = 'code de securite boombox';
+const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+export function newSecurityCode() {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const s = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => A[b % A.length]).join('');
+  return s.match(/.{4}/g).join('-');
+}
+export async function saveSecurityCode(code) {
+  await storeAccess(CODE_NAME, normCode(code), 'recoveryCode');
+  await setDoc(doc(db, 'spaces', cloud.spaceId, 'private', 'code'), { value: code, at: Date.now() });
+}
+export async function readSecurityCode() {
+  return (await getDoc(doc(db, 'spaces', cloud.spaceId, 'private', 'code'))).data()?.value || null;
+}
+export const recoverByCode = (code, deviceName) => recover(CODE_NAME, normCode(code), deviceName, 'Code de sécurité incorrect');

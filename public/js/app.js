@@ -3,6 +3,7 @@ import { pixelBackdrop, PARTY_ACCENTS, accentPalette } from './pixel-bg.js';
 import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural, confirmBox, closeMenu } from './ui.js';
 import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
 import { cloud, parseInvite, getDoc } from './cloud.js';
+import { GOOGLE_LOGO } from './account.js';
 import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
@@ -40,6 +41,7 @@ const $ = (s, r = document) => r.querySelector(s);
 
 // ======================= PROFILS =======================
 let firstProfileName = null; // prénom saisi à l'accueil (premier appareil)
+let newLibrary = false; // bibliothèque créée à l'instant : on montre le code de sécurité après le profil
 async function pickProfile(force = false) {
   await listProfiles(force);
   const saved = ls.get('boombox.profile');
@@ -55,6 +57,10 @@ async function pickProfile(force = false) {
     state.profiles.push(p);
     hideSplash();
     await offerPinOnCreate(p);
+    if (newLibrary) {
+      newLibrary = false;
+      await (await import('./account.js')).showSecurityCode({ fresh: true }).catch(() => {});
+    }
     return p;
   }
   return new Promise((resolve) => {
@@ -1553,6 +1559,7 @@ async function boot() {
   renderAvatar();
   await subscribeLibrary();
   $('#app').classList.remove('hidden');
+  setTimeout(() => import('./account.js').then((m) => m.offerGoogle()).catch(() => {}), 5000);
   on('profile', renderAvatar);
   applyAccent();
   on('settings', () => applyAccent()); // couleur changée dans les paramètres (ou sur un autre appareil)
@@ -1926,19 +1933,27 @@ function onboarding() {
       <h1 style="margin-bottom:12px">Bienvenue sur Boombox</h1>
       <p class="muted" style="margin-bottom:32px">Ta bibliothèque est synchronisée entre tous tes appareils, même quand ce PC est éteint.</p>
       ${jamCode ? html`<div class="np-card" style="text-align:left;margin-bottom:20px"><b>Tu as scanné le QR code d'une Jam</b><p class="muted" style="margin:6px 0 12px">Rejoins-la directement pour ajouter des sons à la file, sans créer de bibliothèque.</p><a class="btn primary" style="width:100%" href="/party.html?code=${jamCode}">Rejoindre la party ${jamCode}</a></div>` : ''}
-      <div class="row-flex" id="ob-choice" style="justify-content:center;flex-direction:column;gap:12px">
-        <button class="btn ${jamCode ? 'ghost' : 'primary'}" id="ob-new" style="width:100%">C'est mon premier appareil</button>
-        <button class="btn ghost" id="ob-join" style="width:100%">J'ai déjà Boombox sur un autre appareil</button>
+      <div id="ob-choice" style="display:flex;flex-direction:column;gap:12px">
+        <button class="btn google-btn" id="ob-google" style="width:100%">${raw(GOOGLE_LOGO)} Continuer avec Google</button>
+        <p class="muted" style="font-size:13px;margin:0">Le plus simple : connecte-toi avec le même compte Google sur tous tes appareils, et ta bibliothèque te suit partout. Rien à recopier, rien à perdre.</p>
+        <div id="ob-gwait" class="np-card hidden" style="text-align:left"><b>Termine la connexion dans ton navigateur</b><p class="muted" style="margin:6px 0 12px">Puis reviens ici : Boombox se connectera tout seul.</p><button type="button" class="btn ghost" id="ob-gcancel" style="width:100%">Annuler</button></div>
+        <button type="button" class="btn ghost sm" id="ob-other" style="align-self:center;margin-top:8px">Sans compte Google</button>
+        <div id="ob-classic" class="hidden" style="flex-direction:column;gap:12px">
+          <button class="btn ${jamCode ? 'ghost' : 'primary'}" id="ob-new" style="width:100%">C'est mon premier appareil</button>
+          <button class="btn ghost" id="ob-join" style="width:100%">J'ai déjà Boombox sur un autre appareil</button>
+        </div>
       </div>
       <form id="ob-name-box" class="hidden" style="text-align:left">
         <p class="muted" style="margin:0 0 10px">Comment tu t'appelles ? Ce sera le nom de ton profil.</p>
         <input class="input" id="ob-name" placeholder="Prénom" maxlength="40" autocomplete="given-name" style="width:100%">
         <div class="row-flex" style="gap:10px;margin-top:14px"><button type="button" class="btn ghost" id="ob-back" style="flex:1">${icon('back', 16)} Retour</button><button class="btn primary" id="ob-create" style="flex:2">Créer mon profil</button></div>
-        <p class="muted" style="font-size:12px;margin-top:12px">Tu as déjà Boombox ailleurs ? Fais Retour et choisis « J'ai déjà Boombox sur un autre appareil » pour retrouver ta bibliothèque.</p>
+        <p class="muted" style="font-size:12px;margin-top:12px" id="ob-name-hint">Tu as déjà Boombox ailleurs ? Fais Retour et choisis « J'ai déjà Boombox sur un autre appareil » pour retrouver ta bibliothèque.</p>
       </form>
       <div id="ob-join-box" class="hidden" style="margin-top:24px;text-align:left">
         <p class="muted">Sur ton autre appareil : <b>Paramètres → Lier mes appareils</b>. Scanne le QR code avec l'appareil photo, ou colle le lien ici :</p>
         <div class="row-flex"><input class="input" id="ob-link" placeholder="http://…/#/join?s=…&k=…" style="flex:1"><button class="btn white" id="ob-go">Lier</button></div>
+        <p class="muted" style="margin:20px 0 8px">Avec ton code de sécurité (donné à la création de ta bibliothèque, visible dans Paramètres → Compte) :</p>
+        <form id="ob-code" class="row-flex"><input class="input" id="ob-code-v" placeholder="XXXX-XXXX-XXXX-XXXX" style="flex:1" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn white" id="ob-code-go">Retrouver</button></form>
         <p class="muted" style="margin:20px 0 8px">Plus d'appareil ni de lien ? Avec le nom et le code de récupération choisis dans les Paramètres :</p>
         <form id="ob-rec" style="display:flex;flex-direction:column;gap:8px">
           <input class="input" id="ob-rec-name" placeholder="Ton nom" maxlength="40" autocomplete="username">
@@ -1970,7 +1985,67 @@ function onboarding() {
       if (!choice) $('#ob-name').focus();
     };
     $('#ob-new').onclick = () => showChoice(false);
-    $('#ob-back').onclick = () => showChoice(true);
+    $('#ob-back').onclick = () => {
+      googleNew = false;
+      showChoice(true);
+    };
+    // Appareil relié : avec Google, la bibliothèque est aussi retenue par le compte (les autres appareils la retrouvent)
+    const linked = async () => {
+      const A = await import('./account.js');
+      if (A.isGoogle()) await A.saveAccountSpace().catch(() => {});
+      box.classList.add('hidden');
+      resolve();
+    };
+    let googleNew = false;
+    $('#ob-other').onclick = () => {
+      const c = $('#ob-classic');
+      c.classList.toggle('hidden');
+      c.style.display = c.classList.contains('hidden') ? '' : 'flex';
+    };
+    $('#ob-google').onclick = async () => {
+      const A = await import('./account.js');
+      $('#ob-err').textContent = '';
+      $('#ob-google').disabled = true;
+      try {
+        await A.connectGoogle({ onWaiting: (cancel) => {
+          $('#ob-gwait').classList.remove('hidden');
+          $('#ob-gcancel').onclick = cancel;
+        } });
+        const sid = await A.accountSpace();
+        if (sid) {
+          // Compte déjà utilisé ailleurs : on retrouve sa bibliothèque directement
+          cloud._setSpace(sid);
+          if (await cloud.checkSpace()) {
+            box.classList.add('hidden');
+            return resolve();
+          }
+          throw new Error('Ce compte Google n’a plus accès à sa bibliothèque. Choisis « Sans compte Google » pour la retrouver avec un lien ou ton code de sécurité.');
+        }
+        // Nouveau compte : le prénom, puis la bibliothèque est créée
+        googleNew = true;
+        $('#ob-name-hint').textContent = 'Tu as déjà Boombox sur un autre appareil ? Ouvre-le d’abord et connecte Google dans Paramètres → Compte : ici, tu retrouveras alors directement ta bibliothèque.';
+        showChoice(false);
+      } catch (e) {
+        if (!/popup-closed|cancelled/.test(e.code || '')) err({ message: A.googleError(e) });
+      } finally {
+        $('#ob-google').disabled = false;
+        $('#ob-gwait').classList.add('hidden');
+      }
+    };
+    $('#ob-code').onsubmit = async (e) => {
+      e.preventDefault();
+      const b = $('#ob-code-go');
+      b.disabled = true;
+      try {
+        const { recoverByCode } = await import('./recovery.js');
+        await recoverByCode($('#ob-code-v').value, state.device.name);
+        await linked();
+      } catch (er) {
+        err(er);
+      } finally {
+        b.disabled = false;
+      }
+    };
     $('#ob-name-box').onsubmit = async (e) => {
       e.preventDefault();
       const name = $('#ob-name').value.trim();
@@ -1978,7 +2053,10 @@ function onboarding() {
       try {
         $('#ob-create').disabled = true;
         await cloud.createSpace(state.device.name);
+        const A = await import('./account.js');
+        if (A.isGoogle()) await A.saveAccountSpace();
         firstProfileName = name;
+        newLibrary = true;
         box.classList.add('hidden');
         resolve();
       } catch (er) {
@@ -2002,8 +2080,7 @@ function onboarding() {
       try {
         const { recoverByQuestion } = await import('./recovery.js');
         await recoverByQuestion($('#ob-q-name').value, $('#ob-q-q').value, $('#ob-q-a').value, state.device.name);
-        box.classList.add('hidden');
-        resolve();
+        await linked();
       } catch (er) {
         err(er);
       } finally {
@@ -2019,8 +2096,7 @@ function onboarding() {
       try {
         const { recover } = await import('./recovery.js');
         await recover($('#ob-rec-name').value, $('#ob-rec-code').value, state.device.name);
-        box.classList.add('hidden');
-        resolve();
+        await linked();
       } catch (er) {
         err(er);
       } finally {
@@ -2033,8 +2109,7 @@ function onboarding() {
       if (!inv) return err('Lien invalide');
       try {
         await cloud.joinSpace(inv.sid, inv.secret, state.device.name);
-        box.classList.add('hidden');
-        resolve();
+        await linked();
       } catch (e) {
         err(/permission/i.test(e.code || e.message) ? 'Lien invalide ou expiré' : e);
       }

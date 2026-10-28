@@ -2288,3 +2288,8 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .tour-card.center .tour-actions { justify-content: center; }
 .tour-card.center .tour-next { padding: 12px 28px; }
 @media (prefers-reduced-motion: reduce) { .tour-spot, .tour-card { transition: none; } .tour-card.pop { animation: none; } }
+
+/* Connexion Google (accueil) et code de sécurité */
+.btn.google-btn { background: #fff; color: #1f1f1f; display: flex; gap: 10px; align-items: center; justify-content: center; font-weight: 700; }
+.btn.google-btn:hover { background: #f1f1f1; }
+.sec-code { font: 800 26px/1.2 ui-monospace, "Cascadia Code", Consolas, monospace; letter-spacing: 2px; text-align: center; padding: 18px 12px; margin: 8px 0 12px; border-radius: 14px; background: var(--panel, #1e1b26); border: 2px dashed var(--accent); user-select: all; word-break: break-all; }

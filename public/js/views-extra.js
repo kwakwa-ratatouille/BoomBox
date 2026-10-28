@@ -463,6 +463,10 @@ export async function settings(el) {
   el.innerHTML = String(html`<div class="page" style="max-width:820px">
     <h1 style="font-size:32px;margin-bottom:16px">Paramètres</h1>
 
+    <h2 style="font-size:20px;margin-top:24px">Compte</h2>
+    <div class="settings-row"><div><b>Compte Google</b><p>${cloud.isGoogle?.() ? html`Connecté${cloud.googleEmail?.() ? ` : ${cloud.googleEmail()}` : ''}. Sur un nouvel appareil, « Continuer avec Google » retrouve toute ta bibliothèque.` : 'Connecte Google pour retrouver ta bibliothèque sur n’importe quel appareil, sans lien ni code à recopier.'}</p></div>${cloud.isGoogle?.() ? '' : html`<button class="btn primary" id="s-google">Connecter Google</button>`}</div>
+    <div class="settings-row"><div><b>Code de sécurité</b><p>Le code qui retrouve ta bibliothèque sur un nouvel appareil si tu n’as plus accès à ton compte Google. Garde-le précieusement.</p></div><button class="btn ghost" id="s-seccode">Voir mon code</button></div>
+
     <h2 style="font-size:20px;margin-top:24px">Profil</h2>
     <div class="settings-row"><div><b>Nom du profil</b></div><input class="input" id="s-pname" value="${p.name}" maxlength="40"></div>
     <div class="settings-row"><div><b>Couleur</b></div><input type="color" id="s-pcolor" value="${p.color}"></div>
@@ -795,6 +799,10 @@ export async function settings(el) {
       btn.onclick = () => apk.installApk((p) => (btn.textContent = `${Math.round(p * 100)} %`)).finally(() => (btn.textContent = `Mettre à jour (${next.version})`));
     }
   })();
+  el.querySelector('#s-google')?.addEventListener('click', async () => {
+    if (await (await import('./account.js')).connectGoogleFlow()) settings(el);
+  });
+  el.querySelector('#s-seccode').onclick = () => import('./account.js').then((m) => m.showSecurityCode()).catch((e) => toast(e.message));
   el.querySelector('#s-recovery').onclick = async () => {
     const { saveRecovery, MIN_CODE, QUESTIONS } = await import('./recovery.js');
     const ok = await modal({
