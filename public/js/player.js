@@ -439,10 +439,14 @@ class AudioEngine {
       }, 250);
     }
   }
-  play(fromLoad = false) {
+  async play(fromLoad = false) {
     this.graph?.ctx.resume();
     const el = this.a;
     const gen = this.gen;
+    // iPhone : entre deux sons (le suivant se télécharge), plus rien ne joue et iOS éteint la sortie audio de l'appli
+    // en arrière-plan ; le son suivant « jouait » alors en silence (le temps et l'écran verrouillé avançaient)
+    await wakeAudio();
+    if (gen !== this.gen || el !== this.a) return;
     const p = el.play();
     if (!fromLoad) return p.catch(() => {});
     return p.catch(async (e) => {
@@ -453,6 +457,7 @@ class AudioEngine {
           await new Promise((r) => setTimeout(r, wait));
           if (gen !== this.gen || el !== this.a) return;
           try {
+            await wakeAudio();
             await el.play();
             return;
           } catch {}
@@ -807,9 +812,7 @@ export const player = {
     if (!this.track) return;
     if (this.engine.name === 'audio' && this.engine.a?.ended && this.repeat !== 'one') return this.next(true);
     if (this.engine.name === 'audio' && this._normSetFor !== this.track.id) this._presetNorm(); // relance de l'appli, reprise en cours de son
-    const w = wakeAudio();
-    if (w) w.then(() => !this.paused && this.engine.play());
-    else this.engine.play();
+    this.engine.play(); // (moteur audio : la sortie audio de l'iPhone est rallumée avant de jouer)
     this.paused = false;
     emit('player:state');
   },
