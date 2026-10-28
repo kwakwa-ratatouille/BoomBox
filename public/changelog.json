@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1028.1544",
+    "title": "Paroles en plein écran : boutons plus grands",
+    "items": [
+      "Paroles en plein écran : les boutons précédent, lecture/pause et suivant ont la même taille que dans le lecteur en grand (ils étaient trop petits au doigt), et la barre de progression est plus épaisse."
+    ],
+    "date": "2026-10-28"
+  },
+  {
     "version": "2026.1028.1511",
     "title": "Précédent / suivant sur l’écran verrouillé",
     "items": [

@@ -1063,6 +1063,13 @@ img.ai-badge { object-fit: cover; padding: 0; }
 .kara-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.25); cursor: pointer; }
 .kara-bar div { height: 100%; border-radius: 2px; background: #fff; }
 .kara-ctrl { grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 24px; }
+/* Boutons de lecture du karaoké : grands comme dans le lecteur plein écran (avant : taille de la petite barre, trop petits au doigt) */
+.kara-ctrl { gap: 36px; margin-top: 4px; }
+.kara-ctrl .ctrl { width: 52px; height: 52px; color: #fff; }
+.kara-ctrl .ctrl .ic { width: 34px; height: 34px; }
+.kara-ctrl .play-btn { width: 64px; height: 64px; background: #fff; }
+.kara-ctrl .play-btn .ic { width: 30px; height: 30px; }
+.kara-foot .kara-bar { height: 6px; border-radius: 3px; }
 @media (max-width: 768px) { .kara-head, .kara-foot { padding-left: 16px; padding-right: 16px; } .kara-lyrics { padding: 0 16px; } }
 
 /* Aide des raccourcis clavier */
