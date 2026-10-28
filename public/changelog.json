@@ -1,5 +1,18 @@
 [
   {
+    "version": "2026.1028.2247",
+    "title": "Party : tout le monde aux commandes",
+    "items": [
+      "Party : les invités peuvent mettre pause, relancer, passer, revenir et avancer dans le son depuis leur propre lecteur, pas seulement l’hôte (sauf si l’hôte a coupé « Tout le monde peut mettre en pause / passer »).",
+      "Party : un son lancé directement par un invité passe tout de suite pour tout le monde ; « Ajouter à la file d’attente » et « Lire ensuite » le mettent dans la file commune, hôte compris.",
+      "Party plus réactive : l’hôte envoie l’état de la lecture presque instantanément, et ta pause ou ton saut s’appliquent chez toi sans attendre.",
+      "Le bouton Party de la barre du haut ne disparaît plus.",
+      "Android : « Caster sur la télé » plantait (« Chromecast indisponible ») ; corrigé dans la nouvelle version de l’appli.",
+      "Téléphone : Paramètres → Hors ligne affiche le dossier où sont gardés les sons."
+    ],
+    "date": "2026-10-28"
+  },
+  {
     "version": "2026.1028.1640",
     "title": "iPhone : le son suivant ne démarre plus en silence",
     "items": [

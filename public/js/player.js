@@ -678,6 +678,8 @@ export const player = {
 
   playNext(tracks) {
     tracks = [].concat(tracks);
+    // En party : en tête de la file commune
+    if (this.jamQueue) return this.jamQueue(tracks, true);
     this.userQueue.unshift(...tracks.map((t) => ({ ...t, qid: Math.random().toString(36).slice(2) })));
     toast('Sera lu ensuite');
     if (!this.track) this.next();
@@ -1374,6 +1376,7 @@ export const ctl = {};
 for (const a of ACTIONS) {
   ctl[a] = (...args) => {
     if (player.remoteSender) return player.remoteSender(a, args);
+    if (player.jamRoute?.(a, args)) return; // en party : lecture commune (voir sync.js)
     return player[a](...args);
   };
 }

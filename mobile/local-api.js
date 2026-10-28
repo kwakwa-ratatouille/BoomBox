@@ -636,4 +636,10 @@ export function unkeep(id) {
   if (audioIndex[id]) (audioIndex[id].keep = false), saveIndex();
 }
 
-export const media = { redownload, rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
+// Dossier des sons gardés sur le téléphone (chemin complet, affiché dans les réglages)
+export async function audioFolder() {
+  const { uri } = await Filesystem.getUri({ path: 'audio', directory: Directory.Data });
+  return decodeURIComponent(String(uri).replace(/^file:\/\//, ''));
+}
+
+export const media = { audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };

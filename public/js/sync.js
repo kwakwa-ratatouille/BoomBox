@@ -220,12 +220,52 @@ export const sync = {
     updateDoc(doc(db, 'jams', this._jamCode), { mode }).catch(() => {});
   },
 
-  jamAdd(track) {
-    if (!this._jamCode) return;
-    const t = { id: track.id, title: track.title, artists: track.artists || [], album: track.album || null, duration: track.duration || 0, thumb: track.thumb || null };
-    updateDoc(doc(db, 'jams', this._jamCode), { queue: arrayUnion({ ...t, qid: Math.random().toString(36).slice(2), addedBy: state.profile.name }) })
-      .then(() => toast('Ajouté à la file de la party'))
-      .catch((e) => toast(e.message));
+  // front : en tête de file (« Lire ensuite »), sinon à la fin
+  jamAdd(track, { front = false } = {}) {
+    if (!this._jamCode) return Promise.resolve();
+    const t = { id: track.id, title: track.title, artists: track.artists || [], album: track.album || null, duration: track.duration || 0, thumb: track.thumb || null, qid: Math.random().toString(36).slice(2), addedBy: state.profile.name };
+    const ref = doc(db, 'jams', this._jamCode);
+    // Affiché tout de suite chez soi, sans attendre Firebase
+    if (this.jam) {
+      this.jam.queue = front ? [t, ...(this.jam.queue || [])] : [...(this.jam.queue || []), t];
+      emit('jam', this.jam);
+    }
+    const write = front
+      ? runTransaction(db, async (tx) => {
+        const s = await tx.get(ref);
+        if (s.exists()) tx.update(ref, { queue: [t, ...(s.data().queue || [])] });
+      })
+      : updateDoc(ref, { queue: arrayUnion(t) });
+    return write.then(() => toast(front ? 'Sera joué ensuite dans la party' : 'Ajouté à la file de la party')).catch((e) => toast(e.message));
+  },
+
+  // Commandes de lecture en party (voir player.jamRoute) : true = prises en charge ici
+  _jamRoute(action, args) {
+    if (!this.jam) return false;
+    const host = this.isJamHost();
+    // Lancer un son directement : il passe tout de suite, pour tout le monde
+    if (action === 'playTrack' || action === 'playList') {
+      if (host) return false; // l'hôte joue chez lui, et tout le monde suit
+      const t = action === 'playList' ? args[0]?.[args[1] || 0] : args[0];
+      if (!t?.id) return true;
+      if (!this.jam.everyoneControls) return this.jamAdd(t), true; // l'hôte a réservé les commandes : ça va dans la file
+      this.jamCommand('playNow', [{ id: t.id, title: t.title, artists: t.artists || [], album: t.album || null, duration: t.duration || 0, thumb: t.thumb || null }]);
+      toast(`« ${t.title} » lancé pour toute la party`);
+      return true;
+    }
+    if (host || !['toggle', 'play', 'pause', 'next', 'prev', 'seek'].includes(action)) return false;
+    if (!this.jam.everyoneControls) {
+      if (this.listenAlong && ['toggle', 'play', 'pause'].includes(action)) return false; // couper le son chez soi seulement
+      toast('L’hôte a réservé les commandes de la party');
+      return true;
+    }
+    this.jamCommand(action, args);
+    // Réaction immédiate chez soi (écoute ensemble), sans attendre l'aller-retour par l'hôte
+    if (this.listenAlong && ['toggle', 'play', 'pause', 'seek'].includes(action)) {
+      this._jamCmdAt = Date.now();
+      player[action](...args);
+    }
+    return true;
   },
 
   // Retire un titre de la file de la Jam. Écriture directe (arrayRemove de l'élément exact) : une transaction
@@ -316,7 +356,9 @@ export const sync = {
           if (ch.type !== 'added') continue;
           const c = ch.doc.data();
           deleteDoc(ch.doc.ref).catch(() => {});
-          if (Date.now() - (c.at || 0) < 60e3 && this.jam?.everyoneControls && ['toggle', 'play', 'pause', 'next', 'prev'].includes(c.action)) player[c.action]();
+          if (Date.now() - (c.at || 0) > 60e3 || !this.jam?.everyoneControls) continue;
+          if (['toggle', 'play', 'pause', 'next', 'prev', 'seek'].includes(c.action)) player[c.action](...(c.args || []));
+          else if (c.action === 'playNow' && c.args?.[0]?.id) player.playTrack(c.args[0], { type: 'jam', name: 'Party' });
         }
       }),
     );
@@ -337,7 +379,8 @@ export const sync = {
     this.jam = room;
     // Invité qui écoute en même temps : le lecteur laisse l'hôte choisir l'enchaînement
     player.jamFollow = () => !!this.jam && !this.isJamHost() && this.listenAlong;
-    player.jamQueue = room ? (tracks) => tracks.forEach((t) => this.jamAdd(t)) : null;
+    player.jamQueue = room ? (tracks, front = false) => (front ? [...tracks].reverse() : tracks).forEach((t) => this.jamAdd(t, { front })) : null;
+    player.jamRoute = room ? (a, args) => this._jamRoute(a, args) : null;
     // Les titres déjà lancés n'apparaissent plus dans la file, même avant que Firebase confirme leur retrait
     if (room?.queue) room.queue = room.queue.filter((t) => !this._jamPlayed.has(t.qid));
     if (room && room.host === state.device.id) {
@@ -371,6 +414,8 @@ export const sync = {
       player._load(st.track, { start: pos, autoplay: !st.paused });
       return;
     }
+    // Commande envoyée il y a peu : l'état de l'hôte peut être encore l'ancien, on ne revient pas en arrière
+    if (Date.now() - (this._jamCmdAt || 0) < 3000) return;
     if (st.paused && !player.paused) player.pause();
     if (!st.paused && player.paused) player.play();
     if (Math.abs(player.time() - pos) > 2.5) player.seek(pos); // resynchronise dès 2,5 s d'écart
@@ -398,7 +443,7 @@ export const sync = {
 let pubTimer = null;
 const schedulePublish = () => {
   clearTimeout(pubTimer);
-  pubTimer = setTimeout(() => sync.publish(), 800);
+  pubTimer = setTimeout(() => sync.publish(), sync.isJamHost() ? 120 : 800); // party : les autres suivent vite
 };
 on('player:track', schedulePublish);
 on('player:state', schedulePublish);

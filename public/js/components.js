@@ -292,10 +292,6 @@ function rowInfo(el) {
 }
 
 function playRow(info) {
-  if (sync.jam && !sync.isJamHost() && !sync.listenAlong) {
-    sync.jamAdd(info.track);
-    return;
-  }
   ctl.playList(info.list.tracks, info.i, info.list.context);
 }
 

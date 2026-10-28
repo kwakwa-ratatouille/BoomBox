@@ -439,9 +439,14 @@ public class BoomboxNativePlugin extends Plugin {
                     sendPending(cur);
                 } else {
                     androidx.mediarouter.app.MediaRouteChooserDialog d = new androidx.mediarouter.app.MediaRouteChooserDialog(new android.view.ContextThemeWrapper(getActivity(), androidx.mediarouter.R.style.Theme_MediaRouter));
-                    d.setRouteSelector(cc.getMergedSelector());
-                    d.setTitle("Afficher la party sur…");
+                    androidx.mediarouter.media.MediaRouteSelector sel = cc.getMergedSelector();
+                    if (sel == null) sel = new androidx.mediarouter.media.MediaRouteSelector.Builder()
+                        .addControlCategory(com.google.android.gms.cast.CastMediaControlIntent.categoryForCast("43163073")).build();
+                    d.setRouteSelector(sel);
+                    // Titre après show() : avant, sa zone de texte n'existe pas encore (plantage « TextView.setText
+                    // on a null object reference » : « Chromecast indisponible »)
                     d.show();
+                    d.setTitle("Afficher la party sur…");
                 }
                 call.resolve();
             } catch (Throwable e) {

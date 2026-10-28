@@ -685,7 +685,19 @@ function updatePlayerTrack() {
   refreshTrackMarks();
 }
 
+// Bouton Party de la barre du haut : toujours visible, entouré quand une party est en cours. Mis à jour à part
+// (avant : à la fin de la mise à jour du lecteur ; une erreur plus haut le laissait caché jusqu'au prochain clic)
+function updateJamTop() {
+  const b = $('#btn-jam-top');
+  if (!b) return;
+  b.classList.remove('hidden');
+  b.classList.toggle('live', !!sync.jam);
+  b.querySelector('span').textContent = 'Party';
+  b.title = sync.jam ? 'Party en cours : ouvrir' : 'Mode party : une file commune, tes invités ajoutent leurs sons';
+}
+
 function updatePlayerState() {
+  updateJamTop();
   const v = sync.view();
   pb.play.innerHTML = String(icon(v.paused !== false ? 'play' : 'pause'));
   pb.play.classList.toggle('buffering', !!v.buffering && !v.paused);
@@ -704,11 +716,6 @@ function updatePlayerState() {
   });
   document.querySelectorAll('[data-shuffle]').forEach((b) => b.classList.toggle('on', !!v.shuffle));
   document.querySelectorAll('[data-panel]').forEach((b) => b.classList.toggle('on', panelMode === b.dataset.panel && !$('#rightpanel').classList.contains('hidden')));
-  // Toujours visible : ouvre la page du mode party (rien ne se lance sans cliquer sur « Lancer la party »)
-  $('#btn-jam-top').classList.remove('hidden');
-  $('#btn-jam-top').classList.toggle('live', !!sync.jam);
-  $('#btn-jam-top span').textContent = 'Party';
-  $('#btn-jam-top').title = sync.jam ? 'Party en cours : ouvrir' : 'Mode party : une file commune, tes invités ajoutent leurs sons';
   refreshTrackMarks();
   updateFullPlayerState();
 }
@@ -1667,6 +1674,7 @@ async function boot() {
     updatePlayerState();
   });
   on('jam', () => {
+    updateJamTop();
     current.hooks?.onJam?.();
     updatePlayerState();
   });

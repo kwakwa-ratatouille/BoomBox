@@ -523,7 +523,9 @@ export async function settings(el) {
 
     ${isNative && offline.ready ? html`<h2 style="font-size:20px;margin-top:32px">Hors ligne</h2>
     <div class="settings-row" style="align-items:flex-start"><div style="flex:1"><b>Espace utilisé sur le téléphone</b><p>${(offline.media.storageUsed() / 1024 ** 3).toFixed(2).replace('.', ',')} Go sur ${ls.get('boombox.storageLimitGB', 4)} Go · ${plural(offline.downloaded.size, 'titre')}</p>
-      <div class="storage-bar"><div style="width:${Math.min(100, (offline.media.storageUsed() / offline.limitBytes()) * 100)}%"></div></div></div></div>
+      <div class="storage-bar"><div style="width:${Math.min(100, (offline.media.storageUsed() / offline.limitBytes()) * 100)}%"></div></div>
+      <p style="margin-top:10px">Dossier des sons :</p><p class="code" id="s-audiodir" style="word-break:break-all;user-select:text">…</p>
+      <p style="font-size:12px">${platform === 'ios' ? 'Dossier privé de l’appli : iOS ne le montre pas dans l’app Fichiers.' : 'Dossier privé de l’appli : Android ne le montre pas aux autres applis. Pour avoir les sons en fichiers, télécharge-les depuis Boombox sur ton PC.'} Les sons y sont rangés par numéro (ex. dQw4w9WgXcQ.m4a).</p></div></div>
     <div class="settings-row"><div style="flex:1"><b>Limite d'espace : <span id="s-lim-v">${ls.get('boombox.storageLimitGB', 4)}</span> Go</b><p>Au-delà, les titres écoutés il y a le plus longtemps (et non téléchargés volontairement) sont supprimés.</p><input type="range" class="range" id="s-lim" min="1" max="64" step="1" value="${ls.get('boombox.storageLimitGB', 4)}"></div></div>
     <div class="settings-row"><div><b>Télécharger seulement en Wi-Fi</b><p>Désactivé (par défaut) : les sons se téléchargent aussi en 4G/5G, pour être prêts hors connexion.</p></div><label class="switch"><input type="checkbox" id="s-wifi" ${setting('offlineWifiOnly', false) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Téléchargement intelligent</b><p>Tes sons les plus écoutés ces 2 derniers mois sont gardés sur le téléphone, en priorité, pour ne jamais tomber sur « indisponible hors connexion ».</p></div><label class="switch"><input type="checkbox" id="s-offsmart" ${setting('offlineSmart', true) ? 'checked' : ''}><span></span></label></div>
@@ -617,6 +619,9 @@ export async function settings(el) {
       show();
     };
   }
+  // Téléphone : chemin du dossier où sont gardés les sons
+  const audioDir = el.querySelector('#s-audiodir');
+  if (audioDir) offline.media.audioFolder?.().then((d) => (audioDir.textContent = d)).catch(() => (audioDir.textContent = 'inconnu (mets l’appli à jour)'));
   // Dossier des sons téléchargés (Boombox ouvert sur le PC lui-même)
   const dlRow = el.querySelector('#s-dldir');
   if (dlRow) {
