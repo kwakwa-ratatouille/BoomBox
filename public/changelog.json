@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Fin de son corrigée",
+    "items": [
+      "iPhone : un son qui s’arrêtait tout au bout sans passer au suivant (et se rejouait en boucle quand on relançait) passe maintenant au son suivant.",
+      "Si un son reste bloqué à quelques secondes de la fin, Boombox passe au suivant tout seul après 4 secondes.",
+      "Son SoundCloud illisible (réservé aux abonnés SoundCloud Go+, retiré…) : la version YouTube du même son est jouée à la place, et retenue pour les prochaines fois."
+    ],
+    "date": "2026-10-28"
+  },
+  {
     "version": "2026.1028.1455",
     "title": "SoundCloud plus fiable sur le téléphone",
     "items": [

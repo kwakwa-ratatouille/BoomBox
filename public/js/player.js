@@ -532,6 +532,9 @@ export const player = {
       onPaused: (why = 'iOS a mis le son en pause') => {
         if (this._drunkHold) return; // mode bourré (iPhone) : le lecteur normal est mis en silence exprès
         const wanted = Date.now() - (this._userPauseAt || 0) < 2000;
+        // Arrêt tout au bout du son, sans signal de fin : c'est la fin du son, on passe au suivant (avant : pause, puis
+        // le son se rejouait en boucle quand on relançait)
+        if (!wanted && this._nearEnd()) return void this._onEnded();
         // Interruption en cours (appel, vocal, Siri) : on attend sa fin. iOS ne signale pas toujours cette fin : au-delà
         // d'1 minute, elle ne bloque plus les relances (avant, plus rien ne relançait jusqu'à la fermeture de l'appli)
         const interrupted = this._interruptedAt && Date.now() - this._interruptedAt < 60e3;
@@ -796,6 +799,7 @@ export const player = {
   },
   play() {
     if (!this.track) return;
+    if (this.engine.name === 'audio' && this.engine.a?.ended && this.repeat !== 'one') return this.next(true);
     if (this.engine.name === 'audio' && this._normSetFor !== this.track.id) this._presetNorm(); // relance de l'appli, reprise en cours de son
     this.engine.play();
     this.paused = false;
@@ -1075,13 +1079,39 @@ export const player = {
   },
 
   // ----- Interne -----
+  // Son arrivé au bout (ou arrêté à moins de margin secondes de la fin)
+  _nearEnd(margin = 1.5) {
+    if (this.engine?.name !== 'audio' || !this.track) return false;
+    if (this.engine.a?.ended) return true;
+    const t = this.time();
+    const d = this.duration();
+    const meta = this.track.duration || 0;
+    return t > 5 && ((d > 0 && t >= d - margin) || (meta > 0 && t >= meta - margin));
+  },
+
   _onEnded() {
+    const key = `${this.track?.id}|${this.pos}`;
+    if (this._endedKey === key && Date.now() - (this._endedAt || 0) < 2500) return;
+    this._endedKey = key;
+    this._endedAt = Date.now();
     if (this.sleep?.endOfTrack) {
       this.sleep = null;
       this.pause();
       return;
     }
     this.next(true);
+  },
+
+  // Même son sur YouTube Music (même titre, même artiste, durée proche, pas un remix)
+  async _youtubeTwin(t) {
+    const tw = await import('./twins.js');
+    const known = tw.otherVersion(t.id);
+    if (known && !/^sc_/.test(known)) return known;
+    const q = `${t.artists?.[0]?.name || ''} ${t.title}`.trim();
+    const r = await api(`/api/search?type=song&q=${encodeURIComponent(q)}`);
+    const hit = (r?.items || []).find((x) => x.id && !/^sc_/.test(x.id) && tw.sameSong(x, t) && !tw.isRemix(x, t.title));
+    if (hit) tw.linkTwin(t.id, hit.id);
+    return hit?.id || null;
   },
 
   _noteStall() {
@@ -1101,6 +1131,19 @@ export const player = {
   async _onError(code) {
     const t = this.track;
     if (!t) return;
+    if (/^sc_/.test(t.id) && this._ytTried !== t.id) {
+      this._ytTried = t.id;
+      const yt = await this._youtubeTwin(t).catch(() => null);
+      if (yt && this.track?.id === t.id) {
+        const tw = await import('./twins.js');
+        await tw.setAudioPick(t.id, yt).catch(() => {});
+        toast(`« ${t.title} » n’est pas disponible sur SoundCloud : version YouTube jouée à la place`);
+        this.buffering = true;
+        emit('player:state');
+        this.engine.load(t.id, 0, true, true);
+        return;
+      }
+    }
     // Vidéo non intégrable → on tente l'audio direct si dispo, sinon on passe au suivant
     if (this.engine.name === 'youtube' && state.status.ytdlp && this._fallbackTried !== t.id) {
       this._fallbackTried = t.id;
@@ -1191,6 +1234,16 @@ export const player = {
     }
     if (!this.paused) emit('player:time');
     const t = this.time();
+    if (this.engine?.name === 'audio' && !this.paused && this.track) {
+      if (t !== this._stuckT) {
+        this._stuckT = t;
+        this._stuckSince = 0;
+      } else if (!this._stuckSince) this._stuckSince = Date.now();
+      else if (Date.now() - this._stuckSince > 4000 && this._nearEnd(4)) {
+        this._stuckSince = 0;
+        this._onEnded();
+      }
+    }
     // Stats : un son compte comme écouté après 30 s d'écoute réelle (moitié du son s'il dure moins d'une minute),
     // sans compter les pauses, les chargements, ni l'avance rapide ou un mix qui le démarre en plein milieu
     const now = performance.now();
