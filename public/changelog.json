@@ -1,5 +1,16 @@
 [
   {
+    "version": "next",
+    "title": "Connexion avec Google",
+    "items": [
+      "Nouvel appareil : « Continuer avec Google » dès l’accueil. Avec le même compte Google sur tous tes appareils, ta bibliothèque te suit partout, sans lien ni QR code à recopier.",
+      "Appareil déjà relié : Paramètres → Compte → « Connecter Google » (proposé aussi une fois au démarrage). Ta bibliothèque ne change pas.",
+      "À la création de ta bibliothèque, Boombox te fait choisir le code de ton profil puis te donne un code de sécurité à garder : il retrouve tout sur un nouvel appareil si tu n’as plus accès à Google (revoir : Paramètres → Compte).",
+      "iPhone : la connexion Google s’ouvre dans Safari, puis Boombox se connecte tout seul quand tu reviens."
+    ],
+    "date": "2026-10-28"
+  },
+  {
     "version": "2026.1028.0019",
     "title": "Plus de version « bizarre » d’un son",
     "items": [
