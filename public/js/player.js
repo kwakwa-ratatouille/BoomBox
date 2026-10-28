@@ -444,12 +444,11 @@ class AudioEngine {
     if (!fromLoad) return p.catch(() => {});
     return p.catch(async (e) => {
       // iPhone : lancer le son suivant appli en arrière-plan est parfois refusé un instant (session audio pas encore
-      // rendue par iOS). On réessaie (en reprenant la main sur le son) avant d'afficher « pause ».
+      // rendue par iOS). On réessaie avant d'afficher « pause ».
       if (isNative) {
         for (const wait of [400, 1200, 3000]) {
           await new Promise((r) => setTimeout(r, wait));
           if (gen !== this.gen || el !== this.a) return;
-          window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: false }).catch?.(() => {});
           try {
             await el.play();
             return;
@@ -512,6 +511,9 @@ export const player = {
           this._audioOwned = true;
           window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: false }).catch?.(() => {});
         }
+        // iPhone : boutons précédent / suivant de l’écran verrouillé remis à chaque reprise de la lecture (iOS les oublie
+        // parfois après une pause ou un changement de son, et affiche alors « ±10 s »)
+        this._setupMediaSession();
         if (this.rate !== 1) this.engine.setRate(this.rate);
         this._failStreak = 0;
         this._offlineSkips = 0;
@@ -546,7 +548,8 @@ export const player = {
           const asked = this._userPauseAt || 0;
           setTimeout(() => {
             if ((this._userPauseAt || 0) !== asked || !this.engine.a?.paused) return; // tu as mis pause entre-temps, ou ça rejoue
-            window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: false }).catch?.(() => {});
+            // Arrivé au bout entre-temps : relancer le ferait repartir du début (la boucle) → son suivant
+            if (this._nearEnd()) return this._onEnded();
             this.engine.play().catch?.(() => {});
           }, [0, 800, 2500][n - 1]);
           if (n === 3) logPause(`${why} (3 relances d'affilée)`);
