@@ -263,6 +263,8 @@ export const sync = {
       const from = this.target || this.devices.find((d) => d.id !== state.device.id && d.playing)?.id;
       const st = from && this.remote[from];
       if (from) this.sendCommand(from, 'fadeOutPause'); // l'autre appareil s'éteint en fondu…
+      // L'autre appareil joue encore 3 s plus tard (commande perdue, appli en arrière-plan) : on lui redemande d'arrêter
+      if (from) setTimeout(() => this.remote[from] && !this.remote[from].paused && this.sendCommand(from, 'pause'), 3500);
       this.control(null);
       if (st?.track) {
         player.list = [st.track, ...(st.upcoming || [])];
@@ -590,6 +592,11 @@ export const sync = {
     if (action === '__transfer') {
       const s = args[0];
       if (this.target) this.control(null);
+      // Lecteur remis à neuf (il pouvait être resté arrêté ou à volume nul en pilotant l'autre appareil)
+      player.engine?.stop?.();
+      player.engine?._setLevel?.(player.engine.a, 1);
+      player._userPauseAt = 0;
+      if (!s.paused) player.paused = false;
       Object.assign(player, { list: s.list, order: s.order, pos: s.pos, userQueue: s.userQueue || [], context: s.context, shuffle: s.shuffle, repeat: s.repeat });
       const lag = !s.paused && s.sentAt ? Math.min(10, Math.max(0, (Date.now() - s.sentAt) / 1000)) : 0;
       player._load(s.track, { start: (s.position || 0) + lag, autoplay: !s.paused });

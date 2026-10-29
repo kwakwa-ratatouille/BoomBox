@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Changement d’appareil plus propre",
+    "items": [
+      "Basculer la lecture d’un appareil à l’autre : l’appareil d’origine s’éteint en fondu pendant que l’autre monte (sur iPhone, iOS ne permet pas de fondu : l’arrêt est net). S’il joue encore 3 s après, Boombox lui redemande d’arrêter.",
+      "L’appareil qui reprend la lecture repart toujours d’un lecteur propre (plus de son muet après une bascule)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1630",
     "title": "Recadrer sa photo de profil",
     "items": [
