@@ -59,6 +59,8 @@ export function setRelay(base, key = null) {
 }
 const relayUrl = (p) => `${relay}${p}${relayK ? `?k=${encodeURIComponent(relayK)}` : ''}`;
 export const getRelay = () => relay;
+// Adresse complète vers le PC (avec la clé du tunnel si besoin), null sans PC joignable
+export const relayHref = (p) => (relay ? `${relay}${p}${relayK ? `${p.includes('?') ? '&' : '?'}k=${encodeURIComponent(relayK)}` : ''}` : null);
 
 const urlCache = new Map();
 // Chaque « client » YouTube donne des liens qui ne se téléchargent qu'en se présentant comme ce client
@@ -642,4 +644,4 @@ export async function audioFolder() {
   return decodeURIComponent(String(uri).replace(/^file:\/\//, ''));
 }
 
-export const media = { audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
+export const media = { relayHref, audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };

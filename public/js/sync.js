@@ -4,6 +4,7 @@
 import { state, emit, on, ls, api, setting } from './state.js';
 import { player } from './player.js';
 import { toast } from './ui.js';
+import { isNative, localApi } from './native.js';
 import { cloud, db, doc, collection, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, arrayUnion, arrayRemove, runTransaction, deleteField } from './cloud.js';
 
 const ONLINE_MS = 75e3;
@@ -55,6 +56,7 @@ export const sync = {
           if (ch.type !== 'added') continue;
           const c = ch.doc.data();
           deleteDoc(ch.doc.ref).catch(() => {});
+          if (c.cid && this._seenCmd.has(c.cid)) continue; // déjà reçue par le canal direct
           if (Date.now() - (c.at || 0) < 60e3) this._command(c);
         }
       }),
@@ -73,6 +75,7 @@ export const sync = {
       }
     });
 
+    this._lanStart();
     const savedJam = ls.get('boombox.jam');
     if (savedJam) this._subscribeJam(savedJam, true);
     emit('sync');
@@ -118,7 +121,56 @@ export const sync = {
 
   sendCommand(target, action, args = []) {
     this._optimistic(target, action, args);
-    addDoc(collection(db, 'spaces', cloud.spaceId, 'devices', target, 'commands'), { action, args: JSON.parse(JSON.stringify(args)), from: state.device.id, at: Date.now() }).catch((e) => toast(e.message));
+    const c = { cid: Math.random().toString(36).slice(2), action, args: JSON.parse(JSON.stringify(args)), from: state.device.id, at: Date.now() };
+    this._lanSend([target], { type: 'cmd', ...c }); // direct par le PC (instantané)…
+    addDoc(collection(db, 'spaces', cloud.spaceId, 'devices', target, 'commands'), c).catch((e) => toast(e.message)); // … et par Internet en secours
+  },
+
+  // ----- Canal direct par le PC (même Wi-Fi) -----
+  // Le PC Boombox relaie commandes et états entre appareils en quelques dizaines de ms (server/index.js, /api/rc).
+  // PC : son propre serveur ; téléphone : le PC trouvé par relay.js. Firebase reste le chemin de secours.
+  _seenCmd: new Set(),
+  async _lanBase(p) {
+    if (!isNative) return /^(localhost|127.0.0.1)$/.test(location.hostname) ? p : null;
+    return (await localApi()).media.relayHref?.(p) || null;
+  },
+  async _lanStart() {
+    const url = await this._lanBase(`/api/rc/stream?dev=${encodeURIComponent(state.device.id)}`);
+    if (url && url !== this._lanUrl) {
+      this._lan?.close();
+      this._lanUrl = url;
+      this._lan = new EventSource(url);
+      this._lan.onmessage = (e) => {
+        let m = null;
+        try {
+          m = JSON.parse(e.data);
+        } catch {}
+        if (m?.type === 'cmd' && m.cid && !this._seenCmd.has(m.cid)) {
+          this._seenCmd.add(m.cid);
+          if (this._seenCmd.size > 200) this._seenCmd = new Set([...this._seenCmd].slice(-100));
+          if (Date.now() - (m.at || 0) < 60e3) this._command(m);
+        } else if (m?.type === 'state' && m.from && m.state && m.from !== state.device.id) {
+          const p = this._pending;
+          if (p?.target === m.from && Date.now() < p.until && Object.entries(p.patch).some(([k, v]) => (k === 'position' ? Math.abs(this.position(m.state) - v) > 2.5 : m.state[k] !== v))) return;
+          if (p?.target === m.from) this._pending = null;
+          this.remote[m.from] = m.state;
+          if (this.target === m.from) {
+            emit('player:track');
+            emit('player:state');
+          }
+        }
+      };
+      this._lan.onerror = () => {}; // EventSource se reconnecte tout seul
+    }
+    // Téléphone : le PC peut changer (Wi-Fi, tunnel) : on revérifie régulièrement
+    clearTimeout(this._lanTimer);
+    if (isNative) this._lanTimer = setTimeout(() => this._lanStart(), 30e3);
+  },
+  async _lanSend(to, msg) {
+    if (!to.length) return;
+    const url = await this._lanBase('/api/rc/send');
+    if (!url) return;
+    fetch(url, { method: 'POST', body: JSON.stringify({ to, msg }) }).catch(() => {});
   },
 
   // Publie l'état de lecture de cet appareil (pour les autres appareils et la Jam).
@@ -133,6 +185,7 @@ export const sync = {
     this._lastSig = sig;
     this._last = snap;
     updateDoc(this.devRef(), { state: snap, lastSeen: Date.now(), online: true }).catch(() => {});
+    this._lanSend(this.devices.filter((d) => d.id !== state.device.id).map((d) => d.id), { type: 'state', from: state.device.id, state: snap });
     if (this.isJamHost()) updateDoc(doc(db, 'jams', this._jamCode), { state: snap }).catch(() => {});
   },
 

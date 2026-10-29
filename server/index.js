@@ -156,6 +156,34 @@ app.post('/api/open-browser', (req, res) => {
   execFile('rundll32.exe', ['url.dll,FileProtocolHandler', url], () => {});
   res.json({ ok: true });
 });
+// Télécommande directe entre appareils par ce PC (même Wi-Fi, ou tunnel avec sa clé) : quelques dizaines de ms au
+// lieu de plusieurs secondes par Internet (Firebase reste en secours). Chaque appareil écoute son flux ; l'envoi
+// est relayé tel quel aux appareils visés. Texte brut + en-tête CORS : pas de requête préalable du navigateur.
+const rcClients = new Map(); // id d'appareil → réponses ouvertes
+app.get('/api/rc/stream', (req, res) => {
+  const dev = String(req.query.dev || '').slice(0, 80);
+  if (!dev) return res.status(400).end();
+  res.set({ 'content-type': 'text/event-stream', 'cache-control': 'no-cache', 'access-control-allow-origin': '*', 'x-accel-buffering': 'no' });
+  res.flushHeaders();
+  res.write(':ok\n\n');
+  if (!rcClients.has(dev)) rcClients.set(dev, new Set());
+  rcClients.get(dev).add(res);
+  const ping = setInterval(() => res.write(':p\n\n'), 20e3);
+  req.on('close', () => {
+    clearInterval(ping);
+    rcClients.get(dev)?.delete(res);
+  });
+});
+app.post('/api/rc/send', express.text({ type: '*/*', limit: '200kb' }), (req, res) => {
+  res.set('access-control-allow-origin', '*');
+  let m = null;
+  try {
+    m = JSON.parse(req.body || '{}');
+  } catch {}
+  let n = 0;
+  for (const to of [].concat(m?.to || [])) for (const r of rcClients.get(String(to)) || []) (r.write(`data: ${JSON.stringify(m.msg)}\n\n`), n++);
+  res.json({ delivered: n });
+});
 app.post('/api/prefetch/:id', prefetchHandler);
 app.get('/api/audio-file/:id', audioFileHandler);
 
