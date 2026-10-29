@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1029.1707",
     "title": "Mode chipmunk plus fluide",
     "items": [
       "Mode chipmunk : l’effet de voix aiguë demande beaucoup moins de calcul, le son ne devrait plus saccader ni ralentir."
