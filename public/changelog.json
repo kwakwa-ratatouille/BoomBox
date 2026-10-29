@@ -1,6 +1,6 @@
 [
   {
-    "version": "next",
+    "version": "2026.1029.2228",
     "title": "Sources d’un son dans le bon ordre",
     "items": [
       "Téléphone : pour chaque son, Boombox essaie dans l’ordre le PC, puis YouTube (tous les moyens disponibles), puis une autre mise en ligne du même son, puis SoundCloud. Chaque version de secours a droit à tous les essais YouTube, pas un seul.",
