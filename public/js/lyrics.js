@@ -93,6 +93,8 @@ export function mountLyrics(el, track) {
     const r = line.getBoundingClientRect();
     const mid = b.top + b.height / 2;
     if (!force && Math.abs(r.top + r.height / 2 - mid) < b.height * 0.18) return;
+    if (box._centering && Date.now() - box._centering < 450) return; // défilement doux déjà en route
+    box._centering = Date.now();
     box.scrollTo({ top: box.scrollTop + (r.top + r.height / 2 - mid), behavior: 'smooth' });
   }
   function tick() {
@@ -107,11 +109,13 @@ export function mountLyrics(el, track) {
         p.classList.toggle('past', i < idx);
         p.classList.toggle('now', i === idx);
       });
-      const cur = el.querySelector('.lyrics p.now');
-      if (cur && Date.now() - userScroll > 3000) {
-        center(cur);
-        el.querySelector('.lyr-resync')?.classList.add('hidden');
-      }
+    }
+    // La ligne en cours reste au milieu, même si le cadre a été redessiné ou remis en haut (son joué sur un autre
+    // appareil, panneau de droite) : vérifié à chaque instant, pas seulement au changement de ligne
+    const cur = el.querySelector('.lyrics p.now');
+    if (cur && Date.now() - userScroll > 3000 && !n.paused) {
+      center(cur);
+      el.querySelector('.lyr-resync')?.classList.add('hidden');
     }
   }
   // Paroles à l'écran pendant que le son joue : l'appareil ne se met pas en veille

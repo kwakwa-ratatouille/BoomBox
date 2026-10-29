@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Recommandations et bascule entre appareils",
+    "items": [
+      "Accueil : nouvelle rangée « Recommandé pour toi », des sons proches de ce que tu as écouté récemment (sans ceux déjà écoutés ou likés), mise à jour quand tu écoutes autre chose.",
+      "Reprendre sur le PC un son qui jouait sur le téléphone : le lecteur du PC est remis à neuf et, s’il ne démarre pas, le son est rechargé tout seul (plus besoin de Ctrl+R).",
+      "Paroles à droite : la ligne en cours reste au milieu, même quand le son joue sur un autre appareil."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1614",
     "title": "Paroles qui défilent toutes seules",
     "items": [

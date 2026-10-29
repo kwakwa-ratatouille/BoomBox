@@ -304,6 +304,7 @@ export async function home(el, _p, ctx) {
   if (hasMusic) {
     sections.push(slot('daily', `Conçu pour ${name}`));
     if (recent.length) sections.push(section('Écoutés récemment', recent.map((t) => card(t)), '#/history', 'Historique'));
+    if (recent.length) sections.push(slot('reco-for-you', 'Recommandé pour toi'));
     sections.push('<section class="section" id="reco-day"></section>');
     if (lib.follows.length) sections.push(slot('rel-for-you', 'Dernières sorties rien que pour toi'));
     sections.push(slot('new-music', 'Top des nouveautés musicales'));
@@ -333,6 +334,12 @@ export async function home(el, _p, ctx) {
 
   // Conçu pour toi : les Mix du jour
   dailyMixes().then((ms) => fill('daily', ms.length ? section(`Conçu pour ${name}`, ms.map((m) => card({ name: m.name, type: 'mix', coverHtml: mixCover(m) }, { sub: m.desc, href: `#/mix/${m.id}`, play: `daily:${m.id}` }))) : '')).catch(() => fill('daily', ''));
+
+  // Recommandé pour toi : sons proches de ce que tu as écouté récemment (pas encore écoutés ni likés)
+  if (recent.length) recoForYou(recent).then((list) => {
+    rememberTracks(list);
+    fill('reco-for-you', list.length ? section('Recommandé pour toi', list.map((t) => card(t, { sub: (t.artists || []).map((a) => a.name).join(', ') }))) : '');
+  }).catch(() => fill('reco-for-you', ''));
 
   // Dernières sorties de tes artistes (les nouvelles d'abord)
   if (lib.follows.length) {
@@ -372,6 +379,28 @@ export async function home(el, _p, ctx) {
 
   const firstThumb = recent[0]?.thumb || lib.liked[0]?.thumb;
   if (firstThumb) dominantColor(firstThumb).then((c) => c && (el.querySelector('.home-bg')?.style.setProperty('--home-color', c), document.documentElement.style.setProperty('--topbar-bg', c)));
+}
+
+// Recommandé pour toi : radios des 4 derniers sons écoutés, mélangées, sans ceux déjà écoutés ou likés. Gardé 1 h
+// (refait plus tôt si tu as écouté autre chose entre-temps).
+async function recoForYou(recent) {
+  const seeds = [...new Map(recent.map((t) => [t.id, t])).values()].slice(0, 4);
+  const key = `boombox.recoList.${state.profile.id}`;
+  const sig = seeds.map((t) => t.id).join();
+  const saved = ls.get(key, null);
+  if (saved?.sig === sig && Date.now() - saved.at < 3600e3) return saved.list;
+  const heard = new Set((await getHistory(500).catch(() => [])).map((h) => h.id));
+  const radios = await Promise.all(seeds.map((t) => api(`/api/radio/${t.id}`).catch(() => [])));
+  const out = [];
+  const seen = new Set();
+  for (let i = 0; out.length < 20 && i < 30; i++) {
+    for (const r of radios) {
+      const t = r[i + 1];
+      if (t?.id && !seen.has(t.id) && !heard.has(t.id) && !isLiked(t.id)) (seen.add(t.id), out.push(t));
+    }
+  }
+  ls.set(key, { sig, at: Date.now(), list: out });
+  return out;
 }
 
 // Recommandation du jour : radio d'un de tes titres favoris → premier titre ni liké ni déjà écouté. Gardée pour la journée.

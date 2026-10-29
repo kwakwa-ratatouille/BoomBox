@@ -270,8 +270,28 @@ export const sync = {
         player.pos = 0;
         player.userQueue = [];
         player.context = st.context;
-        player._load(st.track, { start: this.position(st), autoplay: !st.paused });
-        if (!st.paused) player.fadeIn(); // … pendant que celui-ci monte
+        // Lecteur de cet appareil remis à neuf : il était resté arrêté (et parfois à volume nul) pendant qu'il pilotait
+        // l'autre appareil, et le son ne repartait pas sans recharger la page
+        const e = player.engine;
+        e?.stop?.();
+        e?._setLevel?.(e.a, 1);
+        player._userPauseAt = 0;
+        if (!st.paused) player.paused = false;
+        const pos = this.position(st);
+        player._load(st.track, { start: pos, autoplay: !st.paused });
+        if (!st.paused) {
+          player.fadeIn(); // … pendant que celui-ci monte
+          // Toujours rien au bout de 4 s : nouveau chargement du son (lien neuf), au même endroit
+          const id = st.track.id;
+          setTimeout(() => {
+            if (player.track?.id !== id || this.target) return;
+            const el = player.engine?.a;
+            if (player.engine?.name === 'audio' && el && (el.paused || el.readyState < 2)) {
+              player.engine._setLevel?.(el, 1);
+              player.engine.load(id, pos + 4, true, true);
+            }
+          }, 4000);
+        }
         emit('player:queue');
       }
       return;
