@@ -1579,6 +1579,7 @@ async function boot() {
   }, 15000);
   state.status = await api('/api/status').catch(() => state.status);
   Events.apply();
+  setTimeout(quotaNotice, 1500); // dès le démarrage : la suite peut rester bloquée tant que Firebase refuse
   setInterval(() => Events.compute().id !== Events.current.id && (Events.apply(), location.hash === '#/' && window.dispatchEvent(new HashChangeEvent('hashchange'))), 3600e3);
   await cloud.signIn();
   clearTimeout(slow);
@@ -2153,6 +2154,18 @@ function onboarding() {
         err(/permission/i.test(e.code || e.message) ? 'Lien invalide ou expiré' : e);
       }
     };
+  });
+}
+
+// Avis temporaire : limite gratuite quotidienne de Firebase dépassée le 29/10/2026. Affiché par-dessus jusqu'au
+// 30/10 à 9 h (heure de Paris, remise à zéro du compteur), fermable ; disparaît tout seul ensuite.
+function quotaNotice() {
+  const until = Date.UTC(2026, 9, 30, 8, 0); // 30 octobre 2026, 9 h à Paris
+  if (Date.now() >= until || localStorage.getItem('boombox.quotaNotice')) return;
+  modal({
+    title: '⏳ Boombox fait une petite pause',
+    body: '<div class="quota-note"><p>Il y a eu tellement d’activité aujourd’hui que Boombox a atteint sa <b>limite gratuite du jour</b> chez Firebase (le service qui garde ta bibliothèque en ligne).</p><p>D’ici là, <b>la musique continue de jouer</b>, mais certaines choses peuvent ne pas marcher : synchronisation entre tes appareils, écoutes enregistrées, amis, playlists modifiées.</p><p class="quota-when">Tout revient à la normale <b>demain à 9 h</b>, sans rien faire. 🙏</p></div>',
+    actions: [{ label: 'Compris', primary: true, value: () => (localStorage.setItem('boombox.quotaNotice', '1'), 'ok') }],
   });
 }
 

@@ -2633,3 +2633,7 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .st-src p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
 .st-src a { color: var(--accent); }
 .st-src .chip { font-size: 11px; padding: 2px 8px; margin-left: 6px; }
+/* Avis temporaire (limite Firebase du jour) */
+.quota-note p { margin: 0 0 12px; line-height: 1.5; }
+.quota-note .quota-when { padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); margin-bottom: 0; }
+.modal-backdrop:has(.quota-note) { z-index: 99990; } /* au-dessus de l’accueil et du choix du profil */
