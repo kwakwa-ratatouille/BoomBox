@@ -2405,3 +2405,107 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 }
 #rightpanel .lyrics { padding-bottom: 45vh; } /* la dernière ligne peut aussi venir au milieu */
 .fc-when .eq, .fa-when .eq { position: static; transform: none; margin-right: 4px; } /* égaliseur « en écoute » à côté du nom, pas au bord du panneau */
+
+/* ===== Thèmes d'événements (tokens générés par events-pixel.js, DA pixel seulement) ===== */
+:root[data-event="noel"] {
+  --accent: #ff5a64;
+  --accent-2: #47d17f;
+  --accent-rgb: 255, 90, 100;
+  --bg-tint: #0e1220;
+  --bg-palette: #0e1220 #211825 #321d2a #1b3c35;
+  --bg-style: waves;
+  --particles: snow;
+  --particles-colors: #eef3ff #b9c6e4;
+}
+:root[data-event="nouvel-an"] {
+  --accent: #ffcf4d;
+  --accent-2: #ff5fa2;
+  --accent-rgb: 255, 207, 77;
+  --bg-tint: #0d0b1c;
+  --bg-palette: #0d0b1c #201b20 #312823 #421d39;
+  --bg-style: stars;
+  --particles: fireworks;
+  --particles-colors: #ffcf4d #ff5fa2 #c9d3ff #fff1b8;
+}
+:root[data-event="valentin"] {
+  --accent: #ff6b9a;
+  --accent-2: #ff3d6e;
+  --accent-rgb: 255, 107, 154;
+  --bg-tint: #1a0f17;
+  --bg-palette: #1a0f17 #2c1621 #3c1d2b #4c192a;
+  --bg-style: waves;
+  --particles: hearts;
+  --particles-colors: #ff6b9a #ff3d6e #ffc2d6;
+}
+:root[data-event="paques"] {
+  --accent: #9be38c;
+  --accent-2: #f7a8d8;
+  --accent-rgb: 155, 227, 140;
+  --bg-tint: #11141a;
+  --bg-palette: #11141a #1c2523 #26332b #443544;
+  --bg-style: plasma;
+  --particles: eggs;
+  --particles-colors: #9be38c #f7a8d8 #9ec9ff #ffd36e;
+}
+:root[data-event="musique"] {
+  --accent: #2ef28b;
+  --accent-2: #ffd34d;
+  --accent-rgb: 46, 242, 139;
+  --bg-tint: #0c1316;
+  --bg-palette: #0c1316 #0f251f #113428 #413d22;
+  --bg-style: rings;
+  --particles: notes;
+  --particles-colors: #2ef28b #ffd34d #ff6b4a #4dc3ff;
+}
+:root[data-event="ete"] {
+  --accent: #ffb347;
+  --accent-2: #3fd0c9;
+  --accent-rgb: 255, 179, 71;
+  --bg-tint: #0b1418;
+  --bg-palette: #0b1418 #1f211c #302c1f #163d3f;
+  --bg-style: waves;
+  --particles: summer;
+  --particles-colors: #3fd0c9 #bff3ef;
+}
+:root[data-event="rentree"] {
+  --accent: #ffd34d;
+  --accent-2: #5aa9ff;
+  --accent-rgb: 255, 211, 77;
+  --bg-tint: #10131a;
+  --bg-palette: #10131a #23221e #343022 #20344c;
+  --bg-style: plasma;
+  --particles: school;
+  --particles-colors: #ff9f43 #ffd34d #ff6b6b;
+}
+:root[data-event="halloween"] {
+  --accent: #ff8a2a;
+  --accent-2: #b07cf7;
+  --accent-rgb: 255, 138, 42;
+  --bg-tint: #0f0b10;
+  --bg-palette: #0f0b10 #221512 #331e14 #322443;
+  --bg-style: plasma;
+  --particles: spooky;
+  --particles-colors: ;
+}
+:root[data-event="anniversaire"] {
+  --accent: #ff7ac6;
+  --accent-2: #7ae0ff;
+  --accent-rgb: 255, 122, 198;
+  --bg-tint: #151020;
+  --bg-palette: #151020 #28182d #382039 #2b3e51;
+  --bg-style: stars;
+  --particles: party;
+  --particles-colors: #ff7ac6 #7ae0ff #ffd34d #b07cf7;
+}
+/* Thème d'événement : bandeau de l'accueil, pochettes des playlists de saison */
+.ev-banner { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin: 4px 0 18px; border-radius: 16px; background: var(--panel, rgba(30, 26, 40, 0.92)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.ev-banner > img { width: 44px; height: 44px; image-rendering: pixelated; flex: none; }
+.ev-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.ev-text b { font-size: 16px; }
+.ev-text span { color: var(--muted); font-size: 13px; }
+@media (max-width: 768px) { .ev-banner { flex-wrap: wrap; } .ev-banner .ev-text { flex-basis: calc(100% - 110px); } .ev-banner .btn { order: 3; } }
+.ev-cover { position: relative; overflow: hidden; }
+.ev-cover img:first-child { width: 100%; height: 100%; image-rendering: pixelated; }
+.ev-cover .ev-cover-logo { position: absolute; width: 46%; height: auto; left: 27%; top: 27%; image-rendering: pixelated; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35)); }
+.home-bg canvas.pxbg { -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); opacity: 0.85; }
+.brand-logo, .sp-box { image-rendering: pixelated; }

@@ -1,5 +1,16 @@
 [
   {
+    "version": "next",
+    "title": "Thèmes d’événements",
+    "items": [
+      "Noël, Nouvel An, Saint-Valentin, Pâques, Fête de la musique, été, rentrée, Halloween et ton anniversaire : Boombox change tout seul de couleur, de logo (habillé pour l’occasion) et de fond animé aux bonnes dates.",
+      "Accueil : un bandeau du thème (« Joyeux Halloween ! ») et une rangée « Playlists de saison » en premier.",
+      "Récap et stats exportés : fond animé et logo du thème.",
+      "Paramètres : « Thèmes d’événements : Auto / Toujours le thème de base », date d’anniversaire, et « Réactiver » si tu as coupé le thème depuis le bandeau. Seulement avec l’interface « Boombox » (pas en DA Spotify)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1707",
     "title": "Mode chipmunk plus fluide",
     "items": [

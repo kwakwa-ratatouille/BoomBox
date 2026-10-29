@@ -6,6 +6,7 @@ import { getStatsFull, createPlaylist, listeningYears } from './state.js';
 import { ctl } from './player.js';
 import { loadImg, shareStory, pixelDeco, shareFile, copyImage } from './story.js';
 import { pixelBackdrop, fieldPainter, isPixelDA } from './pixel-bg.js';
+import * as Events from './events.js';
 import { isNative, localApi } from './native.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('fr-FR');
@@ -240,7 +241,7 @@ function cardHtml(c, i) {
   const t = c.theme;
   const lines = (txt) => String(txt).split('\n').map((l, k) => html`<span class="wr-line" style="--d:${0.15 + k * 0.12}s">${l}</span>`);
   let body;
-  if (c.kind === 'intro') body = html`<img class="wr-logo wr-in" src="/assets/logo-symbol.png?v=2" alt=""><p class="wr-kicker wr-in" style="--d:.1s">${c.kicker}</p><h1 class="wr-huge">${lines(c.big)}</h1><p class="wr-sub wr-in" style="--d:.6s">${c.sub}</p>`;
+  if (c.kind === 'intro') body = html`<img class="wr-logo wr-in" src="${Events.eventLogo()}" alt=""><p class="wr-kicker wr-in" style="--d:.1s">${c.kicker}</p><h1 class="wr-huge">${lines(c.big)}</h1><p class="wr-sub wr-in" style="--d:.6s">${c.sub}</p>`;
   else if (c.kind === 'number') body = html`<p class="wr-kicker wr-in">${c.kicker}</p><div class="wr-num wr-in ${String(c.unit).length <= 2 ? 'inline' : ''}" style="--d:.2s"><b data-count="${c.num}" data-plain="${c.plain ? 1 : 0}">0</b><span>${c.unit}</span></div><p class="wr-sub wr-in" style="--d:.5s">${c.sub}</p>${c.faces ? html`<div class="wr-faces wr-in" style="--d:.7s">${c.faces.map((f) => (f ? html`<img src="${f}" alt="" referrerpolicy="no-referrer">` : ''))}</div>` : ''}`;
   else if (c.kind === 'hero') body = html`<p class="wr-kicker wr-in">${c.kicker}</p><div class="wr-photo ${c.round ? 'round' : ''} wr-pop">${c.img ? html`<img src="${c.img}" alt="" referrerpolicy="no-referrer">` : ''}</div><h1 class="wr-big wr-in" style="--d:.45s">${c.big}</h1><p class="wr-sub wr-in" style="--d:.6s">${c.sub}</p>${c.play ? html`<button class="wr-btn wr-in" style="--d:.75s" data-wplay>${icon('play', 18)} Écouter</button>` : ''}`;
   else if (c.kind === 'list') body = html`<p class="wr-kicker wr-in">${c.kicker}</p><ol class="wr-list">${c.items.map((it, k) => html`<li class="wr-in" style="--d:${0.2 + k * 0.13}s"><span class="wr-rank">${k + 1}</span>${it.img ? html`<img class="${it.round ? 'round' : ''}" src="${it.img}" alt="" referrerpolicy="no-referrer">` : html`<i></i>`}<div><b>${it.title}</b><small>${it.sub}</small></div></li>`)}</ol>`;
@@ -248,7 +249,7 @@ function cardHtml(c, i) {
   else body = html`<div class="wr-sum"><p class="wr-kicker wr-in">${c.kicker}</p>${c.img ? html`<img class="wr-sum-img wr-pop" src="${c.img}" alt="" referrerpolicy="no-referrer">` : ''}
     <div class="wr-sum-cols wr-in" style="--d:.3s"><div><small>Top artistes</small>${c.artists.map((a, k) => html`<p><b>${k + 1}</b> ${a}</p>`)}</div><div><small>Top titres</small>${c.tracks.map((a, k) => html`<p><b>${k + 1}</b> ${a}</p>`)}</div></div>
     <div class="wr-sum-stats wr-in" style="--d:.45s">${c.stats.map(([l, v]) => html`<div><small>${l}</small><b>${v}</b></div>`)}<div><small>Profil</small><b>${c.persona}</b></div></div>
-    <div class="wr-sum-foot wr-in" style="--d:.6s"><img src="/assets/logo-symbol.png?v=2" alt=""><span>Boombox</span></div></div>`;
+    <div class="wr-sum-foot wr-in" style="--d:.6s"><img src="${Events.eventLogo()}" alt=""><span>Boombox</span></div></div>`;
   return html`<div class="wr-card wr-${c.kind} set-${t.shapeSet}" style="--bg:${t.bg};--bg2:${t.bg2 || t.bg};--fg:${t.fg}">${shapes(t)}<div class="wr-body">${body}</div></div>`;
 }
 
@@ -355,7 +356,7 @@ async function cardImage(c, format = 'story', opts = {}) {
     low.height = lh;
     const lg = low.getContext('2d');
     const img = lg.createImageData(lw, lh);
-    fieldPainter(bd.palette, bd.opts)(img, lw, lh, 2.5);
+    (Events.painter() || fieldPainter(bd.palette, bd.opts))(img, lw, lh, 2.5);
     lg.putImageData(img, 0, 0);
     x.imageSmoothingEnabled = false;
     x.drawImage(low, 0, 0, lw * cell, lh * cell);
@@ -522,7 +523,7 @@ async function cardImage(c, format = 'story', opts = {}) {
     y += 62 + 5 * (post ? 56 : 68) + (post ? 20 : 50);
     stat("Profil d'auditeur", c.persona, 80, y, post ? 56 : 70);
   }  // Signature
-  const logo = await loadImg('/assets/logo-symbol.png?v=2');
+  const logo = await loadImg(Events.eventLogo());
   if (logo) x.drawImage(logo, 80, H - 140, 64, 64);
   x.fillStyle = t.fg;
   x.font = `800 40px ${font}`;
@@ -598,7 +599,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
   both.getContext('2d').drawImage(contentS, 0, 0);
   // Fond pixel : mêmes réglages et même nombre de cellules en largeur que la carte dans l'appli (≈ 60)
   const bd = cardBackdrop(c);
-  const paint = fieldPainter(bd.palette, bd.opts);
+  const paint = (Events.painter() || fieldPainter(bd.palette, bd.opts));
   const lw = 60;
   const cell = W / lw;
   const lh = Math.ceil(H / cell);
@@ -952,7 +953,7 @@ export async function wrappedPage(el, params, ctx) {
   el.innerHTML = String(html`<div class="wr" tabindex="0">
     <div class="wr-stage">
       <div class="wr-bars">${cards.map(() => html`<span><i></i></span>`)}</div>
-      <div class="wr-top"><span class="wr-brand"><img src="/assets/logo-symbol.png?v=2" alt="">${range.short}</span><button class="wr-icon" data-w="pause" title="Pause (ou maintiens appuyé)">${icon('pause', 20)}</button><button class="wr-icon" data-w="close" title="Fermer">${icon('close', 22)}</button></div>
+      <div class="wr-top"><span class="wr-brand"><img src="${Events.eventLogo()}" alt="">${range.short}</span><button class="wr-icon" data-w="pause" title="Pause (ou maintiens appuyé)">${icon('pause', 20)}</button><button class="wr-icon" data-w="close" title="Fermer">${icon('close', 22)}</button></div>
       <div class="wr-slot"></div>
       <button class="wr-nav prev" aria-label="Carte précédente"></button><button class="wr-nav next" aria-label="Carte suivante"></button>
     </div>
@@ -984,7 +985,7 @@ export async function wrappedPage(el, params, ctx) {
     // Fond pixel animé propre à la carte : ses couleurs, or pour les podiums, vert pour ce qui est « en direct »
     {
       const bd = cardBackdrop(cards[i]);
-      pixelBackdrop(slot.querySelector('.wr-card'), bd.palette, bd.opts);
+      pixelBackdrop(slot.querySelector('.wr-card'), bd.palette, { ...bd.opts, painter: Events.painter() });
     }
     bars.forEach((b, k) => {
       b.className = k < i ? 'done' : k === i ? 'now' : '';

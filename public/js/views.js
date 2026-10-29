@@ -6,6 +6,7 @@ import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
 import { cover, playlistCover, likedCover, trackList, card, rememberTracks, playlistSubmenu, playKey, openPlaylistPicker, registerCard } from './components.js';
 import { mergeResults, fixTrack } from './twins.js';
+import * as Events from './events.js';
 import { sendToFriend, mountLiveStrip } from './views-social.js';
 import { playlistShareItems } from './views-share.js';
 import { dailyMixes, lastMixes } from './dailymix.js';
@@ -183,7 +184,7 @@ async function heroBackdrop(hero, p, coverUrl) {
   if (a.style === 'none') return;
   let c = a.color === 'accent' ? accentColor() : a.color === 'cover' ? null : a.color;
   if (!c) c = usableColor(coverUrl && (await dominantColor(coverUrl).catch(() => null))) || accentColor();
-  if (hero.isConnected) pixelBackdrop(hero, accentPalette(c), { style: a.style, speed: 0.4, accents: [c], cell: 10, fps: 8 });
+  if (hero.isConnected) pixelBackdrop(hero, accentPalette(c), { style: a.style, speed: 0.4, accents: [c], cell: 10, fps: 8, painter: Events.painter() });
 }
 function bannerItems(p) {
   const a = { style: 'waves', color: 'cover', ...(p.anim || {}) };
@@ -241,7 +242,8 @@ export async function home(el, _p, ctx) {
   const h = new Date().getHours();
   const greet = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
   const lib = state.library;
-  el.innerHTML = String(html`<div class="home-bg"></div><div class="page" style="position:relative">
+  const evt = Events.texts(state.profile?.name);
+  el.innerHTML = String(html`<div class="home-bg"></div><div class="page" style="position:relative">${evt && !Events.bannerHidden() ? html`<div class="ev-banner"><img src="${Events.eventLogo()}" alt=""><div class="ev-text"><b>${evt.banner[0]}</b><span>${evt.banner[1]}</span></div><button class="btn ghost sm" data-ev="off">Couper le thème</button><button class="icon-btn" data-ev="hide" aria-label="Fermer">${icon('close', 18)}</button></div>` : ''}
     <div class="quick" id="quick"></div>
     <div id="home-recap"></div>
     <div id="home-live"></div>
@@ -269,6 +271,14 @@ export async function home(el, _p, ctx) {
   const name = state.profile.name;
   // Section chargée en arrière-plan : une place réservée (squelette), remplacée quand les données arrivent
   const slot = (id, title) => `<section class="section" id="${id}"><div class="section-head"><h2>${esc(title)}</h2></div><div class="sk-cards">${'<div class="sk sk-card"></div>'.repeat(5)}</div></section>`;
+  // Thème d'événement : fond animé du thème en haut de l'accueil, boutons du bandeau
+  if (evt) pixelBackdrop(el.querySelector('.home-bg'), accentPalette(), { painter: Events.painter(), cell: 8, fps: 10 });
+  el.querySelector('[data-ev="hide"]')?.addEventListener('click', () => (Events.hideBanner(), el.querySelector('.ev-banner')?.remove()));
+  el.querySelector('[data-ev="off"]')?.addEventListener('click', () => {
+    Events.mute();
+    toast('Thème coupé jusqu’à la fin de l’événement (Paramètres → Réactiver)');
+    home(el, _p, ctx);
+  });
   const fill = (id, html) => {
     const box = el.querySelector(`#${id}`);
     if (box && ctx.alive()) html ? (box.outerHTML = html) : box.remove();
@@ -301,6 +311,8 @@ export async function home(el, _p, ctx) {
   const mixColors = ['#7c4dff', '#1e3264', '#8d67ab', '#148a08', '#bc5900', '#e8115b', '#509bf5', '#477d95'];
 
   const hasMusic = recent.length || lib.liked.length || lib.playlists.length;
+  // Playlists de saison (thème d'événement) : en premier ; un appui lance une sélection trouvée par la recherche
+  if (evt?.playlists?.length) sections.push(section('Playlists de saison', evt.playlists.map((p, i) => card({ name: p.name, type: 'season', coverHtml: html`<div class="cover ev-cover"><img src="${Events.seasonCover(i)}" alt=""><img class="ev-cover-logo" src="${Events.eventLogo()}" alt=""></div>` }, { sub: p.desc, href: '', play: `season:${p.name}` }))));
   if (hasMusic) {
     sections.push(slot('daily', `Conçu pour ${name}`));
     if (recent.length) sections.push(section('Écoutés récemment', recent.map((t) => card(t)), '#/history', 'Historique'));

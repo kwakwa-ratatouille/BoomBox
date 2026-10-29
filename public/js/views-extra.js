@@ -3,6 +3,7 @@ import { pixelBackdrop, PARTY_PALETTE, PARTY_ACCENTS, isPixelDA, accentPalette, 
 import { DA, setDA, ACCENTS, html, raw, icon, plural, toast, fmtAgo, artistLinks, dominantColor, confirmBox, esc, modal, contextMenu } from './ui.js';
 import { state, api, ls, getShare, createPlaylist, likeMany, addReport, saveSettings, setting, updateProfile, getHistory, getStats, exportLibrary, restoreLibrary } from './state.js';
 import { cloud } from './cloud.js';
+import * as Events from './events.js';
 import { player, ctl } from './player.js';
 import { sync } from './sync.js';
 import { cover, trackList } from './components.js';
@@ -484,6 +485,9 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Réveil en musique</b><p id="s-al-sum">À l'heure et les jours choisis, un son (au passage de ton choix) ou une playlist se lance, et le volume monte doucement pendant 1 minute. Sur téléphone, une notification sonne aussi.</p></div>
       <div class="row-flex" style="gap:8px;flex:none"><button class="btn ghost" id="s-al-edit">Régler</button><label class="switch"><input type="checkbox" id="s-al-on"><span></span></label></div></div>
     <div class="settings-row"><div><b>Animations</b><p>Fonds animés, bannières, logo du démarrage. Coupées : tout reste fixe (plus léger pour un vieil appareil). Réglé pour cet appareil.</p></div><label class="switch"><input type="checkbox" id="s-anim" ${animationsOff() ? '' : 'checked'}><span></span></label></div>
+    <div class="settings-row"><div><b>Thèmes d’événements</b><p>Noël, Halloween, Saint-Valentin, été… : logo, couleurs, fond animé et playlists de saison changent tout seuls aux bonnes dates (interface « Boombox » seulement).${Events.mutedNow() ? html` Coupé pour l’événement en cours : <a class="link" href="javascript:void 0" id="s-ev-on" style="color:var(--accent)">Réactiver</a>` : ''}</p></div>
+      <div class="row-flex" style="gap:8px;flex:none"><button class="chip ${Events.settings.mode() === 'auto' ? 'active' : ''}" data-evm="auto">Auto</button><button class="chip ${Events.settings.mode() === 'base' ? 'active' : ''}" data-evm="base">Toujours le thème de base</button></div></div>
+    <div class="settings-row"><div><b>Date d’anniversaire</b><p>Facultatif : un thème rien que pour toi ce jour-là.</p></div><input class="input" type="date" id="s-bday" style="width:auto" value="${Events.settings.birthday() ? `2000-${Events.settings.birthday()}` : ''}"></div>
     <div class="settings-row"><div><b>Style de l'interface</b><p>« Boombox » : la nouvelle interface, icônes en pixel art. « DA Spotify » : l'ancienne, plus classique. Réglé pour cet appareil.</p></div>
       <div class="row-flex" style="gap:8px;flex:none"><button class="chip ${DA() === 'pixel' ? 'active' : ''}" data-da="pixel">Boombox</button><button class="chip ${DA() === 'spotify' ? 'active' : ''}" data-da="spotify">DA Spotify</button></div></div>
 
@@ -730,6 +734,16 @@ export async function settings(el) {
       paint();
       if (on.checked) toast(nextLabel(alarmConf()));
     };
+  });
+  el.querySelectorAll('[data-evm]').forEach((b) => (b.onclick = () => {
+    Events.settings.setMode(b.dataset.evm);
+    toast(b.dataset.evm === 'auto' ? 'Thèmes d’événements activés' : 'Thème de base toute l’année');
+    settings(el);
+  }));
+  el.querySelector('#s-ev-on')?.addEventListener('click', () => (Events.unmute(), toast('Thème de l’événement réactivé'), settings(el)));
+  el.querySelector('#s-bday')?.addEventListener('change', (e) => {
+    Events.settings.setBirthday(e.target.value ? e.target.value.slice(5) : null);
+    toast(e.target.value ? 'Anniversaire enregistré 🎂' : 'Anniversaire retiré');
   });
   el.querySelector('#s-anim')?.addEventListener('change', (e) => {
     try { localStorage.setItem('bb-anim', e.target.checked ? 'on' : 'off'); } catch {}

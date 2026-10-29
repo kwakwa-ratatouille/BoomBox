@@ -104,7 +104,7 @@ export function fieldPainter(palette, { style = 'waves', accents = [], speed = 0
 }
 
 // host : élément qui reçoit le fond (le canvas est placé derrière son contenu). Renvoie une fonction d'arrêt.
-export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves', accents = [], speed = 0.5, cell = 8, fps = 10, accentRate = 0.004 } = {}) {
+export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves', accents = [], speed = 0.5, cell = 8, fps = 10, accentRate = 0.004, painter = null } = {}) {
   if (!host || !isPixelDA()) return () => {};
   host.querySelector(':scope > canvas.pxbg')?._stop?.();
   const cv = document.createElement('canvas');
@@ -127,7 +127,7 @@ export function pixelBackdrop(host, palette = accentPalette(), { style = 'waves'
       img = g.createImageData(w, h);
     }
   };
-  const paint = fieldPainter(palette, { style, accents, speed, accentRate });
+  const paint = painter || fieldPainter(palette, { style, accents, speed, accentRate });
   const draw = (t) => {
     if (!img) return;
     paint(img, w, h, t);

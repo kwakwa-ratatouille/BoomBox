@@ -4,6 +4,7 @@ import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText,
 import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
 import { cloud, parseInvite, getDoc } from './cloud.js';
 import { GOOGLE_LOGO } from './account.js';
+import * as Events from './events.js';
 import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
@@ -1551,6 +1552,8 @@ async function boot() {
     if (s && !s.querySelector('.splash-msg')) s.insertAdjacentHTML('beforeend', '<p class="splash-msg">Connexion en cours… Vérifie ta connexion Internet. Si ça dure, ferme et rouvre Boombox.</p>');
   }, 15000);
   state.status = await api('/api/status').catch(() => state.status);
+  Events.apply();
+  setInterval(() => Events.compute().id !== Events.current.id && (Events.apply(), location.hash === '#/' && window.dispatchEvent(new HashChangeEvent('hashchange'))), 3600e3);
   await cloud.signIn();
   clearTimeout(slow);
   if (isNative) await handleLaunchLink();

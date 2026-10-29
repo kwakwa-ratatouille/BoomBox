@@ -669,6 +669,15 @@ export async function playKey(key) {
       if (t) return ctl.playRadio(t);
     }
     if (kind === 'liked') return ctl.playList(state.library.liked, startAt(state.library.liked), { type: 'liked', name: 'Titres likés' });
+    // Playlist de saison (Noël, Halloween…) : les titres trouvés pour son nom, en aléatoire
+    if (kind === 'season') {
+      toast(`« ${id} »…`);
+      const r = await api(`/api/search?type=song&q=${encodeURIComponent(id)}`);
+      const tracks = (r?.items || []).map(({ type: _t, ...t }) => t);
+      if (!tracks.length) return toast('Rien trouvé pour cette playlist');
+      rememberTracks(tracks);
+      return ctl.playList(tracks, Math.floor(Math.random() * tracks.length), { type: 'search', name: id });
+    }
     if (kind === 'daily') {
       const m = lastMixes.find((x) => x.id === id);
       if (m) return ctl.playList(m.tracks, startAt(m.tracks), { type: 'daily', id: m.id, name: m.name });
