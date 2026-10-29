@@ -31,9 +31,12 @@ async function fromLrclib({ title, artist, album, duration }) {
   if (album) qs.set('album_name', album);
   if (duration) qs.set('duration', String(duration));
   let d = await getJson(`https://lrclib.net/api/get?${qs}`).catch(() => null);
-  if (!d?.syncedLyrics && !d?.plainLyrics) {
+  // Fiche trouvée sans paroles synchronisées (ou rien) : parmi les autres fiches du même son, on préfère une version
+  // synchronisée (durée proche d'abord) ; sinon on garde les paroles simples
+  if (!d?.syncedLyrics && !d?.instrumental) {
     const list = (await getJson(`https://lrclib.net/api/search?${new URLSearchParams({ track_name: title, artist_name: artist })}`).catch(() => null)) || [];
-    d = list.find((x) => x.syncedLyrics && (!duration || Math.abs(x.duration - duration) < 6)) || list.find((x) => x.syncedLyrics) || list[0] || null;
+    const synced = list.find((x) => x.syncedLyrics && (!duration || Math.abs(x.duration - duration) < 6)) || list.find((x) => x.syncedLyrics && (!duration || Math.abs(x.duration - duration) < 20));
+    d = synced || (d?.plainLyrics ? d : list[0] || null);
   }
   if (!d) return null;
   if (d.instrumental) return { instrumental: true, source: 'lrclib' };
@@ -103,7 +106,11 @@ export async function findLyrics({ videoId, title, artist, album, duration }) {
   if (lrclib?.instrumental) result = { instrumental: true, source: 'lrclib' };
   else if (lrclib?.synced) result = lrclib;
   else if (netease?.synced) result = { ...netease, plain: lrclib?.plain || null };
-  else if (lrclib?.plain) result = lrclib;
+  else if (lrclib?.plain) {
+    // Paroles simples seulement : une recherche plus large peut trouver une version synchronisée du même son
+    const free = await fromLrclibFree(q, title, artist).catch(() => null);
+    result = free?.synced ? free : lrclib;
+  }
   else {
     result = (videoId && (await ytLyrics(videoId))) || (await fromLyricsOvh(q).catch(() => null)) || (await fromLrclibFree(q, title, artist).catch(() => null));
   }

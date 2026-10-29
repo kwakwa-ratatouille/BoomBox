@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2150",
+    "title": "Paroles synchronisées en priorité",
+    "items": [
+      "Paroles : quand il en existe plusieurs pour un son, Boombox prend en priorité celles qui sont synchronisées avec la musique (avant, une version simple trouvée en premier passait devant)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2148",
     "title": "Choisir la version d’un son",
     "items": [
