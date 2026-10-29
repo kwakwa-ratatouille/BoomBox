@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1530",
+    "title": "Lecteur en grand : affichage remis",
+    "items": [
+      "Lecteur en grand : le titre et les minutes ne chevauchent plus la barre d’avance. Elle reprend sa place d’origine et garde sa zone tactile agrandie."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1528",
     "title": "Appareils liés plus fiables",
     "items": [
