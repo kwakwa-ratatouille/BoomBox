@@ -2590,3 +2590,10 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .ver-tag { flex: none; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); }
 .ver-tag.video { background: rgba(255, 70, 70, 0.22); color: #ff9b9b; }
 .ver-tag.sc { background: rgba(255, 140, 0, 0.22); color: #ffb35c; }
+
+/* Lecteur en grand : titre long sur 2 lignes (au lieu d'être coupé ou de déborder), un peu plus petit s'il est
+   très long ; l'artiste reste sur une ligne */
+#fullplayer .fp-meta h2.ellipsis { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; line-height: 1.2; }
+#fullplayer .fp-meta h2.long { font-size: 18px; }
+#fullplayer .fp-meta { align-items: flex-start; }
+#fullplayer .fp-meta .like-btn { margin-top: 2px; }

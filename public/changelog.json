@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2156",
+    "title": "Titres longs bien affichés",
+    "items": [
+      "Lecteur en grand : un titre long s’affiche sur 2 lignes, un peu plus petit, au lieu d’être coupé ou mal placé."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2150",
     "title": "Paroles synchronisées en priorité",
     "items": [

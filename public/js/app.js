@@ -1036,7 +1036,7 @@ function renderFullPlayer() {
   fp.innerHTML = String(html`
     <div class="fp-head"><button class="icon-btn" id="fp-close">${icon('chevronDown')}</button><div><small>${v.remote ? `Lecture sur ${v.deviceName}` : 'En lecture depuis'}</small><b class="ellipsis">${v.context?.name || 'Boombox'}</b></div><button class="icon-btn" id="fp-more">${icon('more')}</button></div>
     <div class="fp-art"><img src="${t.thumb}" alt="" referrerpolicy="no-referrer"></div>
-    <div class="fp-meta"><div style="flex:1;min-width:0"><h2 class="ellipsis">${t.title}</h2><div class="muted ellipsis">${artistLinks(t)}</div></div>
+    <div class="fp-meta"><div style="flex:1;min-width:0"><h2 class="ellipsis ${t.title.length > 34 ? 'long' : ''}">${t.title}</h2><div class="muted ellipsis">${artistLinks(t)}</div></div>
       <button class="like-btn ${isLiked(t.id) ? 'on' : ''}" id="fp-like">${icon(isLiked(t.id) ? 'heartFill' : 'heart')}</button></div>
     <div class="slider" id="fp-seek"></div>
     <div class="progress" style="justify-content:space-between"><span id="fp-cur" style="text-align:left">0:00</span><span id="fp-dur" style="text-align:right">0:00</span></div>
