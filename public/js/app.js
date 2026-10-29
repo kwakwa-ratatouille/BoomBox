@@ -1074,7 +1074,7 @@ function renderFullPlayer() {
     fp.style.setProperty('--fp', c);
     fp.style.setProperty('--lyr', c);
     // Pochette sombre : paroles en clair (sinon texte noir sur fond presque noir, illisible)
-    const [r, g, b] = (c.match(/d+/g) || []).map(Number);
+    const [r, g, b] = (c.match(/\d+/g) || []).map(Number);
     fp.classList.toggle('lyr-dark', (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.32);
   });
   fpCleanup = mountLyrics($('#fp-lyr'), t);
