@@ -382,18 +382,38 @@ export function downloadAudio(id, { keep = false } = {}) {
       lastErr = e;
       return null;
     };
+    const ytdlp = androidYtdlp();
+    // Tout YouTube pour une vidéo donnée : yt-dlp (Android, s'il a marché la dernière fois), puis les clients un par un,
+    // puis yt-dlp en secours. Sert au son lui-même et à ses autres versions (plan B, C…)
+    const ytChain = async (vid) => {
+      let st = null;
+      const viaY = () => ytdlpDownload(vid, path).then((x) => (localStorage.setItem('boombox.ytClient', 'ytdlp'), x)).catch((e) => fail(new Error(`yt-dlp : ${e.message}`)));
+      if (ytdlp && localStorage.getItem('boombox.ytClient') === 'ytdlp') st = await viaY();
+      const tried = [];
+      while (!st && tried.length < (ytdlp ? 2 : 5)) {
+        const rr = await remoteAudio(vid, tried).catch((e) => fail(e));
+        if (!rr) break;
+        tried.push(rr.client);
+        st = await fetchChunked(path, rr.url, { 'User-Agent': rr.ua }, rr.size).catch((e) => {
+          urlCache.delete(vid);
+          return fail(new Error(`${rr.client} : téléchargement ${e.message}`));
+        });
+        if (st) localStorage.setItem('boombox.ytClient', rr.client);
+      }
+      if (!st && ytdlp && localStorage.getItem('boombox.ytClient') !== 'ytdlp') st = await viaY();
+      return st;
+    };
     // 1. Par le PC (même Wi-Fi)
     if (relay) stat = await fetchTo(path, relayUrl(`/api/audio-file/${id}`)).catch((e) => fail(e));
     // 2. SoundCloud (sans PC) : le mini-serveur donne le lien, le téléphone télécharge directement chez SoundCloud
-    if (!stat && /^sc_/.test(id)) stat = await scDownload(id, path).catch((e) => fail(new Error(`SoundCloud : ${e.message}`)));
-    // Son SoundCloud illisible (réservé aux abonnés Go+, retiré…) : le même son sur YouTube Music
+    // Son SoundCloud : d'abord le même son sur YouTube Music (version officielle, meilleure qualité), SoundCloud ensuite
     if (!stat && /^sc_/.test(id) && trackMeta.has(id)) {
       const y = await ytTwin(id, trackMeta.get(id)).catch(() => null);
-      const r = y && (await remoteAudio(y).catch((e) => fail(e)));
-      if (r) stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => fail(e));
+      if (y) stat = await ytChain(y); // toute la chaîne YouTube, pas un seul essai
       if (stat) from = y;
       else if (!y) trail.push('YouTube : aucun équivalent');
     }
+    if (!stat && /^sc_/.test(id)) stat = await scDownload(id, path).catch((e) => fail(new Error(`SoundCloud : ${e.message}`)));
     if (/^sc_/.test(id)) {
       if (!stat) throw Object.assign(lastErr || new Error('SoundCloud indisponible'), { trail });
       audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep, ...(from && { from }) };
@@ -401,32 +421,15 @@ export function downloadAudio(id, { keep = false } = {}) {
       pruneCache();
       return audioIndex[id];
     }
-    // 2. Directement chez YouTube, en changeant de client si l'un est refusé. Android : yt-dlp d'abord s'il est
-    // le seul à avoir marché la dernière fois, et 2 clients seulement avant de passer à lui (il est plus sûr)
-    const ytdlp = androidYtdlp();
-    const viaYtdlp = () => ytdlpDownload(id, path).then((st) => (localStorage.setItem('boombox.ytClient', 'ytdlp'), st)).catch((e) => fail(new Error(`yt-dlp : ${e.message}`)));
-    if (!stat && ytdlp && localStorage.getItem('boombox.ytClient') === 'ytdlp') stat = await viaYtdlp();
-    const tried = [];
-    while (!stat && tried.length < (ytdlp ? 2 : 5)) {
-      const r = await remoteAudio(id, tried).catch((e) => fail(e));
-      if (!r) break;
-      tried.push(r.client);
-      stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => {
-        urlCache.delete(id);
-        return fail(new Error(`${r.client} : téléchargement ${e.message}`));
-      });
-      if (stat) localStorage.setItem('boombox.ytClient', r.client);
-    }
-    // 3. Android : yt-dlp embarqué, en secours (fiable mais lent à démarrer : Python est relancé à chaque son)
-    if (!stat && ytdlp && localStorage.getItem('boombox.ytClient') !== 'ytdlp') stat = await viaYtdlp();
+    // 2. Directement chez YouTube (yt-dlp sur Android, changement de client si l'un est refusé)
+    if (!stat) stat = await ytChain(id);
     // 3 bis. Cette version est bloquée chez YouTube (« +18 », compte exigé…) : une autre mise en ligne du même son
     if (!stat) {
       const m = trackMeta.get(id);
       const alts = await yt.alternatives(id, m && { title: m.title, artist: m.artist, duration: m.duration }).catch(() => []);
       const twin = m && (await ytTwin(id, m).catch(() => null));
       for (const alt of [...new Set([...alts, twin].filter(Boolean))].filter((x) => !isBadAlt(id, x)).slice(0, 3)) {
-        const r = await remoteAudio(alt).catch((e) => fail(e));
-        if (r) stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => fail(e));
+        stat = await ytChain(alt);
         if (stat) {
           from = alt;
           break;

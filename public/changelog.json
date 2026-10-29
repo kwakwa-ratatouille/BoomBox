@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Sources d’un son dans le bon ordre",
+    "items": [
+      "Téléphone : pour chaque son, Boombox essaie dans l’ordre le PC, puis YouTube (tous les moyens disponibles), puis une autre mise en ligne du même son, puis SoundCloud. Chaque version de secours a droit à tous les essais YouTube, pas un seul.",
+      "Son SoundCloud : le même son est d’abord cherché sur YouTube Music (avec tous les essais) ; SoundCloud ne sert qu’en dernier, ce qui évite les sons réservés aux abonnés Go+.",
+      "Import : les playlists YouTube et YouTube Music s’importent comme celles de Spotify (colle le lien contenant « list= »)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2216",
     "title": "Qualité du son sans message",
     "items": [

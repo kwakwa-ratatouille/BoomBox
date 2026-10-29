@@ -28,7 +28,7 @@ export async function importPage(el, _p, ctx) {
     <p class="muted">Colle le lien d'une playlist publique. Chaque titre est retrouvé automatiquement sur YouTube Music.</p>
     <div class="src-logos"><span>Spotify</span><span>Deezer</span><span>YouTube / YouTube Music</span><span>Liste texte « Artiste - Titre »</span><span>CSV (Exportify, TuneMyMusic…)</span></div>
     <label class="field"><span>Lien ou liste de titres</span>
-      <textarea class="input" id="imp-input" rows="6" placeholder="https://open.spotify.com/playlist/…&#10;ou&#10;Daft Punk - One More Time&#10;Angèle - Balance ton quoi"></textarea></label>
+      <textarea class="input" id="imp-input" rows="6" placeholder="https://open.spotify.com/playlist/…placeholder="https://open.spotify.com/playlist/…&#10;ou&#10;Daft Punk - One More Time&#10;Angèle - Balance ton quoi"#10;https://music.youtube.com/playlist?list=… (YouTube aussi)placeholder="https://open.spotify.com/playlist/…&#10;ou&#10;Daft Punk - One More Time&#10;Angèle - Balance ton quoi"#10;ouplaceholder="https://open.spotify.com/playlist/…&#10;ou&#10;Daft Punk - One More Time&#10;Angèle - Balance ton quoi"#10;Daft Punk - One More Time"></textarea></label>
     <div class="row-flex"><button class="btn primary" id="imp-go">Importer</button><label class="btn ghost" style="cursor:pointer">Charger des fichiers .csv / .txt / .zip<input type="file" accept=".txt,.csv,.zip" multiple id="imp-file" hidden></label></div>
     <p class="muted" style="font-size:13px">Tu peux sélectionner plusieurs fichiers d'un coup, ou le .zip « Export All » d'Exportify : une playlist est créée par fichier (le fichier « Liked Songs » va dans tes Titres likés).</p>
     <div id="imp-status" style="margin-top:28px"></div>
