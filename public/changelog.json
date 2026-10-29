@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Lecture qui reste sur le bon appareil, recommandations après une recherche",
+    "items": [
+      "Téléphone lié au PC : si le téléphone joue déjà, un son lancé depuis le PC part sur le téléphone, au lieu que le PC prenne la main. Pour jouer sur le PC : Appareils → cet appareil.",
+      "Un son lancé depuis une recherche est suivi de recommandations basées sur ce son, sans fin, au lieu des autres résultats de la recherche."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1722",
     "title": "Mode chipmunk naturel",
     "items": [

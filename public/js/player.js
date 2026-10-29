@@ -645,6 +645,21 @@ export const player = {
 
   playList(tracks, index = 0, context = null) {
     if (!tracks?.length) return;
+    // Son lancé depuis une recherche : la suite, ce sont des recommandations basées sur ce son (pas les autres
+    // résultats de la recherche). Elles se rechargent toutes seules à la fin (lecture automatique, voir next()).
+    if (context?.type === 'search' && tracks[index]) {
+      const t = tracks[index];
+      tracks = [t];
+      index = 0;
+      context = { type: 'radio', name: `Recommandations · ${t.title}` };
+      api(`/api/radio/${t.id}`).then((radio) => {
+        if (this.list[0]?.id !== t.id || this.list.length > 1) return; // une autre écoute a commencé entre-temps
+        const fresh = radio.filter((x) => x.id !== t.id && !isBanned(x.id)).slice(0, 25);
+        this.list.push(...fresh.map((x) => ({ ...x, autoplay: true })));
+        this.order.push(...fresh.map((_, i) => 1 + i));
+        emit('player:queue');
+      }).catch(() => {});
+    }
     this.list = tracks.slice();
     this.context = context;
     this._played = new Set(); // nouvelle écoute de la playlist : tout redevient jouable

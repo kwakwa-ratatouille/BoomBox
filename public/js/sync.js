@@ -122,12 +122,10 @@ export const sync = {
     const other = this.devices.find((d) => d.id !== state.device.id && d.playing && now - seen(d.id) < 60e3 && now - (this.remote[d.id]?.ts || 0) < 2 * 60e3);
     if (other) this.control(other.id, { auto: true });
   },
-  // Suivi automatique : lancer un son ou une liste ici, c'est le jouer ici (l'autre appareil se met en pause)
-  _autoRoute(action) {
-    if (!this._auto || !this.target || !['playList', 'playTrack', 'playRadio', 'jumpTo'].includes(action)) return false;
-    this.sendCommand(this.target, 'fadeOutPause');
-    this.control(null);
-    return true;
+  // Suivi automatique (comme Spotify Connect) : un son lancé ici part sur l'appareil qui joue déjà (le téléphone
+  // continue de jouer, le PC sert de télécommande). Pour reprendre la lecture ici : Appareils → cet appareil.
+  _autoRoute() {
+    return false;
   },
 
   sendCommand(target, action, args = []) {
