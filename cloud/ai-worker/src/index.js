@@ -147,7 +147,7 @@ async function scSearch(env, q) {
     scAlbumTracks(q, (u) => scApi(env, u)).catch(() => []),
   ]);
   const seen = new Set(album.map((t) => t.id));
-  return [...album, ...(r.collection || []).filter((t) => t.streamable !== false && !seen.has(scId(t.id))).map((t) => ({
+  return [...album, ...(r.collection || []).filter((t) => t.streamable !== false && t.policy !== 'SNIP' && t.policy !== 'BLOCK' && !seen.has(scId(t.id))).map((t) => ({
     id: scId(t.id), title: t.title, artists: [{ name: t.user?.username || 'SoundCloud' }], album: null,
     duration: Math.round((t.full_duration || t.duration || 0) / 1000), thumb: (t.artwork_url || t.user?.avatar_url || '').replace('-large', '-t500x500') || null, soundcloud: true,
   }))];

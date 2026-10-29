@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2216",
+    "title": "Qualité du son sans message",
+    "items": [
+      "Connexion faible : la qualité du son baisse discrètement (plus de notification) et remonte toute seule au son suivant quand la connexion est redevenue bonne depuis 3 min."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2206",
     "title": "« Remplacer par une autre version » corrigé",
     "items": [

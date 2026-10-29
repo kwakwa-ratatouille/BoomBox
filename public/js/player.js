@@ -793,6 +793,7 @@ export const player = {
   },
 
   _load(track, { autoplay = true, start = 0, crossfade = 0, mix = null } = {}) {
+    this._maybeRestoreQuality();
     if (!track) return;
     this.track = track;
     if (!crossfade && !mix) this._presetNorm(track.id);
@@ -1214,11 +1215,19 @@ export const player = {
     if (this.engine.time?.() < 2) return; // démarrage d'un son : chargement normal, pas un blocage
     this._stalls.push(now);
     if (this._stalls.length < 2) return;
+    // Sans message : la qualité baisse discrètement, puis remonte toute seule au son suivant si la lecture est
+    // restée fluide 3 min (voir _lowSince et player:track plus bas)
     lowQuality = true;
+    this._lowSince = Date.now();
     this._stalls = [];
-    toast('Connexion faible : qualité du son réduite pour éviter les coupures');
     const at = this.engine.time() || 0;
     this.engine.load(this.track.id, at, !this.paused, true);
+  },
+  // Son suivant : connexion revenue (plus de coupure depuis 3 min) → qualité normale de nouveau
+  _maybeRestoreQuality() {
+    if (!lowQuality || Date.now() - (this._lowSince || 0) < 3 * 60e3) return;
+    if ((this._stalls || []).some((t) => Date.now() - t < 3 * 60e3)) return;
+    lowQuality = false;
   },
 
   async _onError(code) {
