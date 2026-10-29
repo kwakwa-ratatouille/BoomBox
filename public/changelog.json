@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2040",
+    "title": "Panneau de droite sans barre qui surgit",
+    "items": [
+      "PC : la barre de défilement du panneau de droite (activité des amis, file, paroles) n’apparaît plus quand tu fais défiler ta playlist ; elle se montre seulement au survol du panneau."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2039",
     "title": "Paroles lisibles sur les pochettes sombres",
     "items": [

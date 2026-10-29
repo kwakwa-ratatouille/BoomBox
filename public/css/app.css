@@ -2523,3 +2523,9 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 #fullplayer.lyr-dark .fp-lyrics .lyrics p.past { color: rgba(255, 255, 255, 0.7); }
 #fullplayer.lyr-dark .fp-lyrics .lyrics p.now, #fullplayer.lyr-dark .fp-lyrics .lyrics.plain p { color: #fff; }
 #fullplayer.lyr-dark .fp-lyrics h4, #fullplayer.lyr-dark .fp-lyrics .lyrics-source { color: rgba(255, 255, 255, 0.75); }
+
+/* Panneau de droite (amis, file, paroles) : pas de barre de défilement qui surgit en faisant défiler la page à côté ;
+   on défile toujours à la molette ou au doigt, la barre fine n'apparaît qu'au survol du panneau */
+#rightpanel, #rightpanel .rp-body { scrollbar-width: none; }
+#rightpanel::-webkit-scrollbar, #rightpanel .rp-body::-webkit-scrollbar { width: 0; }
+@media (hover: hover) { #rightpanel:hover, #rightpanel:hover .rp-body { scrollbar-width: thin; } }
