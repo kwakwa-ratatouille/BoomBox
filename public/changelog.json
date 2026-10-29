@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1527",
+    "title": "Réveil iPhone : la musique se lance toute seule",
+    "items": [
+      "Réveil sur iPhone : si Boombox reste ouvert en arrière-plan (pas fermé en le balayant vers le haut), la musique démarre toute seule à l’heure, même écran verrouillé. Si l’appli a été fermée, la notification reste là : la toucher lance la musique."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1524",
     "title": "Barre d’avance plus facile à attraper",
     "items": [

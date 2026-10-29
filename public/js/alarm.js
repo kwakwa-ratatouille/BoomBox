@@ -137,6 +137,46 @@ export function startAlarm() {
     setTimeout(ring, 800);
   });
   scheduleAlarm();
+  keepAwakeForAlarm();
+}
+
+// iPhone : iOS endort une appli qui ne joue plus rien, donc le réveil ne pouvait que sonner une notification. Tant
+// qu'un réveil est prévu dans les 16 h et que Boombox est en arrière-plan sans musique, un son muet tourne en boucle
+// (sans couper la musique des autres applis) : Boombox reste éveillé et lance la musique tout seul à l'heure.
+// Il faut juste laisser Boombox ouvert en arrière-plan (pas fermé en le balayant vers le haut).
+function keepAwakeForAlarm() {
+  const ios = window.Capacitor?.isNativePlatform?.() && window.Capacitor.getPlatform?.() === 'ios';
+  if (!ios) return;
+  let el = null;
+  const silence = () => {
+    // 1 s de silence (WAV 8 kHz, 8 bits)
+    const n = 8000;
+    const b = new Uint8Array(44 + n);
+    const v = new DataView(b.buffer);
+    const w = (o, s) => [...s].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
+    b.fill(128, 44);
+    return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+  };
+  const stop = () => {
+    if (!el) return;
+    el.pause();
+    el = null;
+  };
+  const check = () => {
+    const a = alarmConf();
+    const next = a.on ? nextRing(a) : null;
+    const want = document.hidden && player.paused && next && next - Date.now() < 16 * 3600e3 && next > Date.now();
+    if (!want) return stop();
+    if (el) return;
+    window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: true })?.catch?.(() => {}); // ne coupe pas les autres applis
+    el = new Audio(silence());
+    el.loop = true;
+    el.play().catch(() => (el = null));
+  };
+  document.addEventListener('visibilitychange', () => setTimeout(check, 500));
+  bus.addEventListener('player:state', () => setTimeout(check, 500));
 }
 
 // ---------- Fenêtre « Réveil » ----------
