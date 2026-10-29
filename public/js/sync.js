@@ -56,6 +56,7 @@ export const sync = {
         for (const ch of snap.docChanges()) {
           if (ch.type !== 'added') continue;
           const c = ch.doc.data();
+          if (!c.args && c.argsJson) try { c.args = JSON.parse(c.argsJson); } catch {}
           deleteDoc(ch.doc.ref).catch(() => {});
           if (c.cid && this._seenCmd.has(c.cid)) continue; // déjà reçue par le canal direct
           if (Date.now() - (c.at || 0) < 60e3) this._command(c);
@@ -124,7 +125,9 @@ export const sync = {
     this._optimistic(target, action, args);
     const c = { cid: Math.random().toString(36).slice(2), action, args: JSON.parse(JSON.stringify(args)), from: state.device.id, at: Date.now() };
     this._lanSend([target], { type: 'cmd', ...c }); // direct par le PC (instantané)…
-    addDoc(collection(db, 'spaces', cloud.spaceId, 'devices', target, 'commands'), c).catch((e) => toast(e.message)); // … et par Internet en secours
+    // Firestore refuse les listes dans des listes (ex. « ajouter à la file » plusieurs sons) : les arguments partent en texte
+    const { args: _a, ...rest } = c;
+    addDoc(collection(db, 'spaces', cloud.spaceId, 'devices', target, 'commands'), { ...rest, argsJson: JSON.stringify(c.args) }).catch((e) => toast(e.message)); // … et par Internet en secours
   },
 
   // ----- Canal direct par le PC (même Wi-Fi) -----
@@ -453,7 +456,7 @@ export const sync = {
 
   jamCommand(action, args = []) {
     if (this.isJamHost()) return player[action](...args);
-    addDoc(collection(db, 'jams', this._jamCode, 'commands'), { action, args, from: state.device.id, at: Date.now() }).catch(() => {});
+    addDoc(collection(db, 'jams', this._jamCode, 'commands'), { action, argsJson: JSON.stringify(args ?? []), from: state.device.id, at: Date.now() }).catch(() => {});
   },
 
   jamSettings(s) {
@@ -588,7 +591,8 @@ export const sync = {
     if (Math.abs(player.time() - pos) > 2.5) player.seek(pos); // resynchronise dès 2,5 s d'écart
   },
 
-  _command({ action, args = [] }) {
+  _command({ action, args, argsJson }) {
+    if (!args) try { args = argsJson ? JSON.parse(argsJson) : []; } catch { args = []; }
     if (action === '__transfer') {
       const s = args[0];
       if (this.target) this.control(null);
