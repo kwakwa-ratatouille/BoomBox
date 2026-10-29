@@ -447,6 +447,15 @@ export async function removeFromPlaylist(playlistId, track) {
   toast('Retiré de la playlist');
 }
 
+// Remplace un son d'une playlist par une autre version : même ligne (même place, même date d'ajout), autre son
+export async function replaceInPlaylist(playlistId, oldTrack, newTrack) {
+  const pl = state.library.playlists.find((p) => p.id === playlistId);
+  const item = oldTrack?._item || pl?.tracks.find((t) => t.id === oldTrack?.id)?._item;
+  if (!item) throw new Error('Titre introuvable dans la playlist');
+  const keep = { title: null, artists: [], album: null, duration: 0, thumb: null }; // champs de l'ancien son effacés s'ils manquent
+  await updateDoc(pref('items', item), { ...keep, ...cleanTrack(newTrack), updatedAt: Date.now() });
+}
+
 // Retire plusieurs titres d'un coup (détecteur de doublons) : _item = identifiant de la ligne dans la playlist
 export async function removeItems(itemIds) {
   await batched(itemIds.map((id) => (b) => b.update(pref('items', id), tomb())));

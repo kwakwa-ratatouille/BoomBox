@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1029.2206",
+    "title": "« Remplacer par une autre version » corrigé",
+    "items": [
+      "Le son est vraiment remplacé dans la playlist, à la même place et avec sa date d’ajout (avant, le message s’affichait mais la playlist ne changeait pas).",
+      "Sur téléphone, la fenêtre des versions prend tout l’écran et ne déborde plus."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2203",
     "title": "Ajouter des sons à une playlist, en mieux",
     "items": [

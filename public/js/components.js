@@ -1,6 +1,6 @@
 // Composants réutilisables : pochettes, listes de titres, cartes, menus contextuels des titres.
 import { html, raw, esc, icon, fmtTime, fmtAgo, artistLinks, contextMenu, toast, promptText, isMobile, plural, modal } from './ui.js';
-import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting, toggleFollow, isFollowing, updatePlaylist, cleanTrack } from './state.js';
+import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting, toggleFollow, isFollowing, replaceInPlaylist } from './state.js';
 import { player, ctl, startAt } from './player.js';
 import { sync } from './sync.js';
 import * as twinsMod from './twins.js';
@@ -1061,6 +1061,7 @@ export async function chooseVersion(track, { playlistId = null, index = null } =
       <div id="ver-list" class="ver-list"><p class="muted">Recherche des versions…</p></div>`),
     actions: [{ label: 'Fermer' }],
     onMount: (w, close) => {
+      w.querySelector('.modal')?.classList.add('add-modal'); // même mise en page plein écran que « Ajouter des sons »
       const box = w.querySelector('#ver-list');
       const load = async () => {
         box.innerHTML = '<p class="muted">Recherche des versions…</p>';
@@ -1082,14 +1083,12 @@ export async function chooseVersion(track, { playlistId = null, index = null } =
         const { _k, ...t } = list[Number(b.dataset.i)];
         rememberTracks([t]);
         if (playlistId) {
-          const p = state.library.playlists.find((x) => x.id === playlistId);
-          if (!p) return;
-          const i = p.tracks[index]?.id === track.id ? index : p.tracks.findIndex((x) => x.id === track.id);
-          if (i < 0) return;
-          const tracks = p.tracks.slice();
-          tracks[i] = { ...cleanTrack(t), addedAt: p.tracks[i].addedAt || Date.now() };
-          await updatePlaylist(playlistId, { tracks }).catch((err) => toast(err.message));
-          toast(`Remplacé par « ${t.title} »`);
+          try {
+            await replaceInPlaylist(playlistId, track, t);
+            toast(`Remplacé par « ${t.title} »`);
+          } catch (err) {
+            return toast(err.message);
+          }
         } else ctl.playTrack(t);
         close(null);
       });
