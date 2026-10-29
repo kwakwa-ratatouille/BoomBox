@@ -55,6 +55,8 @@ public class BoomboxNativePlugin extends Plugin {
     @Override
     public void load() {
         Context app = getContext().getApplicationContext();
+        // Boombox lancé depuis « Partager » (Shazam, Google…) : le texte partagé est gardé pour le JavaScript
+        if (getActivity() != null) keepShared(getActivity().getIntent());
         // Plantage : on garde la cause (rapport envoyé au prochain lancement par le JavaScript, voir takeCrash)
         final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((th, ex) -> {
@@ -495,6 +497,34 @@ public class BoomboxNativePlugin extends Plugin {
             else getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             call.resolve();
         });
+    }
+
+    // ---------- « Partager » vers Boombox (ex. le son trouvé par Shazam ou Google) ----------
+    private String sharedText = null;
+    private void keepShared(Intent i) {
+        if (i == null || !Intent.ACTION_SEND.equals(i.getAction())) return;
+        String t = i.getStringExtra(Intent.EXTRA_TEXT);
+        if (t == null || t.trim().isEmpty()) return;
+        i.setAction(Intent.ACTION_MAIN); // une seule fois, même si l'activité est recréée
+        sharedText = t;
+        JSObject o = new JSObject();
+        o.put("text", t);
+        notifyListeners("shared", o);
+    }
+
+    @Override
+    protected void handleOnNewIntent(Intent intent) {
+        super.handleOnNewIntent(intent);
+        keepShared(intent);
+    }
+
+    // Texte partagé en attente (puis effacé) : lu au démarrage de l'interface
+    @PluginMethod
+    public void takeShared(PluginCall call) {
+        JSObject r = new JSObject();
+        if (sharedText != null) r.put("text", sharedText);
+        sharedText = null;
+        call.resolve(r);
     }
 
     // Dernier plantage enregistré (puis effacé)

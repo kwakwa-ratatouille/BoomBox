@@ -179,7 +179,7 @@ jobs:
           ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: |
           M=android/app/src/main/AndroidManifest.xml
-          sed -i 's#</activity>#  <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="boombox" /></intent-filter>\n        </activity>#' "$M"
+          sed -i 's#</activity>#  <intent-filter><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="boombox" /></intent-filter>\n        <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>\n        </activity>#' "$M"
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"$VERSION\"/" android/app/build.gradle
           # yt-dlp embarqué : bibliothèques natives extraites, et seulement les processeurs des téléphones récents (taille réduite)
           sed -i 's#<application#<application android:extractNativeLibs="true"#' "$M"

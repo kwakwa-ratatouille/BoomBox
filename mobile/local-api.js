@@ -386,9 +386,17 @@ export function downloadAudio(id, { keep = false } = {}) {
     if (relay) stat = await fetchTo(path, relayUrl(`/api/audio-file/${id}`)).catch((e) => fail(e));
     // 2. SoundCloud (sans PC) : le mini-serveur donne le lien, le téléphone télécharge directement chez SoundCloud
     if (!stat && /^sc_/.test(id)) stat = await scDownload(id, path).catch((e) => fail(new Error(`SoundCloud : ${e.message}`)));
+    // Son SoundCloud illisible (réservé aux abonnés Go+, retiré…) : le même son sur YouTube Music
+    if (!stat && /^sc_/.test(id) && trackMeta.has(id)) {
+      const y = await ytTwin(id, trackMeta.get(id)).catch(() => null);
+      const r = y && (await remoteAudio(y).catch((e) => fail(e)));
+      if (r) stat = await fetchChunked(path, r.url, { 'User-Agent': r.ua }, r.size).catch((e) => fail(e));
+      if (stat) from = y;
+      else if (!y) trail.push('YouTube : aucun équivalent');
+    }
     if (/^sc_/.test(id)) {
       if (!stat) throw Object.assign(lastErr || new Error('SoundCloud indisponible'), { trail });
-      audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep };
+      audioIndex[id] = { size: stat.size, at: Date.now(), used: Date.now(), keep, ...(from && { from }) };
       saveIndex();
       pruneCache();
       return audioIndex[id];

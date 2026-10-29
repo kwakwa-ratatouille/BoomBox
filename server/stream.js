@@ -1,6 +1,6 @@
 import { isLocalId, localPath } from './localfiles.js';
-import { isScId, scUrl, setScBin } from './soundcloud.js';
-import { alternatives } from './yt.js';
+import { isScId, scUrl, setScBin, scResolve } from './soundcloud.js';
+import { alternatives, search } from './yt.js';
 // Lecture audio directe via yt-dlp (optionnel). Permet la lecture écran éteint sur téléphone
 // et les contrôles sur l'écran de verrouillage. Sans yt-dlp, l'app utilise le lecteur YouTube intégré.
 import { execFile, execFileSync, spawn } from 'node:child_process';
@@ -79,10 +79,32 @@ export function forget(id) {
   fs.rmSync(path.join(AUDIO_DIR, `${id}.m4a`), { force: true });
   return true;
 }
+// Son SoundCloud illisible (réservé aux abonnés Go+, retiré…) : le même son sur YouTube Music
+const cleanT = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+async function ytForSc(id) {
+  const m = await scResolve(scUrl(id)).catch(() => null);
+  if (!m?.title) return null;
+  const t = cleanT(m.title);
+  const artist = m.artists?.[0]?.name || '';
+  const { items } = await search(`${artist} ${m.title}`, 'song').catch(() => ({ items: [] }));
+  return (items || []).find((x) => x.id && /^[\w-]{11}$/.test(x.id) && (cleanT(x.title) === t || cleanT(x.title).includes(t) || t.includes(cleanT(x.title))) && (!m.duration || !x.duration || Math.abs(x.duration - m.duration) < 15))?.id || null;
+}
 export function download(id, { noAlt = false } = {}) {
   const file = path.join(AUDIO_DIR, `${id}.m4a`);
   if (fs.existsSync(file)) return Promise.resolve(file);
   if (downloads.has(id)) return downloads.get(id);
+  if (!noAlt && isScId(id)) {
+    const p = rawDownload(id).catch(async (err) => {
+      const y = await ytForSc(id);
+      if (!y) throw err;
+      fs.copyFileSync(await download(y, { noAlt: true }), file);
+      console.log(`[lecture] ${id} refusé par SoundCloud : version YouTube ${y} utilisée`);
+      return file;
+    });
+    downloads.set(id, p);
+    p.finally(() => downloads.delete(id)).catch(() => {});
+    return p;
+  }
   if (!noAlt && !isScId(id)) {
     const p = rawDownload(id).catch(async (err) => {
       if (!NEEDS_ACCOUNT.test(String(err?.message || err))) throw err;

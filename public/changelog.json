@@ -1,5 +1,18 @@
 [
   {
+    "version": "2026.1029.2145",
+    "title": "Gros nettoyage : profil, paramètres, notifications, SoundCloud",
+    "items": [
+      "Sons SoundCloud réservés aux abonnés Go+ (ou retirés) : Boombox va chercher le même son sur YouTube Music et le joue, au lieu de passer au suivant.",
+      "Lecteur en grand (téléphone) : nouveau bouton « Ajouter à une playlist » (le +), dans la rangée du bas.",
+      "Paramètres : barre de recherche (« fondu », « veille », « google »…) pour trouver un réglage tout de suite. Sur téléphone, les réglages sont mieux rangés (texte en pleine largeur, curseurs en dessous).",
+      "Notifications : nouvelles cartes plus lisibles, avec le bouton d’action bien visible.",
+      "Profil sur téléphone : la fenêtre « Détails du profil » est rangée en colonne, rien n’est coupé. Les GIF s’affichent dans une grille qui défile vers le bas. GIF de bannière en version haute qualité plafonnée (certains énormes ne s’affichaient pas).",
+      "Android : dans Shazam ou Google, « Partager » → Boombox ouvre directement le son trouvé (nouvelle version de l’appli)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2103",
     "title": "Bouton lecture qui ne clignote plus",
     "items": [

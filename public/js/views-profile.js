@@ -104,7 +104,10 @@ const readGif = (f, max) => new Promise((resolve, reject) => {
   r.onerror = () => reject(new Error('GIF illisible'));
   r.readAsDataURL(f);
 });
-const pickGif = () => new Promise((resolve) => import('./views-social.js').then((m) => m.gifPicker(({ gif }) => resolve(gif)).then(() => resolve(null))));
+// Version « grande » de GIPHY : quasi identique à l'originale, mais plafonnée (certaines originales font des dizaines
+// de Mo et ne s'affichaient pas sur téléphone). Photo : version moyenne, largement assez pour un rond.
+const lighter = (u, small) => String(u).replace(/\/giphy\.gif(\?.*)?$/, small ? '/giphy-downsized-medium.gif' : '/giphy-downsized-large.gif');
+const pickGif = (small = false) => new Promise((resolve) => import('./views-social.js').then((m) => m.gifPicker(({ gif }) => resolve(lighter(gif, small))).then(() => resolve(null))));
 
 export async function editProfile() {
   const p = state.profile;
@@ -130,7 +133,7 @@ export async function editProfile() {
       const showPhoto = () => (w.querySelector('.pe-photo .avatar-img').outerHTML = String(avatarHtml({ ...p, photo }, 'xl')));
       // Photo et bannière animées : un GIF de la recherche (lien) ou un GIF de l'appareil (gardé tel quel)
       w.querySelector('#pe-gif').onclick = async () => {
-        const g = await pickGif();
+        const g = await pickGif(true);
         if (!g) return;
         photo = g;
         pcrop = null;

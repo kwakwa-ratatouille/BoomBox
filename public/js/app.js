@@ -1047,7 +1047,7 @@ function renderFullPlayer() {
       <button class="ctrl big" id="fp-next">${icon('next')}</button>
       <button class="ctrl" id="fp-repeat">${icon('repeat')}</button>
     </div>
-    <div class="fp-extra"><button class="ctrl" id="fp-devices">${icon('devices')}</button><button class="ctrl ${setting('automix', false) ? 'on' : ''}" id="fp-mix" title="Mix">${icon('mixer')}</button><button class="ctrl fp-speed" id="fp-speed" title="Vitesse">×${String(player.rate || 1).replace('.', ',')}</button><button class="ctrl" id="fp-sleep">${icon('moon')}</button><button class="ctrl" id="fp-queue">${icon('queue')}</button></div>
+    <div class="fp-extra"><button class="ctrl" id="fp-devices">${icon('devices')}</button><button class="ctrl" id="fp-addpl" title="Ajouter à une playlist">${icon('plus')}</button><button class="ctrl ${setting('automix', false) ? 'on' : ''}" id="fp-mix" title="Mix">${icon('mixer')}</button><button class="ctrl fp-speed" id="fp-speed" title="Vitesse">×${String(player.rate || 1).replace('.', ',')}</button><button class="ctrl" id="fp-sleep">${icon('moon')}</button><button class="ctrl" id="fp-queue">${icon('queue')}</button></div>
     <div class="fp-lyrics"><div class="row-flex" style="justify-content:space-between;margin:0 0 12px"><h4 style="margin:0">Paroles</h4><div class="row-flex"><button class="icon-btn" id="fp-car" title="Mode voiture">${icon('car', 20)}</button><button class="icon-btn" id="fp-kara" title="Paroles en plein écran">${icon('fullscreen', 20)}</button></div></div><div id="fp-lyr"></div></div>
     <div class="fp-artist" id="fp-artist"></div>`);
   $('#fp-close').onclick = () => closeFullPlayer();
@@ -1059,6 +1059,8 @@ function renderFullPlayer() {
   $('#fp-repeat').onclick = () => ctl.cycleRepeat();
   $('#fp-devices').onclick = () => (closeFullPlayer(), togglePanel('devices'));
   $('#fp-queue').onclick = () => (closeFullPlayer(), togglePanel('queue'));
+  // Ajouter le son en cours à une playlist (même panneau que le glissé vers la gauche sur un son)
+  $('#fp-addpl').onclick = () => sync.view().track && openPlaylistPicker([sync.view().track]);
   $('#fp-sleep').onclick = (e) => contextMenu(e.clientX - 120, e.clientY - 260, sleepItems());
   // Vitesse (speed up) et mix, comme sur PC
   $('#fp-speed').onclick = (e) => contextMenu(e.clientX - 120, e.clientY - 260, [0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.5].map((v) => ({ label: `×${String(v).replace('.', ',')}${v === 1 ? ' (normal)' : v > 1 ? ' (speed up)' : ' (slowed)'}`, icon: (player.rate || 1) === v ? 'check' : null, action: () => (player.setRate(v), renderFullPlayer()) })));
@@ -1754,6 +1756,7 @@ async function boot() {
   import('./alarm.js').then((m) => m.startAlarm()).catch(() => {}); // réveil en musique
   import('./drunk.js').then((m) => m.setupDrunkTrigger()).catch(() => {}); // mode caché
   import('./bg-play.js').then((m) => m.setupBackgroundPlay()).catch(() => {}); // PC : la musique continue fenêtre fermée
+  import('./identify.js').then((m) => m.setupShareTarget()).catch(() => {}); // Android : son partagé par Shazam / Google
   // Un son = une entrée : versions SoundCloud rattachées à YouTube Music, doublons fusionnés (en arrière-plan)
   setTimeout(async () => {
     const [tw, st] = await Promise.all([import('./twins.js'), import('./state.js')]);

@@ -26,7 +26,7 @@ function askFound() {
   box.className = 'idf-sheet';
   box.innerHTML = String(html`<div class="idf-card">
     <b>🎵 Tu as trouvé le son ?</b>
-    <p class="muted">Tape son titre (et l’artiste) pour l’écouter dans Boombox.</p>
+    <p class="muted">Le plus simple : dans Shazam ou Google, touche <b>Partager</b> puis <b>Boombox</b>, le son s’ouvre ici tout seul. Sinon, tape son titre :</p>
     <form class="row-flex" id="idf-f"><input class="input" id="idf-q" placeholder="Ex : Jefe Ninho" autocomplete="off" style="flex:1"><button class="btn primary">Écouter</button></form>
     <div class="row-flex" style="justify-content:space-between;margin-top:8px"><button class="btn ghost sm" id="idf-again">Réessayer</button><button class="btn ghost sm" id="idf-no">Fermer</button></div>
   </div>`);
@@ -50,3 +50,27 @@ window.Capacitor?.Plugins?.App?.addListener?.('appStateChange', (st) => {
   waitingSince = 0;
   if (recent) setTimeout(askFound, 300);
 });
+
+// Son partagé vers Boombox (bouton « Partager » de Shazam, de Google ou d'une autre appli) : on en tire le titre et
+// l'artiste, puis on cherche le son pour l'écouter ici. Shazam partage par ex. « J'ai trouvé Spider de Gims avec
+// Shazam… https://www.shazam.com/… ».
+export function shareQuery(text) {
+  const t = String(text || '').replace(/https?:\/\/\S+/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = t.match(/(?:j'ai trouvé|j’ai trouvé|i used shazam to discover|i found|found)\s+(.+?)\s+(?:de|by|par)\s+(.+?)(?:[,.]?\s+(?:avec|with|on|sur)\s+shazam.*)?[.!]?$/i);
+  if (m) return `${m[1]} ${m[2]}`.replace(/["«»“”]/g, '').trim();
+  return t.replace(/[,.]?\s*(?:avec|with|on|sur)\s+shazam.*$/i, '').replace(/["«»“”]/g, '').trim().slice(0, 120);
+}
+export function setupShareTarget() {
+  const P = window.Capacitor?.Plugins?.BoomboxNative;
+  if (window.Capacitor?.getPlatform?.() !== 'android' || !P) return;
+  const go = (text) => {
+    const q = shareQuery(text);
+    if (!q) return;
+    document.querySelector('.idf-sheet')?.remove();
+    location.hash = `#/search?q=${encodeURIComponent(q)}`;
+    toast(`🎵 « ${q} » : choisis le son pour l’écouter`, { timeout: 5000 });
+  };
+  P.addListener?.('shared', (e) => go(e?.text));
+  P.takeShared?.().then((r) => r?.text && go(r.text)).catch(() => {});
+}
+

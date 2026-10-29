@@ -1013,9 +1013,42 @@ function groupSettings(el) {
     }
     if (cur && k.tagName !== 'H1') cur.querySelector('.set-body').appendChild(k);
   }
+  let searching = false;
   page.querySelectorAll('.set-group').forEach((d) => d.addEventListener('toggle', () => {
-    if (!d.open) return;
+    if (!d.open || searching) return;
     ls.set('boombox.settingsOpen', d.dataset.title);
     page.querySelectorAll('.set-group').forEach((o) => o !== d && (o.open = false));
   }));
+  // Recherche dans les paramètres : un mot (« fondu », « veille », « google »…) n'affiche que les réglages qui en
+  // parlent, sections ouvertes ; vide : tout revient comme avant
+  const box = document.createElement('div');
+  box.className = 'search-box set-search';
+  box.innerHTML = `${icon('search')}<input type="search" placeholder="Rechercher un réglage" autocomplete="off">`;
+  page.querySelector('h1')?.after(box);
+  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  let empty = null;
+  box.querySelector('input').addEventListener('input', (e) => {
+    const q = norm(e.target.value.trim());
+    searching = !!q;
+    let found = 0;
+    page.querySelectorAll('.set-group').forEach((d) => {
+      const rows = [...d.querySelectorAll('.set-body > *')];
+      const titleHit = q && norm(d.dataset.title + ' ' + (SET_INFO[d.dataset.title] || '')).includes(q);
+      // Réglages qui en parlent eux-mêmes ; toute la section seulement si aucun réglage précis ne correspond
+      const own = rows.filter((r) => q && norm(r.textContent).includes(q));
+      const show = !q ? rows : own.length ? own : titleHit ? rows : [];
+      let n = 0;
+      for (const r of rows) {
+        const hit = show.includes(r);
+        r.style.display = hit ? '' : 'none';
+        n += hit ? 1 : 0;
+      }
+      d.style.display = !q || n ? '' : 'none';
+      d.open = q ? n > 0 : d.dataset.title === ls.get('boombox.settingsOpen', 'Profil');
+      found += n;
+    });
+    empty ||= Object.assign(document.createElement('p'), { className: 'muted', textContent: 'Aucun réglage ne correspond.' });
+    if (q && !found) box.after(empty);
+    else empty.remove();
+  });
 }

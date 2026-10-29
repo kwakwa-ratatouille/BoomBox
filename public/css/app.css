@@ -2536,3 +2536,46 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 /* « Vu » / « Remis » sous le dernier message envoyé, hors de la bulle (comme Instagram) */
 .chat-msgs > .msg-state { align-self: flex-end; margin: -4px 6px 0 0; font-size: 11px; color: var(--muted); opacity: 0.8; }
 .msg:has(.msg-react) + .msg-state { margin-top: -10px; }
+
+/* ---------- Édition du profil sur téléphone : tout en colonne, rien de coupé ---------- */
+@media (max-width: 600px) {
+  .profile-edit { flex-direction: column; align-items: stretch; gap: 14px; }
+  .profile-edit .pe-photo { align-self: center; }
+  .profile-edit .avatar-img.xl { width: 112px; height: 112px; font-size: 44px; }
+  .profile-edit .pe-photo > span:last-of-type { opacity: 1; background: rgba(0, 0, 0, 0.45); font-size: 12px; } /* pas de survol au doigt : « Choisir une photo » toujours visible */
+  .pe-banner-box .row-flex { flex-wrap: wrap; }
+  .pe-banner-box .row-flex .btn { flex: 1 1 auto; justify-content: center; }
+  .modal .modal-body { overflow-x: hidden; }
+}
+
+/* ---------- GIF : une grille qui défile vers le bas (avant : colonnes qui débordaient sur le côté, on ne
+   voyait pas qu'il y avait d'autres GIF à droite) ---------- */
+.gif-grid { columns: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; max-height: 55vh; overflow-y: auto; overflow-x: hidden; }
+.gif-it { margin: 0; aspect-ratio: 1; }
+.gif-it img { height: 100%; object-fit: cover; }
+
+/* ---------- Notifications (toasts) : petites cartes nettes au lieu d'une pilule écrasée ---------- */
+#toasts { gap: 8px; max-width: min(460px, calc(100vw - 24px)); width: 100%; }
+.toast { width: 100%; justify-content: space-between; border-radius: 14px; padding: 12px 14px 12px 16px; font-size: 14px; line-height: 1.4; font-weight: 600;
+  background: rgba(36, 32, 46, 0.97); border: 1px solid rgba(255, 255, 255, 0.1); border-left: 3px solid var(--accent, #b07cf7);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3); text-align: left; }
+.toast button { flex: none; background: rgba(255, 255, 255, 0.08); padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 800; }
+@media (max-width: 768px) { #toasts { bottom: calc(150px + env(safe-area-inset-bottom)); } .toast { font-size: 14.5px; padding: 13px 14px 13px 16px; } }
+
+/* Lecteur en grand : 6 boutons sur la rangée du bas, sans débordement sur les petits écrans (Huawei, etc.) */
+.fp-extra { gap: 4px; }
+.fp-extra .ctrl { flex: 0 1 44px; min-width: 36px; height: 44px; }
+@media (max-width: 360px) { .fp-extra .ctrl .ic { width: 20px; height: 20px; } }
+.set-search { max-width: none; margin: 0 0 16px; }
+
+/* Paramètres sur téléphone : le texte prend la largeur, les réglages larges (curseur, liste, champ) passent en
+   dessous au lieu d'écraser le texte dans une colonne étroite à gauche */
+@media (max-width: 600px) {
+  .settings-row { flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+  .settings-row > div:first-child { flex: 1 1 0; min-width: 0; }
+  .settings-row > .xf-control, .settings-row > select.input, .settings-row > .input, .settings-row > div:first-child:only-child { flex: 1 1 100%; width: 100%; min-width: 0; }
+  .settings-row > .xf-control .slider { flex: 1; }
+  .settings-row b { font-size: 15px; }
+  .settings-row p { font-size: 13px; line-height: 1.45; }
+  .set-body { padding: 0 14px; }
+}
