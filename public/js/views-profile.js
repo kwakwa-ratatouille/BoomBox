@@ -45,16 +45,14 @@ function loadSmall(file, max = 1600) {
   });
 }
 
-// Recadrage de la bannière (format 3:1) : on fait glisser l'image dans le cadre et on zoome
-async function bannerCropper(box, file) {
+// Recadrage : on fait glisser l'image dans le cadre et on zoome. Bannière (3:1) ou photo de profil (carré, aperçu rond)
+async function bannerCropper(box, file, { W = 900, H = 300, round = false } = {}) {
   const src = await loadSmall(file);
-  const W = 900;
-  const H = 300;
   let x = 50;
   let y = 50;
   let zoom = 1;
   const url = src.toDataURL('image/jpeg', 0.85);
-  box.innerHTML = `<div class="pe-crop"><div class="pe-banner pe-crop-area" style="background-image:url('${url}')"></div>
+  box.innerHTML = `<div class="pe-crop"><div class="${round ? 'pe-round' : 'pe-banner'} pe-crop-area" style="background-image:url('${url}')"></div>
     <div class="row-flex" style="gap:10px;margin-top:8px"><span class="muted" style="font-size:12px">Zoom</span><input type="range" class="range pe-zoom" min="1" max="3" step="0.01" value="1" style="flex:1"></div>
     <p class="muted" style="font-size:12px;margin:4px 0 0">Fais glisser l'image pour choisir la partie visible.</p></div>`;
   const area = box.querySelector('.pe-crop-area');
@@ -92,7 +90,7 @@ async function bannerCropper(box, file) {
       const dw = src.width * s;
       const dh = src.height * s;
       c.getContext('2d').drawImage(src, ((W - dw) * x) / 100, ((H - dh) * y) / 100, dw, dh);
-      return c.toDataURL('image/jpeg', 0.72);
+      return c.toDataURL('image/jpeg', round ? 0.85 : 0.72);
     },
   };
 }
@@ -102,6 +100,7 @@ export async function editProfile() {
   let photo = p.photo || null;
   let banner = p.banner || null;
   let crop = null;
+  let pcrop = null; // recadrage de la photo de profil
   const bannerPrev = (b) => (b ? `<div class="pe-banner" style="background-image:url('${b}')"></div>` : '<div class="pe-banner empty">Aucune bannière</div>');
   const v = await modal({
     title: 'Détails du profil',
@@ -111,15 +110,21 @@ export async function editProfile() {
         <input class="input" id="pe-name" value="${p.name}" maxlength="40" placeholder="Nom">
         ${p.photo ? html`<button class="btn ghost" id="pe-rm" type="button">Retirer la photo</button>` : ''}
       </div></div>
+      <div id="pe-pcrop"></div>
       <div class="pe-banner-box"><b>Bannière du profil</b><div id="pe-bprev">${raw(bannerPrev(banner))}</div>
         <div class="row-flex" style="gap:8px"><label class="btn ghost">Choisir une bannière<input type="file" accept="image/*" id="pe-bfile" hidden></label><button class="btn ghost" id="pe-brm" type="button">Retirer</button></div></div>`),
-    actions: [{ label: 'Annuler' }, { label: 'Enregistrer', primary: true, value: (w) => ({ name: w.querySelector('#pe-name').value.trim() || p.name, photo, banner: crop ? crop.render() : banner }) }],
+    actions: [{ label: 'Annuler' }, { label: 'Enregistrer', primary: true, value: (w) => ({ name: w.querySelector('#pe-name').value.trim() || p.name, photo: pcrop ? pcrop.render() : photo, banner: crop ? crop.render() : banner }) }],
     onMount: (w) => {
       w.querySelector('#pe-file').onchange = async (e) => {
         const f = e.target.files[0];
         if (!f) return;
-        photo = await squareImage(f);
-        w.querySelector('.pe-photo .avatar-img').outerHTML = String(avatarHtml({ ...p, photo }, 'xl'));
+        // Recadrage : déplacer la photo et zoomer dans le rond, puis Enregistrer
+        try {
+          pcrop = await bannerCropper(w.querySelector('#pe-pcrop'), f, { W: 400, H: 400, round: true });
+        } catch {
+          photo = await squareImage(f);
+          w.querySelector('.pe-photo .avatar-img').outerHTML = String(avatarHtml({ ...p, photo }, 'xl'));
+        }
       };
       w.querySelector('#pe-bfile').onchange = async (e) => {
         const f = e.target.files[0];
@@ -133,6 +138,8 @@ export async function editProfile() {
       w.querySelector('#pe-brm').onclick = () => ((banner = null), (crop = null), (w.querySelector('#pe-bprev').innerHTML = bannerPrev(null)));
       w.querySelector('#pe-rm')?.addEventListener('click', () => {
         photo = null;
+        pcrop = null;
+        w.querySelector('#pe-pcrop').innerHTML = '';
         w.querySelector('.pe-photo .avatar-img').outerHTML = String(avatarHtml({ ...p, photo: null }, 'xl'));
       });
     },

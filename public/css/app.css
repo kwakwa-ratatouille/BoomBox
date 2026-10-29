@@ -2395,3 +2395,6 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 #fp-seek .knob { opacity: 1; width: 14px; height: 14px; transition: width 0.12s, height 0.12s; }
 #fp-seek.drag .knob { width: 22px; height: 22px; }
 #fp-seek.drag::before, #fp-seek.drag .fill { height: 6px; }
+/* Recadrage de la photo de profil : cadre rond */
+.pe-round { width: min(260px, 70vw); aspect-ratio: 1; border-radius: 50%; margin: 12px auto 0; background-color: var(--elev-2); box-shadow: 0 0 0 3px var(--accent); }
+#pe-pcrop .pe-crop { margin-top: 8px; }

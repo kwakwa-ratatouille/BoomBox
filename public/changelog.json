@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Recadrer sa photo de profil",
+    "items": [
+      "Photo de profil : après l’avoir choisie, fais-la glisser dans le rond et zoome pour la recentrer comme tu veux, puis Enregistrer."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1626",
     "title": "Recommandations et bascule entre appareils",
     "items": [
