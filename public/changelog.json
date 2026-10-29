@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1029.2148",
+    "title": "Choisir la version d’un son",
+    "items": [
+      "Menu ⋯ d’un son dans une playlist → « Remplacer par une autre version » : toutes les versions trouvées (titre officiel avec ou sans feat., remix, clip YouTube, live, SoundCloud), avec leur source. Un appui remplace le son dans la playlist (pratique quand un import a pris la mauvaise version).",
+      "Ailleurs (recherche, album…) : menu ⋯ → « Autres versions » pour écouter la version YouTube, SoundCloud ou une autre. La barre en haut permet d’affiner (« feat », « live », « remix »…)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2145",
     "title": "Gros nettoyage : profil, paramètres, notifications, SoundCloud",
     "items": [

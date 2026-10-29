@@ -1,6 +1,6 @@
 // Composants réutilisables : pochettes, listes de titres, cartes, menus contextuels des titres.
-import { html, raw, esc, icon, fmtTime, fmtAgo, artistLinks, contextMenu, toast, promptText, isMobile, plural } from './ui.js';
-import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting, toggleFollow, isFollowing } from './state.js';
+import { html, raw, esc, icon, fmtTime, fmtAgo, artistLinks, contextMenu, toast, promptText, isMobile, plural, modal } from './ui.js';
+import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting, toggleFollow, isFollowing, updatePlaylist, cleanTrack } from './state.js';
 import { player, ctl, startAt } from './player.js';
 import { sync } from './sync.js';
 import * as twinsMod from './twins.js';
@@ -461,6 +461,7 @@ export function trackMenu(track, x, y, { playlistId, index } = {}) {
     { label: isLiked(track.id) ? 'Retirer des Titres likés' : 'Ajouter aux Titres likés', icon: isLiked(track.id) ? 'heartFill' : 'heart', action: () => toggleLike(track) },
     { label: sync.jam ? 'Ajouter à la file de la party' : "Ajouter à la file d'attente", icon: 'addQueue', action: () => ctl.addToQueue(track) },
     playlistId && { label: 'Retirer de cette playlist', icon: 'trash', action: () => removeFromPlaylist(playlistId, track) },
+    !track.local && { label: playlistId ? 'Remplacer par une autre version…' : 'Autres versions…', icon: 'sync', action: () => chooseVersion(track, { playlistId, index }) },
     { sep: true },
     !track.local && { label: 'Regarder le clip', icon: 'video', action: () => openClip(track) },
     artists.length === 1 && { label: "Aller à l'artiste", icon: 'person', action: () => (location.hash = `#/artist/${artists[0].id}`) },
@@ -1019,5 +1020,80 @@ export function setupDelegation() {
       if (to === info.i) return;
       await movePlaylistItem(info.list.playlistId, info.i, to);
     }
+  });
+}
+
+// ---------- Autres versions d'un son ----------
+// Toutes les versions trouvées : titres YouTube Music (dont les feat. et remix), vidéos YouTube (clips, live…) et
+// SoundCloud. Dans une playlist, on remplace le son par celle choisie (ex. l'import a pris la version sans le feat.) ;
+// ailleurs, on écoute la version choisie. La recherche du haut se modifie pour chercher autre chose.
+export async function chooseVersion(track, { playlistId = null, index = null } = {}) {
+  const first = (track.artists || [])[0]?.name || '';
+  const base = String(track.title || '').replace(/\s*[\(\[](?:official|clip|lyrics?|audio|video|visuali[sz]er|paroles)[^\)\]]*[\)\]]/gi, '').trim();
+  let q = `${base} ${first}`.trim();
+  const q0 = q;
+  const kind = { song: 'Titre', video: 'Vidéo', sc: 'SoundCloud' };
+  const search = async (query) => {
+    const [r, sc] = await Promise.all([
+      api(`/api/search?q=${encodeURIComponent(query)}`).catch(() => ({})),
+      api(`/api/soundcloud/search?q=${encodeURIComponent(query)}`).catch(() => []),
+    ]);
+    const seen = new Set([track.id]);
+    const out = [];
+    const add = (list, k) => (list || []).forEach(({ type: _t, ...t }) => t?.id && !seen.has(t.id) && (seen.add(t.id), out.push({ ...t, _k: k })));
+    add(r.songs, 'song');
+    add(r.videos, 'video');
+    add(Array.isArray(sc) ? sc : sc?.items, 'sc');
+    // Seulement les versions de CE son (titre qui le contient) ; les autres sons de l'artiste ne sont montrés que
+    // si rien ne correspond (recherche modifiée à la main, par exemple)
+    const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+    const want = norm(query === q0 ? base : query.split(' ').slice(0, 3).join(' '));
+    const same = out.filter((t) => { const n = norm(t.title); return want && (n.includes(want) || want.includes(n)); });
+    return (same.length ? same : out).slice(0, 40);
+  };
+  const row = (t, i) => html`<button class="ver-row" data-i="${i}">${cover(t, '', 96)}<span class="ver-txt"><b class="ellipsis">${t.title}</b><span class="muted ellipsis">${(t.artists || []).map((a) => a.name).join(', ')}${t.duration ? ` · ${fmtTime(t.duration)}` : ''}</span></span><span class="ver-tag ${t._k}">${kind[t._k]}</span></button>`;
+  let list = [];
+  await modal({
+    title: playlistId ? 'Remplacer par une autre version' : 'Autres versions',
+    wide: true,
+    body: String(html`<p class="muted" style="margin:0 0 10px">Version actuelle : <b>${track.title}</b> · ${(track.artists || []).map((a) => a.name).join(', ')}</p>
+      <div class="search-box" style="max-width:none;margin-bottom:10px">${icon('search')}<input id="ver-q" value="${q}" autocomplete="off" placeholder="Titre, artiste, « feat », « live »…"></div>
+      <div id="ver-list" class="ver-list"><p class="muted">Recherche des versions…</p></div>`),
+    actions: [{ label: 'Fermer' }],
+    onMount: (w, close) => {
+      const box = w.querySelector('#ver-list');
+      const load = async () => {
+        box.innerHTML = '<p class="muted">Recherche des versions…</p>';
+        const query = q;
+        const r = await search(query);
+        if (query !== q) return;
+        list = r;
+        box.innerHTML = list.length ? String(html`${list.map(row)}`) : '<p class="muted">Aucune autre version trouvée. Essaie d’autres mots.</p>';
+      };
+      let timer = null;
+      w.querySelector('#ver-q').addEventListener('input', (e) => {
+        q = e.target.value.trim();
+        clearTimeout(timer);
+        if (q) timer = setTimeout(load, 400);
+      });
+      box.addEventListener('click', async (e) => {
+        const b = e.target.closest('.ver-row');
+        if (!b) return;
+        const { _k, ...t } = list[Number(b.dataset.i)];
+        rememberTracks([t]);
+        if (playlistId) {
+          const p = state.library.playlists.find((x) => x.id === playlistId);
+          if (!p) return;
+          const i = p.tracks[index]?.id === track.id ? index : p.tracks.findIndex((x) => x.id === track.id);
+          if (i < 0) return;
+          const tracks = p.tracks.slice();
+          tracks[i] = { ...cleanTrack(t), addedAt: p.tracks[i].addedAt || Date.now() };
+          await updatePlaylist(playlistId, { tracks }).catch((err) => toast(err.message));
+          toast(`Remplacé par « ${t.title} »`);
+        } else ctl.playTrack(t);
+        close(null);
+      });
+      load();
+    },
   });
 }
