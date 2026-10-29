@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1516",
+    "title": "Télécommande entre appareils plus réactive",
+    "items": [
+      "Appareils liés : pause, lecture et déplacement dans le son s’affichent tout de suite sur l’appareil qui pilote, sans repasser en lecture une seconde ni attendre pour la position. L’appareil piloté confirme aussitôt son nouvel état."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1515",
     "title": "Mode bourré revu, et un nouveau secret",
     "items": [

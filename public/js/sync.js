@@ -34,7 +34,14 @@ export const sync = {
     this._unsubs.push(
       onSnapshot(query(cloud.col('devices'), where('profileId', '==', profile.id)), (snap) => {
         this._allDevices = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        for (const d of this._allDevices) if (d.id !== device.id && d.state) this.remote[d.id] = d.state;
+        for (const d of this._allDevices) {
+          if (d.id === device.id || !d.state) continue;
+          // Commande envoyée il y a peu : on garde l'état prévu tant que l'appareil n'a pas confirmé
+          const p = this._pending;
+          if (p?.target === d.id && Date.now() < p.until && Object.entries(p.patch).some(([k, v]) => (k === 'position' ? Math.abs(this.position(d.state) - v) > 2.5 : d.state[k] !== v))) continue;
+          if (p?.target === d.id) this._pending = null;
+          this.remote[d.id] = d.state;
+        }
         this._refreshDevices();
         if (this.target) {
           emit('player:track');
@@ -104,6 +111,7 @@ export const sync = {
   },
 
   sendCommand(target, action, args = []) {
+    this._optimistic(target, action, args);
     addDoc(collection(db, 'spaces', cloud.spaceId, 'devices', target, 'commands'), { action, args: JSON.parse(JSON.stringify(args)), from: state.device.id, at: Date.now() }).catch((e) => toast(e.message));
   },
 
@@ -120,6 +128,24 @@ export const sync = {
     this._last = snap;
     updateDoc(this.devRef(), { state: snap, lastSeen: Date.now(), online: true }).catch(() => {});
     if (this.isJamHost()) updateDoc(doc(db, 'jams', this._jamCode), { state: snap }).catch(() => {});
+  },
+
+  // Télécommande : l'écran change tout de suite (pause, lecture, position), sans attendre que l'autre appareil
+  // confirme ; ses états encore anciens qui arrivent entre-temps sont ignorés 4 s (avant, la pause « sautait » :
+  // l'écran repassait en lecture un instant, et le déplacement dans le son arrivait avec du retard)
+  _optimistic(target, action, args) {
+    const st = this.remote[target];
+    if (!st) return;
+    const pos = this.position(st);
+    const set = (patch) => {
+      this.remote[target] = { ...st, ...patch, ts: Date.now() };
+      this._pending = { target, patch, until: Date.now() + 4000 };
+      emit('player:state');
+      emit('player:time');
+    };
+    if (action === 'pause' || (action === 'toggle' && !st.paused)) set({ paused: true, position: pos });
+    else if (action === 'play' || action === 'toggle') set({ paused: false, position: pos });
+    else if (action === 'seek') set({ position: Math.max(0, Number(args[0]) || 0) });
   },
 
   // ----- Contrôle d'un autre appareil -----
@@ -458,6 +484,8 @@ export const sync = {
       return;
     }
     if (typeof player[action] === 'function' && !action.startsWith('_')) player[action](...args);
+    // L'appareil qui pilote voit le résultat tout de suite (sans attendre la publication regroupée)
+    setTimeout(() => this.publish(true), 150);
   },
 };
 
