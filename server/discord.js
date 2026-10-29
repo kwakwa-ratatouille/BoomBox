@@ -80,7 +80,7 @@ export async function setPresence(p) {
         large_image: p.cover && /^https:\/\//.test(p.cover) ? p.cover : 'boombox',
         large_text: String(p.album || p.title).slice(0, 128),
         small_image: 'https://musikal-b72d1.web.app/assets/logo-symbol.png',
-        small_text: 'Boombox · ta musique, tes potes',
+        small_text: 'Boombox · Instagram : @matis.rds',
       },
       // Dans la liste des membres : « Écoute CERTIFIÉ » plutôt que « Écoute Boombox »
       status_display_type: 2,
