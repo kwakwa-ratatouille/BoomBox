@@ -529,7 +529,7 @@ async function stickerPicker(send) {
 
 // Recherche de GIF (GIPHY, via le mini-serveur Boombox qui garde la clé secrète)
 const GIF_API = 'https://boombox-ai.boombox-matis.workers.dev/gifs';
-async function gifPicker(send) {
+export async function gifPicker(send) {
   let timer = null;
   let closeIt = null;
   const load = async (w, q) => {

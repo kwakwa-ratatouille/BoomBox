@@ -95,6 +95,17 @@ async function bannerCropper(box, file, { W = 900, H = 300, round = false } = {}
   };
 }
 
+// GIF envoyé depuis l'appareil : gardé tel quel (le recadrage le figerait en image fixe). Fiche en ligne limitée :
+// photo 45 Ko, bannière 180 Ko ; au-delà, la recherche GIF (simple lien, sans limite) fait l'affaire.
+const readGif = (f, max) => new Promise((resolve, reject) => {
+  if (f.size > max) return reject(new Error(`GIF trop lourd (${Math.round(f.size / 1024)} Ko, ${Math.round(max / 1024)} Ko max) : choisis-le plutôt avec « GIF animé »`));
+  const r = new FileReader();
+  r.onload = () => resolve(r.result);
+  r.onerror = () => reject(new Error('GIF illisible'));
+  r.readAsDataURL(f);
+});
+const pickGif = () => new Promise((resolve) => import('./views-social.js').then((m) => m.gifPicker(({ gif }) => resolve(gif)).then(() => resolve(null))));
+
 export async function editProfile() {
   const p = state.profile;
   let photo = p.photo || null;
@@ -108,16 +119,45 @@ export async function editProfile() {
       <label class="pe-photo" title="Choisir une photo">${avatarHtml(p, 'xl')}<span>${icon('edit')}Choisir une photo</span><input type="file" accept="image/*" id="pe-file" hidden></label>
       <div style="flex:1;display:flex;flex-direction:column;gap:12px">
         <input class="input" id="pe-name" value="${p.name}" maxlength="40" placeholder="Nom">
+        <button class="btn ghost" id="pe-gif" type="button">GIF animé</button>
         ${p.photo ? html`<button class="btn ghost" id="pe-rm" type="button">Retirer la photo</button>` : ''}
       </div></div>
       <div id="pe-pcrop"></div>
       <div class="pe-banner-box"><b>Bannière du profil</b><div id="pe-bprev">${raw(bannerPrev(banner))}</div>
-        <div class="row-flex" style="gap:8px"><label class="btn ghost">Choisir une bannière<input type="file" accept="image/*" id="pe-bfile" hidden></label><button class="btn ghost" id="pe-brm" type="button">Retirer</button></div></div>`),
+        <div class="row-flex" style="gap:8px"><label class="btn ghost">Choisir une bannière<input type="file" accept="image/*" id="pe-bfile" hidden></label><button class="btn ghost" id="pe-bgif" type="button">GIF animé</button><button class="btn ghost" id="pe-brm" type="button">Retirer</button></div></div>`),
     actions: [{ label: 'Annuler' }, { label: 'Enregistrer', primary: true, value: (w) => ({ name: w.querySelector('#pe-name').value.trim() || p.name, photo: pcrop ? pcrop.render() : photo, banner: crop ? crop.render() : banner }) }],
     onMount: (w) => {
+      const showPhoto = () => (w.querySelector('.pe-photo .avatar-img').outerHTML = String(avatarHtml({ ...p, photo }, 'xl')));
+      // Photo et bannière animées : un GIF de la recherche (lien) ou un GIF de l'appareil (gardé tel quel)
+      w.querySelector('#pe-gif').onclick = async () => {
+        const g = await pickGif();
+        if (!g) return;
+        photo = g;
+        pcrop = null;
+        w.querySelector('#pe-pcrop').innerHTML = '';
+        showPhoto();
+      };
+      w.querySelector('#pe-bgif').onclick = async () => {
+        const g = await pickGif();
+        if (!g) return;
+        banner = g;
+        crop = null;
+        w.querySelector('#pe-bprev').innerHTML = bannerPrev(g);
+      };
       w.querySelector('#pe-file').onchange = async (e) => {
         const f = e.target.files[0];
         if (!f) return;
+        if (f.type === 'image/gif') {
+          try {
+            photo = await readGif(f, 45 * 1024);
+            pcrop = null;
+            w.querySelector('#pe-pcrop').innerHTML = '';
+            showPhoto();
+          } catch (err) {
+            toast(err.message, { timeout: 6000 });
+          }
+          return;
+        }
         // Recadrage : déplacer la photo et zoomer dans le rond, puis Enregistrer
         try {
           pcrop = await bannerCropper(w.querySelector('#pe-pcrop'), f, { W: 400, H: 400, round: true });
@@ -129,6 +169,16 @@ export async function editProfile() {
       w.querySelector('#pe-bfile').onchange = async (e) => {
         const f = e.target.files[0];
         if (!f) return;
+        if (f.type === 'image/gif') {
+          try {
+            banner = await readGif(f, 180 * 1024);
+            crop = null;
+            w.querySelector('#pe-bprev').innerHTML = bannerPrev(banner);
+          } catch (err) {
+            toast(err.message, { timeout: 6000 });
+          }
+          return;
+        }
         try {
           crop = await bannerCropper(w.querySelector('#pe-bprev'), f);
         } catch (err) {

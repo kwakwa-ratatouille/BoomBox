@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2042",
+    "title": "Photo de profil et bannière animées",
+    "items": [
+      "Profil → Détails du profil : bouton « GIF animé » pour la photo et pour la bannière (recherche GIPHY). Tu peux aussi envoyer un GIF depuis ton appareil (45 Ko max pour la photo, 180 Ko pour la bannière) : il reste animé. Tes amis le voient aussi."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2040",
     "title": "Panneau de droite sans barre qui surgit",
     "items": [
