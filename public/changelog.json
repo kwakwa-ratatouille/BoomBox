@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1610",
+    "title": "Paroles du son joué sur l’autre appareil",
+    "items": [
+      "Paroles sur le PC pendant que le téléphone joue (et inversement) : elles suivent le son au bon endroit. Avant, la position pouvait filer trop loin (paroles toutes « passées »)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1608",
     "title": "PC ↔ téléphone calés, même hors Wi-Fi",
     "items": [

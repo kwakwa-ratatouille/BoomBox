@@ -279,9 +279,12 @@ export const sync = {
     this.control(deviceId, { keepPlaying: true });
   },
 
+  // Où en est le son de l'autre appareil. Jamais au-delà de la fin du son ni dans le passé : avec un état ancien ou
+  // une horloge décalée, la position filait trop loin (paroles toutes « passées », barre au bout)
   position(st) {
     if (!st) return 0;
-    return st.paused ? st.position : st.position + (Date.now() - st.ts) / 1000;
+    const p = st.paused ? st.position : st.position + Math.max(0, Date.now() - st.ts) / 1000 * (st.rate || 1);
+    return Math.max(0, st.duration ? Math.min(p, st.duration) : p);
   },
 
   view() {
