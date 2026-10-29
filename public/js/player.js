@@ -1019,7 +1019,14 @@ export const player = {
   // Transition voulue entre deux titres : celle choisie dans la playlist mixée, sinon le réglage général
   _styleFor(aId, bId) {
     const pl = this._ctxPlaylist();
-    return (pl?.mixed && pl.transitions?.[`${aId}_${bId}`]) || (pl?.mixed ? 'auto' : setting('mixStyle', 'auto'));
+    const v = pl?.mixed && pl.transitions?.[`${aId}_${bId}`];
+    return (v && typeof v === 'object' ? v.style : v) || (pl?.mixed ? 'auto' : setting('mixStyle', 'auto'));
+  },
+  // Transition réglée à la main dans l'éditeur (durée, départ de A, entrée de B), ou null
+  _customFor(aId, bId) {
+    const pl = this._ctxPlaylist();
+    const v = pl?.mixed && pl.transitions?.[`${aId}_${bId}`];
+    return v && typeof v === 'object' ? v : null;
   },
 
   // Mix intelligent : demandé depuis le bouton Mix d'une playlist, en lecture aléatoire, sans file d'attente perso
@@ -1043,7 +1050,15 @@ export const player = {
       if (ready >= Math.min(4, cands.length)) this._preparedFor = cur;
     }
     const next = this._nextTrack();
-    const plan = next && automix.plan(cur, next.id, this._styleFor(cur, next.id));
+    let plan = next && automix.plan(cur, next.id, this._styleFor(cur, next.id));
+    // Réglage à la main : durée (mesures), moment où ce son part et moment du suivant où il entre
+    const custom = plan && this._customFor(cur, next.id);
+    if (custom) {
+      const beat = automix.get(cur)?.beat || plan.beatOut || 0.5;
+      const mixLen = Math.min(32, Math.max(1, (custom.bars || 8) * 4 * beat));
+      const ratio = plan.mixLen ? plan.inAt / plan.mixLen : 0;
+      plan = { ...plan, mixLen, inAt: mixLen * ratio, mixStart: custom.out ?? plan.mixStart, inStart: custom.in ?? plan.inStart, custom: true };
+    }
     this._mixPlan = plan ? { id: next.id, ...plan } : null;
     emit('player:automix', this._mixPlan);
   },

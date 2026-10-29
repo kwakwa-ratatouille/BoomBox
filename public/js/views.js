@@ -100,20 +100,33 @@ function drawTransitions(list, tr, p) {
     const b = tr[i + 1];
     if (!a || !b) return;
     const key = `${a.id}_${b.id}`;
-    const chosen = p.transitions?.[key] || 'auto';
+    const saved = p.transitions?.[key];
+    const custom = saved && typeof saved === 'object' ? saved : null;
+    const chosen = (custom ? custom.style : saved) || 'auto';
     const auto = chosen === 'auto' ? automix.plan(a.id, b.id, 'auto') : null;
-    const label = chosen === 'auto' ? (auto ? `${TRANSITION_NAMES[auto.style]} · auto` : 'Auto') : TRANSITION_NAMES[chosen];
+    const label = (chosen === 'auto' ? (auto ? `${TRANSITION_NAMES[auto.style]} · auto` : 'Auto') : TRANSITION_NAMES[chosen]) + (custom ? ` · ${custom.bars} mesures, réglée` : '');
     const sep = document.createElement('div');
-    sep.className = `mix-sep ${chosen === 'auto' ? '' : 'set'} ${chosen === 'none' ? 'off' : ''}`;
-    if (chosen === 'auto') Object.assign(sep.dataset, { a: a.id, b: b.id });
+    sep.className = `mix-sep ${chosen === 'auto' && !custom ? '' : 'set'} ${chosen === 'none' ? 'off' : ''}`;
+    if (chosen === 'auto' && !custom) Object.assign(sep.dataset, { a: a.id, b: b.id });
     sep.innerHTML = `<button title="Transition entre « ${esc(a.title)} » et « ${esc(b.title)} »">${icon('mixer', 14)}<span>${esc(label)}</span>${icon('down', 14)}</button>`;
     sep.querySelector('button').onclick = (e) => {
       const r = e.currentTarget.getBoundingClientRect();
-      contextMenu(r.left, r.bottom + 4, Object.entries(TRANSITION_NAMES).map(([k, name]) => ({
-        label: k === 'auto' && auto ? `Auto (${TRANSITION_NAMES[auto.style]})` : name,
-        icon: chosen === k ? 'check' : null,
-        action: () => updatePlaylist(p.id, { [`transitions.${key}`]: k === 'auto' ? null : k }).then(() => player._planNext?.()),
-      })));
+      // Ré-affiche cette transition après un changement
+      const redraw = () => (sep.remove(), drawTransitions(list, tr, p));
+      contextMenu(r.left, r.bottom + 4, [
+        { label: 'Personnaliser la transition…', icon: 'mixer', action: () => import('./mix-editor.js').then((m) => m.openMixEditor(p, a, b)).then((ok) => ok && redraw()) },
+        { sep: true },
+        ...Object.entries(TRANSITION_NAMES).map(([k, name]) => ({
+          label: k === 'auto' && auto ? `Auto (${TRANSITION_NAMES[auto.style]})` : name,
+          icon: chosen === k && !custom ? 'check' : null,
+          action: async () => {
+            await updatePlaylist(p.id, { [`transitions.${key}`]: k === 'auto' ? null : k });
+            p.transitions = { ...(p.transitions || {}), [key]: k === 'auto' ? null : k };
+            player._planNext?.();
+            redraw();
+          },
+        })),
+      ]);
     };
     row.after(sep);
   });

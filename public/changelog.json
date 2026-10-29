@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Éditeur de transitions",
+    "items": [
+      "Playlist mixée : touche une transition entre deux sons puis « Personnaliser la transition… » : les formes d’onde des deux sons, la durée (2 à 32 mesures), le moment où le son part, celui où le suivant entre, et le style. « Écouter la transition » pour l’entendre tout de suite.",
+      "Tes réglages sont enregistrés dans la playlist, et le mix activé ou coupé sur une playlist reste comme tu l’as laissé.",
+      "Les transitions s’entendent sur PC et Android ; sur iPhone, iOS ne permet pas de jouer deux sons à la fois, les sons s’enchaînent directement."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1028.2247",
     "title": "Party : tout le monde aux commandes",
     "items": [

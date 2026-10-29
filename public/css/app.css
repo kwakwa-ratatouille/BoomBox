@@ -2318,3 +2318,12 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .al-pick .cover, .al-hit .cover { width: 44px; height: 44px; flex: none; margin: 0; }
 .al-pick .t-text, .al-hit .t-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .al-search #al-res { margin-top: 8px; max-height: 260px; overflow: auto; }
+
+/* Éditeur de transition (mix) */
+.mx-ed h3 { font-size: 15px; margin: 16px 0 8px; }
+.mx-track { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin: 6px 0; }
+.mx-wave { display: block; width: 100%; height: 90px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
+.mx-row { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; font-size: 14px; }
+.mx-row input { width: 100%; }
+.mx-mid { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.mx-chips { display: flex; gap: 6px; flex-wrap: wrap; }
