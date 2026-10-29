@@ -313,7 +313,7 @@ export const social = {
     seen.add(LIKES);
     const likesRef = doc(db, 'people', this.code, 'playlists', LIKES);
     const liked = state.library.liked;
-    const lsig = this.sharingLikes ? `${liked.length}:${liked.slice(0, 50).map((t) => t.id).join(',')}` : null;
+    const lsig = this.sharingLikes ? `v2:${liked.length}:${liked.slice(0, 50).map((t) => t.id).join(',')}` : null;
     // Plus de LIKES_PART titres : la suite va dans des fiches « __likes~1 », « __likes~2 »… (une fiche Firestore
     // ne peut pas dépasser 1 Mo : avant, les amis ne voyaient que les 2 000 premiers likes)
     const parts = this.sharingLikes ? Math.ceil(liked.length / LIKES_PART) : 0;
@@ -381,7 +381,9 @@ export const social = {
     if (!s?.exists()) return null;
     const d = s.data();
     const rest = await Promise.all(Array.from({ length: Math.max(0, (d.parts || 1) - 1) }, (_, i) => getDoc(doc(db, 'people', code, 'playlists', `${LIKES}~${i + 1}`)).then((x) => x.data()?.tracks || []).catch(() => [])));
-    return [...(d.tracks || []), ...rest.flat()];
+    const all = [...(d.tracks || []), ...rest.flat()];
+    all.total = Math.max(all.length, d.total || 0); // nombre réel (même si l'ami a une ancienne version de l'appli)
+    return all;
   },
   // Playlists publiques d'un ami (pour son profil), et une playlist partagée précise
   async publicPlaylists(code) {

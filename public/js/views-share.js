@@ -36,7 +36,7 @@ export async function userPage(el, params) {
       <div class="hero profile-hero ${banner ? 'has-banner' : ''}" style="--hero:${f.color || '#b07cf7'};${banner ? `background-image:url('${d.banner}')` : ''}">
         <div class="pe-photo static">${avatarHtml(f, 'hero')}</div>
         <div class="hero-info"><span class="hero-type">Profil${social.isAdded(code) ? ' · ami' : ''}</span><h1>${f.name}</h1>
-          <div class="hero-meta"><span>${plural(lists.length, 'playlist publique')}</span>${likes ? html`<span class="sep"></span><span>${plural(likes.length, 'titre liké')}</span>` : ''}${d.top?.minutes ? html`<span class="sep"></span><span>${Math.round(d.top.minutes).toLocaleString('fr-FR')} min ce mois</span>` : ''}</div>
+          <div class="hero-meta"><span>${plural(lists.length, 'playlist publique')}</span>${likes ? html`<span class="sep"></span><span>${plural(likes.total || likes.length, 'titre liké')}</span>` : ''}${d.top?.minutes ? html`<span class="sep"></span><span>${Math.round(d.top.minutes).toLocaleString('fr-FR')} min ce mois</span>` : ''}</div>
         </div>
       </div>
       <div class="page-body">
