@@ -3,6 +3,14 @@ import { api, on } from './state.js';
 import { player, ctl } from './player.js';
 import { esc, artistNames, icon, fmtTime } from './ui.js';
 import { keepAwake } from './awake.js';
+import { sync } from './sync.js';
+
+// Ce qui joue, ici ou sur l'appareil piloté (paroles synchronisées sur le PC pendant que le téléphone joue)
+const now = () => {
+  if (!player.remoteSender) return { track: player.track, time: player.time(), paused: player.paused };
+  const v = sync.view();
+  return { track: v.track, time: v.position || 0, paused: v.paused !== false };
+};
 
 const cache = new Map();
 
@@ -88,8 +96,9 @@ export function mountLyrics(el, track) {
     box.scrollTo({ top: box.scrollTop + (r.top + r.height / 2 - mid), behavior: 'smooth' });
   }
   function tick() {
-    if (!alive || !lyr?.synced || player.track?.id !== track.id) return;
-    const t = player.time() + 0.25;
+    const n = now();
+    if (!alive || !lyr?.synced || n.track?.id !== track.id) return;
+    const t = n.time + 0.25;
     let idx = -1;
     for (let i = 0; i < lyr.lines.length; i++) if (lyr.lines[i].t <= t) idx = i;
     if (idx !== lastIdx) {
@@ -109,7 +118,8 @@ export function mountLyrics(el, track) {
   const awakeKey = {};
   const iv = setInterval(() => {
     tick();
-    keepAwake(awakeKey, alive && !player.paused && player.track?.id === track.id && el.isConnected && el.getClientRects().length > 0);
+    const n = now();
+    keepAwake(awakeKey, alive && !n.paused && n.track?.id === track.id && el.isConnected && el.getClientRects().length > 0);
   }, 200);
   return () => {
     alive = false;
@@ -138,7 +148,7 @@ export function openKaraoke() {
   let unmount = null;
   let shownId = null;
   const show = () => {
-    const t = player.track;
+    const t = now().track;
     if (!ov.isConnected || !t || t.id === shownId) return;
     shownId = t.id;
     const img = (t.thumb || '').replace(/=w\d+-h\d+[^&?/]*/, '=w800-h800-l90-rj');
@@ -151,12 +161,12 @@ export function openKaraoke() {
     unmount = mountLyrics(ov.querySelector('.kara-inner'), t);
   };
   const tick = () => {
-    const d = player.shownDuration?.() || player.duration();
-    const c = player.time();
+    const d = player.remoteSender ? sync.view().duration || 0 : player.shownDuration?.() || player.duration();
+    const c = now().time;
     ov.querySelector('.kara-cur').textContent = fmtTime(c);
     ov.querySelector('.kara-dur').textContent = fmtTime(d);
     ov.querySelector('.kara-bar div').style.width = (d ? Math.min(100, (c / d) * 100) : 0) + '%';
-    ov.querySelector('[data-k=toggle]').innerHTML = icon(player.paused ? 'play' : 'pause');
+    ov.querySelector('[data-k=toggle]').innerHTML = icon(now().paused ? 'play' : 'pause');
     show();
   };
   ov.addEventListener('click', (e) => {
@@ -169,7 +179,7 @@ export function openKaraoke() {
   });
   ov.querySelector('.kara-bar').addEventListener('click', (e) => {
     const r = e.currentTarget.getBoundingClientRect();
-    ctl.seek(((e.clientX - r.left) / r.width) * (player.shownDuration?.() || player.duration()));
+    ctl.seek(((e.clientX - r.left) / r.width) * (player.remoteSender ? sync.view().duration || 0 : player.shownDuration?.() || player.duration()));
   });
   const onKey = (e) => e.key === 'Escape' && !document.fullscreenElement && closeKaraoke();
   document.addEventListener('keydown', onKey);

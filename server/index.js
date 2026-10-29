@@ -184,6 +184,39 @@ app.post('/api/rc/send', express.text({ type: '*/*', limit: '200kb' }), (req, re
   for (const to of [].concat(m?.to || [])) for (const r of rcClients.get(String(to)) || []) (r.write(`data: ${JSON.stringify(m.msg)}\n\n`), n++);
   res.json({ delivered: n });
 });
+// Lecture en fond (PC) : fenêtre Boombox fermée pendant un son → l'icône près de l'horloge (scripts\tray.ps1) le
+// continue, avec la suite de la file ; en rouvrant Boombox, la fenêtre reprend la main au même moment.
+// seq change à chaque nouveau son : l'icône sait qu'il faut en ouvrir un autre.
+let bg = { seq: 0, playing: false, track: null, position: 0, queue: [] };
+const bgOut = () => ({ seq: bg.seq, playing: bg.playing, track: bg.track && { id: bg.track.id, title: bg.track.title, artist: (bg.track.artists || [])[0]?.name || '' }, position: bg.position });
+app.get('/api/bg', (req, res) => res.json(bgOut()));
+app.post('/api/bg/play', express.text({ type: '*/*', limit: '500kb' }), (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).end();
+  try {
+    const b = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    if (b?.track?.id) bg = { seq: bg.seq + 1, playing: true, track: b.track, position: Number(b.position) || 0, queue: (b.queue || []).filter((t) => t?.id).slice(0, 100), context: b.context || null };
+  } catch {}
+  res.json(bgOut());
+});
+app.post('/api/bg/pos', (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).end();
+  bg.position = Number(req.query.t) || 0;
+  res.json({ ok: true });
+});
+// L'icône : son terminé → le suivant de la file ; pause / reprise / arrêt depuis son menu
+app.post('/api/bg/:act', (req, res) => {
+  const act = req.params.act;
+  if (!relay.isLocal(req) || !['next', 'pause', 'resume', 'stop'].includes(act)) return res.status(403).end();
+  const was = { ...bg };
+  if (act === 'next') {
+    const t = bg.queue.shift();
+    bg = t ? { ...bg, seq: bg.seq + 1, track: t, position: 0, playing: true } : { ...bg, playing: false };
+  } else if (act === 'pause') bg.playing = false;
+  else if (act === 'resume') bg.playing = !!bg.track;
+  else bg = { seq: bg.seq + 1, playing: false, track: null, position: 0, queue: [] };
+  // stop : renvoie ce qui jouait (la fenêtre qui reprend la main repart de là)
+  res.json(act === 'stop' ? { track: was.track, position: was.position, queue: was.queue, context: was.context, playing: was.playing } : bgOut());
+});
 app.post('/api/prefetch/:id', prefetchHandler);
 app.get('/api/audio-file/:id', audioFileHandler);
 

@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1029.1603",
+    "title": "PC : la musique continue fenêtre fermée",
+    "items": [
+      "PC : fermer la fenêtre Boombox pendant un son ne coupe plus la musique : elle continue en fond (même moment, puis la suite de la file) depuis l’icône Boombox près de l’horloge. Clic droit sur l’icône : pause, son suivant, arrêter. En rouvrant Boombox, la fenêtre reprend là où on en est.",
+      "Paroles synchronisées aussi quand la musique joue sur un autre appareil (ex. le PC affiche les paroles du son qui passe sur ton téléphone)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1559",
     "title": "PC ↔ téléphone quasi instantané",
     "items": [

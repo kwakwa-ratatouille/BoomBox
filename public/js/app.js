@@ -1726,6 +1726,7 @@ async function boot() {
   setTimeout(() => import('./tour.js').then((m) => (m.tourDone() ? showWhatsNew() : m.startTour())).catch(() => showWhatsNew()), 1200);
   import('./alarm.js').then((m) => m.startAlarm()).catch(() => {}); // réveil en musique
   import('./drunk.js').then((m) => m.setupDrunkTrigger()).catch(() => {}); // mode caché
+  import('./bg-play.js').then((m) => m.setupBackgroundPlay()).catch(() => {}); // PC : la musique continue fenêtre fermée
   // Un son = une entrée : versions SoundCloud rattachées à YouTube Music, doublons fusionnés (en arrière-plan)
   setTimeout(async () => {
     const [tw, st] = await Promise.all([import('./twins.js'), import('./state.js')]);

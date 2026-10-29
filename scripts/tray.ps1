@@ -1,4 +1,4 @@
-# Serveur Boombox en arrière-plan, avec une icône dans la zone de notification (près de l'horloge).
+﻿# Serveur Boombox en arrière-plan, avec une icône dans la zone de notification (près de l'horloge).
 # Clic droit : ouvrir Boombox, redémarrer le serveur, quitter. Double-clic : ouvrir Boombox.
 # Le serveur (node) tourne sans fenêtre et redémarre tout seul s'il s'arrête.
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
@@ -73,6 +73,65 @@ $timer.add_Tick({
   if (-not $script:quitting -and -not (Get-NetTCPConnection -LocalPort 8787 -State Listen -ErrorAction SilentlyContinue)) { Start-Server }
 })
 $timer.Start()
+
+# ---------- Lecture en fond ----------
+# Fenêtre Boombox fermée pendant un son : le son continue ici (même moment, puis la suite de la file), et le menu
+# de l'icône permet pause, suivant et arrêt. En rouvrant Boombox, la fenêtre reprend la main. État : serveur, /api/bg.
+Add-Type -AssemblyName PresentationCore
+$api = 'http://127.0.0.1:8787/api/bg'
+$player = New-Object System.Windows.Media.MediaPlayer
+$script:bgSeq = -1
+$script:seekTo = $null
+$script:bgPlaying = $false
+$script:lastPos = 0
+$bgSep = New-Object System.Windows.Forms.ToolStripSeparator
+$bgNow = New-Object System.Windows.Forms.ToolStripMenuItem
+$bgNow.Enabled = $false
+$bgToggle = New-Object System.Windows.Forms.ToolStripMenuItem 'Pause'
+$bgNext = New-Object System.Windows.Forms.ToolStripMenuItem 'Son suivant'
+$bgStop = New-Object System.Windows.Forms.ToolStripMenuItem 'Arrêter la musique'
+foreach ($it in @($bgSep, $bgNow, $bgToggle, $bgNext, $bgStop)) { $it.Visible = $false; $menu.Items.Insert(0, $it) }
+# Ordre voulu en haut du menu : titre, pause, suivant, arrêter, puis une séparation
+$menu.Items.Remove($bgSep); $menu.Items.Insert(4, $bgSep)
+function Bg-Post($act) { try { Invoke-RestMethod -Method Post "$api/$act" -TimeoutSec 2 | Out-Null } catch {} }
+$bgToggle.add_Click({ if ($script:bgPlaying) { Bg-Post 'pause' } else { Bg-Post 'resume' } })
+$bgNext.add_Click({ Bg-Post 'next' })
+$bgStop.add_Click({ Bg-Post 'stop' })
+
+$bgTimer = New-Object System.Windows.Forms.Timer
+$bgTimer.Interval = 1000
+$bgTimer.add_Tick({ try { Bg-Tick } catch { "$(Get-Date -Format s) $($_.Exception.Message) @ $($_.InvocationInfo.ScriptLineNumber)" | Out-File -Append (Join-Path $env:TEMP 'boombox-tray.log') } })
+function Bg-Tick {
+  try { $s = Invoke-RestMethod $api -TimeoutSec 1 } catch { return }
+  if ($s.seq -ne $script:bgSeq) {
+    $script:bgSeq = $s.seq
+    if ($s.track) {
+      $player.Open([Uri]"http://127.0.0.1:8787/api/audio-file/$($s.track.id)")
+      $script:seekTo = [double]$s.position
+    } else { $player.Close() }
+  }
+  $has = $player.NaturalDuration.HasTimeSpan
+  if ($has -and $null -ne $script:seekTo) { $player.Position = [TimeSpan]::FromSeconds($script:seekTo); $script:seekTo = $null }
+  if ($s.track -and $s.playing) { $player.Play() } else { $player.Pause() }
+  $script:bgPlaying = [bool]($s.track -and $s.playing)
+  if ($s.track -and $has) {
+    $pos = $player.Position.TotalSeconds
+    # Fin du son : le suivant de la file
+    if ($s.playing -and $pos -ge $player.NaturalDuration.TimeSpan.TotalSeconds - 0.6) { Bg-Post 'next' }
+    elseif ([math]::Abs($pos - $script:lastPos) -ge 2) { $script:lastPos = $pos; try { Invoke-RestMethod -Method Post "$api/pos?t=$([math]::Round($pos, 1))" -TimeoutSec 1 | Out-Null } catch {} }
+  }
+  $show = [bool]$s.track
+  foreach ($it in @($bgSep, $bgNow, $bgToggle, $bgNext, $bgStop)) { $it.Visible = $show }
+  if ($show) {
+    $label = "$($s.track.title) · $($s.track.artist)"
+    if ($label.Length -gt 60) { $label = $label.Substring(0, 59) + '…' }
+    $bgNow.Text = $(if ($s.playing) { "♪ $label" } else { "⏸ $label" })
+    $bgToggle.Text = $(if ($s.playing) { 'Pause' } else { 'Reprendre' })
+    $tip = "Boombox · $label"
+    $icon.Text = $(if ($tip.Length -gt 63) { $tip.Substring(0, 62) + '…' } else { $tip })
+  } else { $icon.Text = 'Boombox (serveur en marche)' }
+}
+$bgTimer.Start()
 
 [System.Windows.Forms.Application]::Run()
 $mutex.ReleaseMutex()
