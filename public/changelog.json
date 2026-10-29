@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1029.1528",
+    "title": "Appareils liés plus fiables",
+    "items": [
+      "Appareils liés : le téléphone ne se rattache plus à un PC éteint (un PC coupé pendant qu’il jouait restait « en lecture »). Seul un appareil vraiment allumé est suivi, et la liste se met à jour dès que tu reviens dans l’appli.",
+      "Réveil : la musique sonne toujours sur l’appareil du réveil, même si tu pilotais un autre appareil avant."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1527",
     "title": "Réveil iPhone : la musique se lance toute seule",
     "items": [

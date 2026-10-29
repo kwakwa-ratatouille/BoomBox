@@ -67,7 +67,10 @@ export const sync = {
     }, 25e3);
     window.addEventListener('pagehide', () => updateDoc(this.devRef(), { online: false }).catch(() => {}));
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') updateDoc(this.devRef(), { lastSeen: Date.now(), online: true }).catch(() => {});
+      if (document.visibilityState === 'visible') {
+        updateDoc(this.devRef(), { lastSeen: Date.now(), online: true }).catch(() => {});
+        this._refreshDevices(); // retour sur l'appli : un appareil éteint entre-temps n'est plus affiché ni piloté
+      }
     });
 
     const savedJam = ls.get('boombox.jam');
@@ -99,7 +102,10 @@ export const sync = {
     if (!setting('followDevices', true) || this.target || this.jam || Date.now() < (this._noAutoUntil || 0)) return;
     if (player.track && !player.paused) return;
     const now = Date.now();
-    const other = this.devices.find((d) => d.id !== state.device.id && d.playing && now - (this.remote[d.id]?.ts || 0) < 15 * 60e3);
+    // Seulement un appareil vraiment allumé : signal de vie de moins d'1 min et état de lecture récent (avant : un PC
+    // éteint pendant qu'il jouait restait « en lecture » et le téléphone s'y rattachait au réveil)
+    const seen = (id) => this._allDevices.find((x) => x.id === id)?.lastSeen || 0;
+    const other = this.devices.find((d) => d.id !== state.device.id && d.playing && now - seen(d.id) < 60e3 && now - (this.remote[d.id]?.ts || 0) < 2 * 60e3);
     if (other) this.control(other.id, { auto: true });
   },
   // Suivi automatique : lancer un son ou une liste ici, c'est le jouer ici (l'autre appareil se met en pause)

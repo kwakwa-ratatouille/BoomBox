@@ -72,7 +72,10 @@ function playFrom(track, start) {
 }
 
 // Lance le réveil : volume de 10 % jusqu'au volume habituel en 60 s
-export function ring() {
+export async function ring() {
+  // Le réveil sonne toujours sur cet appareil, jamais sur un autre qu'on pilotait (ex. le PC, éteint la nuit)
+  const { sync } = await import('./sync.js');
+  if (sync.target) sync.control(null, { auto: true });
   const a = alarmConf();
   const target = player.volume || 0.8;
   if (a.source === 'track' && a.track?.id) {
