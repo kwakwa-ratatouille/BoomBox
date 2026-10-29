@@ -2509,3 +2509,11 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .ev-cover .ev-cover-logo { position: absolute; width: 46%; height: auto; left: 27%; top: 27%; image-rendering: pixelated; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.35)); }
 .home-bg canvas.pxbg { -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); opacity: 0.85; }
 .brand-logo, .sp-box { image-rendering: pixelated; }
+
+/* Paroles en plein écran : barre d'avance qu'on glisse au doigt (comme le lecteur en grand) */
+.kara-bar { position: relative; touch-action: none; --v: 0%; }
+.kara-bar::after { content: ''; position: absolute; left: -6px; right: -6px; top: -16px; bottom: -16px; }
+.kara-bar > div { width: var(--v); }
+.kara-knob { position: absolute; top: 50%; left: var(--v); width: 14px; height: 14px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); transition: width 0.12s, height 0.12s; pointer-events: none; }
+.kara-bar.drag .kara-knob { width: 22px; height: 22px; }
+.kara-bar.drag { height: 6px; }

@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2029",
+    "title": "Avancer dans le son depuis les paroles",
+    "items": [
+      "Paroles en plein écran : la barre d’avance se tient et se glisse au doigt comme dans le lecteur en grand (petit rond, grande zone tactile), le son repart de là au lâcher."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1806",
     "title": "L’icône de l’iPhone suit les événements",
     "items": [

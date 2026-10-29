@@ -154,7 +154,7 @@ export function openKaraoke() {
     <header class="kara-head"><div class="kara-cover"></div><div class="kara-info"><b></b><span></span></div>
       <button class="icon-btn" data-k="fs" title="Plein écran (écran entier)">${icon('fullscreen', 22)}</button><button class="icon-btn" data-k="close" title="Fermer (Échap)">${icon('close', 24)}</button></header>
     <div class="kara-lyrics"><div class="kara-inner"></div></div>
-    <footer class="kara-foot"><span class="kara-cur">0:00</span><div class="kara-bar"><div></div></div><span class="kara-dur">0:00</span>
+    <footer class="kara-foot"><span class="kara-cur">0:00</span><div class="kara-bar"><div></div><i class="kara-knob"></i></div><span class="kara-dur">0:00</span>
       <div class="kara-ctrl"><button class="ctrl" data-k="prev">${icon('prev')}</button><button class="play-btn" data-k="toggle">${icon('play')}</button><button class="ctrl" data-k="next">${icon('next')}</button></div></footer>`;
   document.body.appendChild(ov);
   let unmount = null;
@@ -172,12 +172,14 @@ export function openKaraoke() {
     unmount?.();
     unmount = mountLyrics(ov.querySelector('.kara-inner'), t);
   };
+  const durNow = () => (player.remoteSender ? sync.view().duration || 0 : player.shownDuration?.() || player.duration());
+  let dragK = null; // position glissée (0..1) pendant qu'on tient la barre
   const tick = () => {
-    const d = player.remoteSender ? sync.view().duration || 0 : player.shownDuration?.() || player.duration();
-    const c = now().time;
+    const d = durNow();
+    const c = dragK != null ? dragK * d : now().time;
     ov.querySelector('.kara-cur').textContent = fmtTime(c);
     ov.querySelector('.kara-dur').textContent = fmtTime(d);
-    ov.querySelector('.kara-bar div').style.width = (d ? Math.min(100, (c / d) * 100) : 0) + '%';
+    ov.querySelector('.kara-bar').style.setProperty('--v', (d ? Math.min(100, (c / d) * 100) : 0) + '%');
     ov.querySelector('[data-k=toggle]').innerHTML = icon(now().paused ? 'play' : 'pause');
     show();
   };
@@ -189,10 +191,35 @@ export function openKaraoke() {
     if (k === 'fs') return document.fullscreenElement ? document.exitFullscreen() : ov.requestFullscreen?.().catch(() => {});
     ctl[k]();
   });
-  ov.querySelector('.kara-bar').addEventListener('click', (e) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    ctl.seek(((e.clientX - r.left) / r.width) * (player.remoteSender ? sync.view().duration || 0 : player.shownDuration?.() || player.duration()));
+  // Barre d'avance : on la tient et on la glisse au doigt (ou à la souris), comme dans le lecteur en grand ;
+  // le son part de là au lâcher. Grande zone tactile, petit rond qui grossit sous le doigt.
+  const bar = ov.querySelector('.kara-bar');
+  const kAt = (e) => {
+    const r = bar.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  };
+  bar.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    bar.setPointerCapture(e.pointerId);
+    bar.classList.add('drag');
+    dragK = kAt(e);
+    tick();
   });
+  bar.addEventListener('pointermove', (e) => {
+    if (dragK == null) return;
+    dragK = kAt(e);
+    tick();
+  });
+  const release = (e) => {
+    if (dragK == null) return;
+    const k = e.type === 'pointerup' ? kAt(e) : dragK;
+    dragK = null;
+    bar.classList.remove('drag');
+    ctl.seek(k * durNow());
+    tick();
+  };
+  bar.addEventListener('pointerup', release);
+  bar.addEventListener('pointercancel', release);
   const onKey = (e) => e.key === 'Escape' && !document.fullscreenElement && closeKaraoke();
   document.addEventListener('keydown', onKey);
   const iv = setInterval(tick, 250);
