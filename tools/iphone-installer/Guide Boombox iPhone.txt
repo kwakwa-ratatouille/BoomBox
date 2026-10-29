@@ -109,3 +109,15 @@ Bon à savoir :
 
 Tu peux relancer ce programme à tout moment, par exemple pour réinstaller SideStore sur un nouvel iPhone.
 
+
+BONUS : BOOMBOX AVEC SIRI
+----------------------------------------
+Ouvre Boombox une première fois, puis dis « Dis Siri » (ou garde le bouton latéral appuyé) et parle. Ça marche aussi écran verrouillé, en voiture et avec les AirPods.
+
+   •  Mettre un son précis : « Mets Spider sur Boombox », « Joue Gims sur Boombox », « Lance ma playlist Chill sur Boombox ». Siri connaît tes playlists, tes artistes suivis et tes sons écoutés.
+   •  Chercher n'importe quel son : « Mets un son sur Boombox », puis Siri demande lequel.
+   •  Changer de son : « Son suivant sur Boombox », « Son précédent sur Boombox ».
+   •  Pause et reprise : « Mets Boombox en pause », « Reprends Boombox ».
+   •  Lancer une party : « Lance une party sur Boombox ».
+
+Siri ne réagit pas ? Réglages → Siri → Applis → Boombox : active « Utiliser avec Siri ». Les raccourcis sont aussi dans l'app Raccourcis (onglet Boombox).

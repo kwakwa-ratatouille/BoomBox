@@ -187,7 +187,7 @@ export async function connectGoogleFlow() {
   }
 }
 
-// Proposition au démarrage (appareils reliés sans compte Google) : une fois, puis tous les 7 jours si « Plus tard »
+// Proposition au démarrage (appareils reliés sans compte Google) : une fois, puis au plus tous les 30 jours
 export async function offerGoogle() {
   if (isGoogle() || Date.now() < Number(localStorage.getItem('boombox.googleAskAt') || 0)) return;
   const r = await modal({
@@ -195,6 +195,9 @@ export async function offerGoogle() {
     body: '<p class="muted" style="margin-top:0">Avec Google, ta bibliothèque te suit partout : sur un nouveau téléphone ou un nouveau PC, tu te connectes et tu retrouves tout, sans lien ni QR code. Rien ne change dans ta bibliothèque.</p>',
     actions: [{ label: 'Plus tard' }, { label: 'Connecter Google', primary: true, value: () => 'go' }],
   });
-  if (r !== 'go') return localStorage.setItem('boombox.googleAskAt', String(Date.now() + 7 * 86400e3));
+  // Quelle que soit la réponse (même une connexion qui échoue), plus de proposition avant 30 jours : sinon elle
+  // revenait à chaque lancement. Le bouton reste dans Paramètres → Compte Google.
+  localStorage.setItem('boombox.googleAskAt', String(Date.now() + 30 * 86400e3));
+  if (r !== 'go') return;
   await connectGoogleFlow();
 }

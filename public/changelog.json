@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.1029.1515",
+    "title": "Mode bourré revu, et un nouveau secret",
+    "items": [
+      "Mode bourré : plus de son étouffé, d’écho ou de « bug ». À la place, des accélérés, des ralentis, des montées et des descentes de vitesse qui s’enchaînent en douceur.",
+      "Nouveau secret : tape « chipmunk » dans la recherche pendant qu’un son joue. Retape-le pour arrêter.",
+      "La proposition « Connecte ton compte Google » ne revient plus à chaque lancement : au plus une fois par mois. Le bouton reste dans Paramètres → Compte Google.",
+      "Tuto iPhone : nouvelle partie Siri (« Mets Spider sur Boombox », « Son suivant sur Boombox »…)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1509",
     "title": "Connexion Google sur PC, récap et fenêtre réduite",
     "items": [
