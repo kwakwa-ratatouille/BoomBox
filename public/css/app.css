@@ -2601,3 +2601,28 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 #fullplayer .fp-meta { gap: 8px; }
 #fullplayer .fp-meta .fp-addpl { color: var(--text); opacity: 0.85; }
 #fullplayer .fp-meta .fp-addpl .ic { width: 26px; height: 26px; }
+
+/* « Ajouter des sons » à une playlist : recommandations + recherche, bouton rond + / ✓ (un appui ajoute, un second
+   retire) ; plein écran sur téléphone */
+.add-dialog .search-box { display: flex; align-items: center; gap: 8px; }
+.ad-head { display: flex; justify-content: space-between; align-items: baseline; margin: 2px 2px 8px; }
+.ad-head b { font-size: 15px; }
+.ad-head .muted { font-size: 13px; color: var(--accent); }
+.ad-res { max-height: 56vh; display: flex; flex-direction: column; gap: 2px; }
+.ad-row { padding: 6px 6px; border-radius: 10px; transition: background 0.15s; }
+.ad-row.in { background: rgba(var(--accent-rgb, 176, 124, 247), 0.12); }
+.ad-btn { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid rgba(255, 255, 255, 0.35); color: var(--text); transition: transform 0.12s, background 0.15s, border-color 0.15s; }
+.ad-btn:active { transform: scale(0.9); }
+.ad-row.in .ad-btn { background: var(--accent); border-color: var(--accent); color: #000; }
+@media (max-width: 600px) {
+  .modal-backdrop:has(.add-modal) { padding: 0; align-items: stretch; }
+  .modal.add-modal { width: 100%; max-height: 100dvh; height: 100dvh; border-radius: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .add-modal .modal-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .add-modal .add-dialog { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .add-modal .ad-res { flex: 1; max-height: none; overflow-y: auto; }
+  .ad-row .cover { width: 48px; height: 48px; }
+}
+/* (la fenêtre s'élargissait à la longueur des titres sur une ligne : bornée à l'écran) */
+.modal.add-modal { min-width: 0; max-width: 100vw; }
+.add-modal .modal-body, .add-dialog, .ad-res, .ad-row { min-width: 0; max-width: 100%; }
+.ad-row .t-text { flex: 1 1 0; }

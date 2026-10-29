@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.1029.2203",
+    "title": "Ajouter des sons à une playlist, en mieux",
+    "items": [
+      "Playlist → « + Ajouter » : des sons recommandés pour cette playlist s’affichent tout de suite (mélange des radios de quelques-uns de ses sons), et la recherche reste en haut.",
+      "Un appui sur + ajoute le son, la fenêtre reste ouverte pour en ajouter d’autres ; un second appui (✓) le retire si tu t’es trompé. Le nombre de sons ajoutés s’affiche.",
+      "Sur téléphone, la fenêtre prend tout l’écran."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2159",
     "title": "Bouton playlist à côté du cœur",
     "items": [

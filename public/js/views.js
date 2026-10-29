@@ -1,7 +1,7 @@
 // Pages principales : accueil, recherche, titres likés, playlists, albums, artistes, nouveautés, bibliothèque.
 import { pixelBackdrop, accentPalette, accentColor, isPixelDA, BACKDROP_STYLES, usableColor } from './pixel-bg.js';
 import { html, raw, esc, icon, fmtTotal, fmtAgo, plural, toast, promptText, confirmBox, contextMenu, dominantColor, artistLinks, debounce, modal } from './ui.js';
-import { state, api, ls, emit, setting, saveSettings, toggleFollow, isFollowing, createPlaylist, addToPlaylist, getHistory, updatePlaylist, deletePlaylist, restorePlaylist, purgePlaylist, TRASH_DAYS, sharePlaylist, movePlaylist, moveRoot, rootEntries, folderOf, followMany, setKnownReleases, setFollowThumbs, likeAllPlaylistTracks, createFolder, renameFolder, deleteFolder, movePlaylistToFolder, removeItems, isLiked, toggleLike } from './state.js';
+import { state, api, ls, removeFromPlaylist, emit, setting, saveSettings, toggleFollow, isFollowing, createPlaylist, addToPlaylist, getHistory, updatePlaylist, deletePlaylist, restorePlaylist, purgePlaylist, TRASH_DAYS, sharePlaylist, movePlaylist, moveRoot, rootEntries, folderOf, followMany, setKnownReleases, setFollowThumbs, likeAllPlaylistTracks, createFolder, renameFolder, deleteFolder, movePlaylistToFolder, removeItems, isLiked, toggleLike } from './state.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
 import { cover, playlistCover, likedCover, trackList, card, rememberTracks, playlistSubmenu, playKey, openPlaylistPicker, registerCard } from './components.js';
@@ -140,34 +140,83 @@ function drawTransitions(list, tr, p) {
 }
 let mixLabelsWatch = null;
 
-// « + Ajouter » d'une playlist : recherche et ajout direct, sans quitter la page (comme sur Spotify)
-function addTracksDialog(playlistId) {
+// « + Ajouter » d'une playlist (comme Spotify) : dès l'ouverture, des sons recommandés pour cette playlist (radios de
+// quelques-uns de ses sons) ; sinon la recherche. Un appui ajoute le son, un second appui le retire (en cas d'erreur) :
+// la fenêtre reste ouverte pour en ajouter plusieurs. Sur téléphone, elle prend tout l'écran.
+export function addTracksDialog(playlistId) {
+  const pl = () => state.library.playlists.find((x) => x.id === playlistId);
   let results = [];
+  let recos = null;
+  let added = 0;
+  const loadRecos = async () => {
+    const tracks = pl()?.tracks || [];
+    const seeds = [...tracks].sort(() => Math.random() - 0.5).slice(0, 3);
+    const lists = await Promise.all(seeds.map((t) => api(`/api/radio/${t.id}`).catch(() => [])));
+    const have = new Set(tracks.map((t) => t.id));
+    const seen = new Set();
+    const out = [];
+    // Un son de chaque radio à tour de rôle : un mélange varié plutôt que tout le même artiste
+    for (let i = 0; out.length < 30 && i < 40; i++) for (const l of lists) {
+      const t = l[i];
+      if (t?.id && !have.has(t.id) && !seen.has(t.id)) (seen.add(t.id), out.push(t));
+    }
+    return out;
+  };
   modal({
-    title: 'Ajouter à cette playlist',
-    body: String(html`<div class="add-dialog"><div class="search-box"><input id="ad-q" placeholder="Cherche un titre ou un artiste" autocomplete="off"></div><div id="ad-res" class="ad-res"><p class="muted">Tape quelque chose pour chercher.</p></div></div>`),
+    title: 'Ajouter des sons',
+    wide: true,
+    body: String(html`<div class="add-dialog"><div class="search-box">${icon('search')}<input id="ad-q" type="search" placeholder="Cherche un titre ou un artiste" autocomplete="off"></div>
+      <div class="ad-head"><b id="ad-title">Recommandés pour cette playlist</b><span class="muted" id="ad-count"></span></div>
+      <div id="ad-res" class="ad-res"><p class="muted">Recherche de sons qui vont bien avec ta playlist…</p></div></div>`),
     actions: [{ label: 'Terminé', primary: true }],
     onMount: (w) => {
+      (w.querySelector('.modal') || w.closest('.modal'))?.classList.add('add-modal');
       const q = w.querySelector('#ad-q');
       const box = w.querySelector('#ad-res');
+      const list = () => (q.value.trim() ? results : recos || []);
       const draw = () => {
-        const inPl = new Set((state.library.playlists.find((x) => x.id === playlistId)?.tracks || []).map((t) => t.id));
-        box.innerHTML = results.length ? results.map((t, i) => String(html`<div class="ad-row">${cover(t, '', 96)}<div class="t-text"><span class="t-title">${t.title}</span><span class="t-artists">${(t.artists || []).map((a) => a.name).join(', ')}</span></div>${inPl.has(t.id) ? html`<span class="muted ad-done">${icon('check', 18)}Ajouté</span>` : html`<button class="outline-btn" data-add="${i}">Ajouter</button>`}</div>`)).join('') : '<p class="muted">Aucun résultat.</p>';
+        const inPl = new Set((pl()?.tracks || []).map((t) => t.id));
+        const l = list();
+        w.querySelector('#ad-title').textContent = q.value.trim() ? 'Résultats' : 'Recommandés pour cette playlist';
+        w.querySelector('#ad-count').textContent = added ? `${added} ajouté${added > 1 ? 's' : ''}` : '';
+        if (!q.value.trim() && !recos) return;
+        box.innerHTML = l.length ? l.map((t, i) => String(html`<div class="ad-row ${inPl.has(t.id) ? 'in' : ''}" data-i="${i}">${cover(t, '', 96)}<div class="t-text"><span class="t-title">${t.title}</span><span class="t-artists">${(t.artists || []).map((a) => a.name).join(', ')}</span></div>
+          <button class="ad-btn" data-add="${i}" aria-label="${inPl.has(t.id) ? 'Retirer de la playlist' : 'Ajouter à la playlist'}">${icon(inPl.has(t.id) ? 'check' : 'plus', 20)}</button></div>`)).join('')
+          : `<p class="muted">${q.value.trim() ? 'Aucun résultat.' : 'Pas de recommandation pour l’instant : cherche un son ci-dessus.'}</p>`;
       };
       q.addEventListener('input', debounce(async () => {
-        if (!q.value.trim()) return;
+        if (!q.value.trim()) return draw();
+        box.innerHTML = '<p class="muted">Recherche…</p>';
         const res = await api(`/api/search?q=${encodeURIComponent(q.value.trim())}`).catch(() => null);
-        results = (res?.songs || res?.items || []).filter((t) => t.type === 'song' || t.type === 'video' || !t.type).slice(0, 12);
+        results = (res?.songs || res?.items || []).filter((t) => t.type === 'song' || t.type === 'video' || !t.type).slice(0, 20);
         draw();
       }, 300));
+      // Ajouter / retirer : la fenêtre reste ouverte ; le bouton change tout de suite
       box.addEventListener('click', async (ev) => {
         const b = ev.target.closest('[data-add]');
-        if (!b) return;
+        if (!b || b.disabled) return;
+        const t = list()[+b.dataset.add];
+        const row = b.closest('.ad-row');
+        const wasIn = row.classList.contains('in');
         b.disabled = true;
-        await addToPlaylist(playlistId, [results[+b.dataset.add]]);
-        draw();
+        row.classList.toggle('in', !wasIn);
+        b.innerHTML = String(icon(wasIn ? 'plus' : 'check', 20));
+        try {
+          if (wasIn) {
+            await removeFromPlaylist(playlistId, t);
+            added = Math.max(0, added - 1);
+          } else {
+            await addToPlaylist(playlistId, [t]);
+            added++;
+          }
+        } catch (e) {
+          toast(e.message);
+        }
+        b.disabled = false;
+        w.querySelector('#ad-count').textContent = added ? `${added} ajouté${added > 1 ? 's' : ''}` : '';
       });
-      setTimeout(() => q.focus(), 50);
+      loadRecos().then((r) => ((recos = r), draw())).catch(() => ((recos = []), draw()));
+      if (!window.matchMedia('(pointer: coarse)').matches) setTimeout(() => q.focus(), 50); // téléphone : pas de clavier d'office, on voit les recommandations
     },
   });
 }
