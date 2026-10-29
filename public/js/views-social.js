@@ -214,7 +214,7 @@ export async function friendsPage(el, params) {
           return html`${sep}<div class="msg ${m.out ? 'out' : 'in'}" data-mid="${m.mid}" data-at="${m.at}">
             ${m.reply ? html`<button type="button" class="msg-reply" data-goto="${m.reply.at}"><b>${m.reply.name}</b><span class="ellipsis">${m.reply.text}</span></button>` : ''}
             ${m.collab ? html`<a class="btn primary sm" style="margin-bottom:6px" href="#/shared/${m.out ? social.code : m.peer}/${m.collab.id}">${icon('library', 16)} Ouvrir « ${m.collab.name} »</a>` : ''}${m.playlist ? playlistCard(m) : ''}${m.tracks?.length ? tracksCard(m) : ''}${m.image || m.gif ? html`<img class="msg-img" src="${m.image || m.gif}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}${m.sticker ? html`<img class="msg-sticker" src="${m.sticker}" alt="">` : ''}${m.text ? html`<p class="msg-text">${m.text}</p>` : ''}
-            ${m === lastOut ? html`<span class="msg-state">${seen >= m.at ? 'Vu' : 'Remis'}</span>` : ''}<time>${new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</time>${reactBadge(c, m.at)}</div>`;
+            <time>${new Date(m.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</time>${reactBadge(c, m.at)}</div>${m === lastOut ? html`<div class="msg-state">${seen >= m.at ? 'Vu' : 'Remis'}</div>` : ''}`;
         }) : html`<p class="muted chat-empty">Envoie un message, un son ou une playlist à ${who.name}.</p>`}
       </div>
       <div class="chat-replying" id="chat-replying" hidden><div><b></b><span class="ellipsis"></span></div><button type="button" class="icon-btn" aria-label="Annuler la réponse">${icon('close', 18)}</button></div>

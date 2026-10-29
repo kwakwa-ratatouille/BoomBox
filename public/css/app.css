@@ -2529,3 +2529,7 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 #rightpanel, #rightpanel .rp-body { scrollbar-width: none; }
 #rightpanel::-webkit-scrollbar, #rightpanel .rp-body::-webkit-scrollbar { width: 0; }
 @media (hover: hover) { #rightpanel:hover, #rightpanel:hover .rp-body { scrollbar-width: thin; } }
+
+/* « Vu » / « Remis » sous le dernier message envoyé, hors de la bulle (comme Instagram) */
+.chat-msgs > .msg-state { align-self: flex-end; margin: -4px 6px 0 0; font-size: 11px; color: var(--muted); opacity: 0.8; }
+.msg:has(.msg-react) + .msg-state { margin-top: -10px; }
