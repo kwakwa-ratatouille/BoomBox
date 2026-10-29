@@ -42,7 +42,12 @@ export const sync = {
           if (p?.target === d.id && Date.now() < p.until && Object.entries(p.patch).some(([k, v]) => (k === 'position' ? Math.abs(this.position(d.state) - v) > 2.5 : d.state[k] !== v))) continue;
           if (p?.target === d.id) this._pending = null;
           if (Date.now() - (this._lanFresh || 0) < 30e3 && this.remote[d.id]?.track?.id === d.state.track?.id && this.remote[d.id]?.paused === d.state.paused) continue;
-          this.remote[d.id] = d.state;
+          // Nouvel état qui vient d'arriver par Internet (daté de moins de 10 s par l'autre appareil) : daté avec notre
+          // horloge, moins le trajet habituel (~0,3 s) ; les horloges des appareils ont souvent 1 s d'écart
+          if (d.state.ts && d.state.ts === this._lastTs[d.id] && this.remote[d.id]) continue; // même état qu'avant : on garde sa date
+          const fresh = d.state.ts && Math.abs(Date.now() - d.state.ts) < 10e3;
+          this._lastTs[d.id] = d.state.ts;
+          this.remote[d.id] = fresh && !d.state.paused ? { ...d.state, ts: Date.now() - 300 } : d.state;
         }
         this._refreshDevices();
         if (this.target) {
@@ -131,6 +136,7 @@ export const sync = {
   // Le PC Boombox relaie commandes et états entre appareils en quelques dizaines de ms (server/index.js, /api/rc).
   // PC : son propre serveur ; téléphone : le PC trouvé par relay.js. Firebase reste le chemin de secours.
   _seenCmd: new Set(),
+  _lastTs: {},
   async _lanBase(p) {
     if (!isNative) return /^(localhost|127.0.0.1)$/.test(location.hostname) ? p : null;
     return (await localApi()).media.relayHref?.(p) || null;
