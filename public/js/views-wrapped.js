@@ -7,6 +7,7 @@ import { ctl } from './player.js';
 import { loadImg, shareStory, pixelDeco, shareFile, copyImage } from './story.js';
 import { pixelBackdrop, fieldPainter, isPixelDA } from './pixel-bg.js';
 import * as Events from './events.js';
+import { eventFx } from './event-fx.js';
 import { isNative, localApi } from './native.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('fr-FR');
@@ -610,6 +611,9 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
   const img = lg.createImageData(lw, lh);
   const t = c.theme;
   const DUR = c.duration || 10;
+  // Thème d'événement : entrée et sortie propres à l'événement (neige, citrouille, cœurs…)
+  const evCfg = isPixelDA() && Events.active() ? Events.texts()?.card : null;
+  const evFx = evCfg ? eventFx(evCfg, { W, H, K, duration: DUR, logo: await loadImg(Events.eventLogo()).catch(() => null) }) : null;
   // Musique : extrait pris vers le tiers du son (souvent le refrain), fondu d'entrée et de sortie
   let audio = null;
   if (music && ac) {
@@ -657,7 +661,8 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
     }
     // Entrée de la carte comme dans l'appli : le contenu monte en fondu ; ensuite un seul calque fixe
     const p = Math.min(1, tt / 0.7);
-    if (p < 1) {
+    if (evFx) evFx.enter(x, tt, both);
+    else if (p < 1) {
       x.drawImage(shapesS, 0, 0);
       const ease = 1 - Math.pow(1 - p, 3);
       x.globalAlpha = ease;
@@ -669,6 +674,7 @@ export async function cardVideo(c, format = 'story', onTick, { music = null, ac 
       drawKaraoke(tt);
       x.setTransform(1, 0, 0, 1, 0, 0);
     }
+    evFx?.exit(x, tt);
   };
   // ----- Paroles animées (carte « paroles ») -----
   const lyr = c.kind === 'lyrics' ? (c.lyr?.lines?.length ? c.lyr.lines : c.lines.map((tx) => ({ text: tx, chosen: true }))) : [];

@@ -30,7 +30,10 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ton Noël en musique",
-      "period": "Du 1er au 26 décembre"
+      "period": "Du 1er au 26 décembre",
+      "enter": "drop",
+      "exit": "rise",
+      "fill": "#eef3ff"
     }
   },
   "nouvel-an": {
@@ -62,7 +65,18 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ton année 2026",
-      "period": "Récap de l’année"
+      "period": "Récap de l’année",
+      "enter": "pop",
+      "origin": [
+        540,
+        700
+      ],
+      "exit": "radial",
+      "fillOrigin": [
+        540,
+        700
+      ],
+      "fill": "#ffcf4d"
     }
   },
   "valentin": {
@@ -94,7 +108,18 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ta Saint-Valentin",
-      "period": "Du 7 au 14 février"
+      "period": "Du 7 au 14 février",
+      "enter": "pop",
+      "origin": [
+        160,
+        1632
+      ],
+      "exit": "radial",
+      "fillOrigin": [
+        160,
+        1632
+      ],
+      "fill": "#ff6b9a"
     }
   },
   "paques": {
@@ -121,7 +146,10 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Tes Pâques en sons",
-      "period": "Semaine de Pâques"
+      "period": "Semaine de Pâques",
+      "enter": "drop",
+      "exit": "rise",
+      "fill": "#9be38c"
     }
   },
   "musique": {
@@ -153,7 +181,11 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ta Fête de la musique",
-      "period": "Du 18 au 21 juin"
+      "period": "Du 18 au 21 juin",
+      "enter": "slide",
+      "beat": true,
+      "exit": "eq",
+      "fill": "#2ef28b"
     }
   },
   "ete": {
@@ -185,7 +217,10 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ton été en musique",
-      "period": "Juillet et août"
+      "period": "Juillet et août",
+      "enter": "slideR",
+      "exit": "wave",
+      "fill": "#3fd0c9"
     }
   },
   "rentree": {
@@ -217,7 +252,10 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ta rentrée en sons",
-      "period": "Du 1er au 15 septembre"
+      "period": "Du 1er au 15 septembre",
+      "enter": "write",
+      "exit": "wipe",
+      "fill": "#e9e4d8"
     }
   },
   "halloween": {
@@ -249,7 +287,14 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ton Halloween",
-      "period": "Du 20 au 31 octobre"
+      "period": "Du 20 au 31 octobre",
+      "enter": "pop",
+      "origin": [
+        880,
+        720
+      ],
+      "exit": "fog",
+      "fill": "#4a3d5e"
     }
   },
   "anniversaire": {
@@ -281,7 +326,14 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Joyeux anniversaire, Matis",
-      "period": "Ton année depuis ton dernier anniversaire"
+      "period": "Ton année depuis ton dernier anniversaire",
+      "enter": "drop",
+      "exit": "radial",
+      "fillOrigin": [
+        540,
+        960
+      ],
+      "fill": "#ff7ac6"
     }
   },
   "base": {
@@ -289,7 +341,10 @@ export const EVENT_TEXT = {
     "playlists": [],
     "card": {
       "title": "Ton récap",
-      "period": "Ce mois-ci"
+      "period": "Ce mois-ci",
+      "enter": "slide",
+      "exit": "rise",
+      "fill": "#b07cf7"
     }
   }
 };

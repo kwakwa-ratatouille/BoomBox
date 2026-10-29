@@ -9,7 +9,7 @@ const H = 1920;
 export async function loadImg(url) {
   if (!url) return null;
   try {
-    const src = url.startsWith('/') ? url : isNative ? await (await localApi()).media.imageBlobUrl(url) : `/api/img?u=${encodeURIComponent(url)}`;
+    const src = url.startsWith('/') || url.startsWith('data:') ? url : isNative ? await (await localApi()).media.imageBlobUrl(url) : `/api/img?u=${encodeURIComponent(url)}`;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     await new Promise((ok, ko) => ((img.onload = ok), (img.onerror = ko), (img.src = src)));
