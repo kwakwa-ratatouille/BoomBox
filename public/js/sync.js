@@ -111,7 +111,7 @@ export const sync = {
   // Suivi automatique : lancer un son ou une liste ici, c'est le jouer ici (l'autre appareil se met en pause)
   _autoRoute(action) {
     if (!this._auto || !this.target || !['playList', 'playTrack', 'playRadio', 'jumpTo'].includes(action)) return false;
-    this.sendCommand(this.target, 'pause');
+    this.sendCommand(this.target, 'fadeOutPause');
     this.control(null);
     return true;
   },
@@ -149,13 +149,13 @@ export const sync = {
       emit('player:state');
       emit('player:time');
     };
-    if (action === 'pause' || (action === 'toggle' && !st.paused)) set({ paused: true, position: pos });
+    if (action === 'pause' || action === 'fadeOutPause' || (action === 'toggle' && !st.paused)) set({ paused: true, position: pos });
     else if (action === 'play' || action === 'toggle') set({ paused: false, position: pos });
     else if (action === 'seek') set({ position: Math.max(0, Number(args[0]) || 0) });
   },
 
   // ----- Contrôle d'un autre appareil -----
-  control(deviceId, { auto = false } = {}) {
+  control(deviceId, { auto = false, keepPlaying = false } = {}) {
     // Suivi automatique quitté à la main (choix de cet appareil, son lancé ici) : pas de nouveau suivi avant 20 min
     if (this._auto && !auto) this._noAutoUntil = Date.now() + 20 * 60e3;
     this._auto = auto && !!deviceId;
@@ -165,7 +165,7 @@ export const sync = {
     } else {
       this.target = deviceId;
       player.remoteSender = (action, args) => (this._autoRoute(action) ? player[action](...args) : this.sendCommand(deviceId, action, args));
-      if (!player.paused) player.pause();
+      if (!player.paused && !keepPlaying) player.pause();
     }
     emit('sync');
     emit('player:track');
@@ -179,7 +179,7 @@ export const sync = {
       // au même moment). Avant, sans appareil piloté, choisir cet appareil ne faisait rien.
       const from = this.target || this.devices.find((d) => d.id !== state.device.id && d.playing)?.id;
       const st = from && this.remote[from];
-      if (from) this.sendCommand(from, 'pause');
+      if (from) this.sendCommand(from, 'fadeOutPause'); // l'autre appareil s'éteint en fondu…
       this.control(null);
       if (st?.track) {
         player.list = [st.track, ...(st.upcoming || [])];
@@ -188,6 +188,7 @@ export const sync = {
         player.userQueue = [];
         player.context = st.context;
         player._load(st.track, { start: this.position(st), autoplay: !st.paused });
+        if (!st.paused) player.fadeIn(); // … pendant que celui-ci monte
         emit('player:queue');
       }
       return;
@@ -210,7 +211,9 @@ export const sync = {
         toast(`${name} n'a pas répondu (appli fermée ou en veille ?) : la musique continue ici`, { timeout: 7000 });
       }, 7000);
     }
-    this.control(deviceId);
+    // Cet appareil s'éteint en fondu pendant que l'autre démarre (au lieu d'une pause sèche)
+    if (player.track && !player.paused) player.fadeOutPause();
+    this.control(deviceId, { keepPlaying: true });
   },
 
   position(st) {
@@ -484,6 +487,7 @@ export const sync = {
       Object.assign(player, { list: s.list, order: s.order, pos: s.pos, userQueue: s.userQueue || [], context: s.context, shuffle: s.shuffle, repeat: s.repeat });
       const lag = !s.paused && s.sentAt ? Math.min(10, Math.max(0, (Date.now() - s.sentAt) / 1000)) : 0;
       player._load(s.track, { start: (s.position || 0) + lag, autoplay: !s.paused });
+      if (!s.paused) player.fadeIn(); // monte en fondu pendant que l'appareil d'origine s'éteint
       emit('player:queue');
       this.publish(true); // l'appareil d'origine voit tout de suite que la lecture est ici
       toast('Lecture transférée sur cet appareil');

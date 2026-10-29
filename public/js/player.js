@@ -817,6 +817,38 @@ export const player = {
     this._heardPos = null;
   },
 
+  // Passage de la musique d'un appareil à l'autre : fondu des deux côtés (l'un s'éteint pendant que l'autre monte).
+  // iPhone : iOS ne laisse pas régler le volume, le son y part et arrive donc d'un coup.
+  fadeIn(ms = 1800) {
+    const e = this.engine;
+    if (e?.name !== 'audio') return;
+    const el = e.a;
+    e._setLevel(el, 0);
+    const t0 = performance.now();
+    const iv = setInterval(() => {
+      const k = Math.min(1, (performance.now() - t0) / ms);
+      if (e.a !== el) return clearInterval(iv);
+      e._setLevel(el, k);
+      if (k >= 1) clearInterval(iv);
+    }, 40);
+  },
+  fadeOutPause(ms = 1500) {
+    const e = this.engine;
+    if (e?.name !== 'audio' || this.paused) return this.pause();
+    const el = e.a;
+    const t0 = performance.now();
+    const iv = setInterval(() => {
+      const k = Math.min(1, (performance.now() - t0) / ms);
+      if (e.a !== el) return clearInterval(iv);
+      e._setLevel(el, 1 - k);
+      if (k >= 1) {
+        clearInterval(iv);
+        this.pause();
+        e._setLevel(el, 1);
+      }
+    }, 40);
+  },
+
   toggle() {
     if (!this.track) return this.next();
     if (this.paused) this.play();
