@@ -175,7 +175,7 @@ async function scAlbumTracks(q, api) {
   if (missing.length) {
     const more = await api(`https://api-v2.soundcloud.com/tracks?ids=${missing.slice(0, 50).join(',')}`).catch(() => []);
     const byId = new Map((more || []).map((t) => [t.id, t]));
-    tracks = tracks.map((t) => (t.title ? t : byId.get(t.id))).filter(Boolean);
+    tracks = tracks.map((t) => (t.title ? t : byId.get(t.id))).filter((t) => t && t.policy !== 'SNIP' && t.policy !== 'BLOCK'); // Go+ : extrait de 30 s seulement
   }
   const art = (best.artwork_url || '').replace('-large', '-t500x500') || null;
   return tracks.filter((t) => t.streamable !== false).map((t) => ({
