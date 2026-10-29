@@ -18,7 +18,9 @@ const WEEK = [1, 2, 3, 4, 5];
 const WEEKEND = [6, 7];
 const isoDay = (date) => date.getDay() || 7;
 
-export const alarmConf = () => ({ on: false, time: '07:30', days: ALL, source: 'liked', track: null, start: 0, ...(setting('alarm', null) || {}) });
+// fade : secondes de montée du volume (0 = d'un coup) ; volume : volume final (0,3 à 1)
+export const alarmConf = () => ({ on: false, time: '07:30', days: ALL, source: 'liked', track: null, start: 0, fade: 15, volume: 0.8, ...(setting('alarm', null) || {}) });
+const FADES = [[0, 'Direct'], [5, '5 s'], [15, '15 s'], [30, '30 s'], [60, '1 min']];
 
 function tracksOf(source) {
   if (source === 'liked') return state.library.liked || [];
@@ -83,8 +85,9 @@ export async function ring() {
   // iPhone : iOS ne laisse pas une appli régler son volume, et ses minuteries ralentissent en arrière-plan : pas de
   // montée, le réveil sonne au volume du téléphone.
   const ramp = !(window.Capacitor?.isNativePlatform?.() && window.Capacitor.getPlatform?.() === 'ios');
-  const target = Math.max(0.5, player.volume || 0.8);
-  if (ramp) ctl.setVolume(0.1);
+  const target = Math.min(1, Math.max(0.3, a.volume ?? 0.8));
+  const fadeMs = (a.fade ?? 15) * 1000;
+  if (ramp) ctl.setVolume(fadeMs ? 0.1 : target);
   else if ((player.volume || 0) < 0.5) ctl.setVolume(target);
   if (a.source === 'track' && a.track?.id) {
     playFrom(a.track, a.start || 0);
@@ -94,18 +97,18 @@ export async function ring() {
     if (!player.shuffle) ctl.toggleShuffle();
     ctl.playList(tracks, startAt(tracks), { type: 'alarm', name: 'Réveil' });
   }
-  if (ramp) {
+  if (ramp && fadeMs) {
     const asked = player._userPauseAt || 0;
     let t0 = 0;
     const iv = setInterval(() => {
       if ((player._userPauseAt || 0) !== asked) return clearInterval(iv); // tu as mis pause : on n'y touche plus
       if (player.paused || player.buffering) return; // le son n'est pas encore là : la montée attend
       t0 ||= Date.now();
-      const k = Math.min(1, (Date.now() - t0) / 60e3);
+      const k = Math.min(1, (Date.now() - t0) / fadeMs);
       ctl.setVolume(0.1 + (target - 0.1) * k);
       if (k >= 1) clearInterval(iv);
-    }, 1000);
-    setTimeout(() => (clearInterval(iv), player.volume < target && ctl.setVolume(target)), 5 * 60e3); // au pire, volume normal après 5 min
+    }, 250);
+    setTimeout(() => (clearInterval(iv), player.volume < target && ctl.setVolume(target)), fadeMs + 4 * 60e3); // au pire, volume normal après 5 min
   }
   toast('⏰ Bonjour ! Ton réveil Boombox', { timeout: 8000 });
 }
@@ -205,6 +208,8 @@ export async function openAlarmEditor() {
   let source = a.source;
   let track = a.track;
   let start = a.start || 0;
+  let fade = a.fade ?? 15;
+  const ios = window.Capacitor?.isNativePlatform?.() && window.Capacitor.getPlatform?.() === 'ios';
   const playlists = [['liked', 'Titres likés'], ...state.library.playlists.map((p) => [p.id, p.name])];
   const res = await modal({
     title: '⏰ Réveil',
@@ -228,12 +233,18 @@ export async function openAlarmEditor() {
           <div class="row-flex" style="justify-content:space-between;margin-top:6px"><span class="muted" id="al-zero">0:00</span><button type="button" class="btn ghost sm" id="al-preview">${icon('play', 16)} Écouter le passage</button><span class="muted" id="al-dur"></span></div>
         </div>
       </div>
+      <h3>Réveil en douceur</h3>
+      ${ios ? html`<p class="muted" style="margin:0">Sur iPhone, le réveil sonne au volume du téléphone : iOS ne laisse pas une appli régler son volume.</p>` : html`
+      <p class="muted" style="margin:0 0 8px">Le volume monte en</p>
+      <div class="al-src" id="al-fade">${FADES.map(([v, l]) => html`<button type="button" class="chip" data-f="${v}">${l}</button>`)}</div>
+      <p class="muted" style="margin:12px 0 6px">jusqu'à <b id="al-vol-l"></b></p>
+      <input type="range" id="al-vol" min="30" max="100" step="5" value="${Math.round((a.volume ?? 0.8) * 100)}" style="width:100%">`}
     </div>`),
     actions: [{ label: 'Annuler' }, { label: 'Enregistrer', primary: true, value: (w) => {
       const time = w.querySelector('#al-time').value || '07:30';
       if (!days.length) return (toast('Choisis au moins un jour'), false);
       if (source === 'track' && !track) return (toast('Choisis un son (ou une playlist)'), false);
-      return { on: w.querySelector('#al-on').checked, time, days: [...days].sort(), source: source === 'track' ? 'track' : w.querySelector('#al-pl').value, track: source === 'track' ? track : null, start: source === 'track' ? start : 0 };
+      return { on: w.querySelector('#al-on').checked, time, days: [...days].sort(), source: source === 'track' ? 'track' : w.querySelector('#al-pl').value, track: source === 'track' ? track : null, start: source === 'track' ? start : 0, fade, volume: w.querySelector('#al-vol') ? +w.querySelector('#al-vol').value / 100 : a.volume ?? 0.8 };
     } }],
     onMount: (w) => {
       const $ = (s) => w.querySelector(s);
@@ -252,6 +263,12 @@ export async function openAlarmEditor() {
       }));
       w.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => ((days = [...{ all: ALL, week: WEEK, weekend: WEEKEND }[b.dataset.p]]), paintDays())));
       $('#al-time').oninput = paintNext;
+      // Montée du volume et volume final
+      const paintFade = () => w.querySelectorAll('[data-f]').forEach((b) => b.classList.toggle('active', +b.dataset.f === fade));
+      w.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => ((fade = +b.dataset.f), paintFade())));
+      const vol = $('#al-vol');
+      if (vol) (vol.oninput = () => ($('#al-vol-l').textContent = `${vol.value} %`))();
+      paintFade();
       $('#al-on').onchange = paintNext;
       // Musique
       const isTrack = () => source === 'track';

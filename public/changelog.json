@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1540",
+    "title": "Réveil : choisis la montée du volume",
+    "items": [
+      "Réveil : le volume monte plus vite (15 s par défaut au lieu d’1 min). Dans la fenêtre du réveil, choisis la durée (direct, 5 s, 15 s, 30 s, 1 min) et le volume final. Sur iPhone, le réveil sonne au volume du téléphone."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1535",
     "title": "Réveil : on l’entend vraiment",
     "items": [
