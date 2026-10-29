@@ -2597,3 +2597,7 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 #fullplayer .fp-meta h2.long { font-size: 18px; }
 #fullplayer .fp-meta { align-items: flex-start; }
 #fullplayer .fp-meta .like-btn { margin-top: 2px; }
+/* Lecteur en grand : « Ajouter à une playlist » juste à gauche du cœur */
+#fullplayer .fp-meta { gap: 8px; }
+#fullplayer .fp-meta .fp-addpl { color: var(--text); opacity: 0.85; }
+#fullplayer .fp-meta .fp-addpl .ic { width: 26px; height: 26px; }

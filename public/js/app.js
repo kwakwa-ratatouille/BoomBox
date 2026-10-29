@@ -1037,7 +1037,7 @@ function renderFullPlayer() {
     <div class="fp-head"><button class="icon-btn" id="fp-close">${icon('chevronDown')}</button><div><small>${v.remote ? `Lecture sur ${v.deviceName}` : 'En lecture depuis'}</small><b class="ellipsis">${v.context?.name || 'Boombox'}</b></div><button class="icon-btn" id="fp-more">${icon('more')}</button></div>
     <div class="fp-art"><img src="${t.thumb}" alt="" referrerpolicy="no-referrer"></div>
     <div class="fp-meta"><div style="flex:1;min-width:0"><h2 class="ellipsis ${t.title.length > 34 ? 'long' : ''}">${t.title}</h2><div class="muted ellipsis">${artistLinks(t)}</div></div>
-      <button class="like-btn ${isLiked(t.id) ? 'on' : ''}" id="fp-like">${icon(isLiked(t.id) ? 'heartFill' : 'heart')}</button></div>
+      <button class="like-btn fp-addpl" id="fp-addpl" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">${icon('addCircle')}</button><button class="like-btn ${isLiked(t.id) ? 'on' : ''}" id="fp-like">${icon(isLiked(t.id) ? 'heartFill' : 'heart')}</button></div>
     <div class="slider" id="fp-seek"></div>
     <div class="progress" style="justify-content:space-between"><span id="fp-cur" style="text-align:left">0:00</span><span id="fp-dur" style="text-align:right">0:00</span></div>
     <div class="fp-controls">
@@ -1047,7 +1047,7 @@ function renderFullPlayer() {
       <button class="ctrl big" id="fp-next">${icon('next')}</button>
       <button class="ctrl" id="fp-repeat">${icon('repeat')}</button>
     </div>
-    <div class="fp-extra"><button class="ctrl" id="fp-devices">${icon('devices')}</button><button class="ctrl" id="fp-addpl" title="Ajouter à une playlist">${icon('plus')}</button><button class="ctrl ${setting('automix', false) ? 'on' : ''}" id="fp-mix" title="Mix">${icon('mixer')}</button><button class="ctrl fp-speed" id="fp-speed" title="Vitesse">×${String(player.rate || 1).replace('.', ',')}</button><button class="ctrl" id="fp-sleep">${icon('moon')}</button><button class="ctrl" id="fp-queue">${icon('queue')}</button></div>
+    <div class="fp-extra"><button class="ctrl" id="fp-devices">${icon('devices')}</button><button class="ctrl ${setting('automix', false) ? 'on' : ''}" id="fp-mix" title="Mix">${icon('mixer')}</button><button class="ctrl fp-speed" id="fp-speed" title="Vitesse">×${String(player.rate || 1).replace('.', ',')}</button><button class="ctrl" id="fp-sleep">${icon('moon')}</button><button class="ctrl" id="fp-queue">${icon('queue')}</button></div>
     <div class="fp-lyrics"><div class="row-flex" style="justify-content:space-between;margin:0 0 12px"><h4 style="margin:0">Paroles</h4><div class="row-flex"><button class="icon-btn" id="fp-car" title="Mode voiture">${icon('car', 20)}</button><button class="icon-btn" id="fp-kara" title="Paroles en plein écran">${icon('fullscreen', 20)}</button></div></div><div id="fp-lyr"></div></div>
     <div class="fp-artist" id="fp-artist"></div>`);
   $('#fp-close').onclick = () => closeFullPlayer();

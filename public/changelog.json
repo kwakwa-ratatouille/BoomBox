@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2159",
+    "title": "Bouton playlist à côté du cœur",
+    "items": [
+      "Lecteur en grand : le bouton « Ajouter à une playlist » est maintenant juste à gauche du cœur, sous la pochette."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2158",
     "title": "« Ton top » dans le bon ordre",
     "items": [
