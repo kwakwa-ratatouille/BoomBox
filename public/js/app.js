@@ -697,11 +697,28 @@ function updateJamTop() {
   b.title = sync.jam ? 'Party en cours : ouvrir' : 'Mode party : une file commune, tes invités ajoutent leurs sons';
 }
 
+// Bouton lecture : l'icône n'est redessinée que si elle change, et l'effet « chargement » n'apparaît qu'après
+// 0,7 s de chargement continu. Avant, sur certains Android (Samsung, Huawei), le lecteur signale des micro-
+// chargements en boucle : le bouton clignotait sans arrêt.
+const setIcon = (el, name) => el && el.dataset.ic !== name && ((el.dataset.ic = name), (el.innerHTML = String(icon(name))));
+let bufTimer = null;
+function showBuffering(on) {
+  if (!on) {
+    clearTimeout(bufTimer);
+    bufTimer = null;
+    return pb.play.classList.remove('buffering');
+  }
+  bufTimer ||= setTimeout(() => {
+    bufTimer = null;
+    const v = sync.view();
+    pb.play.classList.toggle('buffering', !!v.buffering && !v.paused);
+  }, 700);
+}
 function updatePlayerState() {
   updateJamTop();
   const v = sync.view();
-  pb.play.innerHTML = String(icon(v.paused !== false ? 'play' : 'pause'));
-  pb.play.classList.toggle('buffering', !!v.buffering && !v.paused);
+  setIcon(pb.play, v.paused !== false ? 'play' : 'pause');
+  showBuffering(!!v.buffering && !v.paused);
   pb.shuffle.classList.toggle('on', !!v.shuffle);
   pb.repeat.classList.toggle('on', v.repeat && v.repeat !== 'off');
   pb.repeat.innerHTML = String(icon(v.repeat === 'one' ? 'repeat1' : 'repeat'));
@@ -1104,7 +1121,7 @@ function updateFullPlayerState() {
   const v = sync.view();
   const p = $('#fp-play');
   if (!p) return;
-  p.innerHTML = String(icon(v.paused ? 'play' : 'pause'));
+  setIcon(p, v.paused ? 'play' : 'pause');
   $('#fp-shuffle').classList.toggle('on', !!v.shuffle);
   $('#fp-repeat').classList.toggle('on', v.repeat !== 'off');
   $('#fp-repeat').innerHTML = String(icon(v.repeat === 'one' ? 'repeat1' : 'repeat'));
