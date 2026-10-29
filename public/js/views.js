@@ -1181,6 +1181,21 @@ export async function artist(el, { id }, ctx) {
   if (!ctx.alive()) return;
   const actx = { type: 'artist', id, name: a.name };
   let showAll = false;
+  // YouTube Music ne montre que 10 albums sur la page d'un artiste (chez U2, des rééditions 2024 cachaient « Songs Of
+  // Experience », « Songs Of Innocence »…) : on complète avec la discographie entière dès qu'elle arrive. Rééditions,
+  // remasters et remix d'un seul son passent après les vrais albums.
+  api(`/api/discography/${id}`).then((d) => {
+    if (!ctx.alive() || !d?.items?.length) return;
+    const minor = (x) => /\((remaster|remix|live|acoustic|radio edit)/i.test(x.title) ? 1 : 0;
+    const full = (g) => d.items.filter((x) => x.group === g).map((x, i) => ({ x, i })).sort((p, q) => minor(p.x) - minor(q.x) || p.i - q.i).map((o) => o.x);
+    let changed = false;
+    for (const sec of a.sections) {
+      const g = /^albums?$/i.test(sec.title) ? 'album' : /single|\bep\b/i.test(sec.title) ? 'single' : null;
+      const all = g && full(g);
+      if (all && all.length > sec.items.length) ((sec.items = g === 'single' ? all.slice(0, 30) : all), (changed = true));
+    }
+    if (changed) render();
+  }).catch(() => {});
   const render = () => {
     const following = isFollowing(id);
     rememberTracks(a.topTracks);
