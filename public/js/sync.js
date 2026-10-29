@@ -1,7 +1,7 @@
 // Synchronisation entre appareils via Firestore (fonctionne par Internet, sans serveur à faire tourner) :
 // appareils connectés (contrôle à distance façon Spotify Connect) et Jam (écoute à plusieurs).
 // La bibliothèque, elle, se synchronise toute seule (voir state.js).
-import { state, emit, on, ls, api, setting } from './state.js';
+import { state, emit, on, ls, api, setting, bus } from './state.js';
 import { player } from './player.js';
 import { toast } from './ui.js';
 import { isNative, localApi } from './native.js';
@@ -46,6 +46,8 @@ export const sync = {
           // horloge, moins le trajet habituel (~0,3 s) ; les horloges des appareils ont souvent 1 s d'écart
           if (d.state.ts && d.state.ts === this._lastTs[d.id] && this.remote[d.id]) continue; // même état qu'avant : on garde sa date
           this._lastTs[d.id] = d.state.ts;
+          // Un nouveau son démarre sur l'autre appareil : on le suit de nouveau (même si on avait repris la main il y a peu)
+          if (d.state.track?.id && !d.state.paused && this.remote[d.id]?.track?.id !== d.state.track.id) this._noAutoUntil = 0;
           this.remote[d.id] = this._local(d.id, d.state, 300);
           this._warm(d.state);
         }
@@ -65,11 +67,16 @@ export const sync = {
       }),
     );
 
-    // Présence : signal de vie régulier
-    setInterval(() => {
+    // Présence : signal de vie régulier. iPhone en arrière-plan : les minuteurs peuvent être ralentis, alors tant que le
+    // son joue, le signal part aussi au rythme de la lecture (le lecteur, lui, tourne toujours)
+    let lastBeat = 0;
+    const beat = () => {
+      lastBeat = Date.now();
       updateDoc(this.devRef(), { lastSeen: Date.now(), online: true, ...(player.track && !player.paused ? { state: player.snapshot() } : {}) }).catch(() => {});
       this._refreshDevices();
-    }, 25e3);
+    };
+    setInterval(beat, 25e3);
+    bus.addEventListener('player:time', () => Date.now() - lastBeat > 25e3 && beat());
     window.addEventListener('pagehide', () => updateDoc(this.devRef(), { online: false }).catch(() => {}));
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
@@ -91,7 +98,8 @@ export const sync = {
   _refreshDevices() {
     const now = Date.now();
     this.devices = this._allDevices
-      .filter((d) => d.id === state.device.id || (d.online !== false && now - (d.lastSeen || 0) < ONLINE_MS))
+      // En ligne : signal de vie récent, ou un son qui joue d'après un état reçu il y a moins de 3 min
+      .filter((d) => d.id === state.device.id || (d.online !== false && now - (d.lastSeen || 0) < ONLINE_MS) || (d.state?.track && !d.state.paused && now - (this.remote[d.id]?.ts || 0) < 3 * 60e3))
       .map((d) => ({ id: d.id, name: d.name, kind: d.kind, playing: !!(d.state?.track && !d.state.paused) }));
     if (this.target && !this.devices.some((d) => d.id === this.target)) {
       if (!this._auto) toast("L'appareil piloté s'est déconnecté");
@@ -244,7 +252,7 @@ export const sync = {
   // ----- Contrôle d'un autre appareil -----
   control(deviceId, { auto = false, keepPlaying = false } = {}) {
     // Suivi automatique quitté à la main (choix de cet appareil, son lancé ici) : pas de nouveau suivi avant 20 min
-    if (this._auto && !auto) this._noAutoUntil = Date.now() + 20 * 60e3;
+    if (this._auto && !auto) this._noAutoUntil = Date.now() + 3 * 60e3;
     this._auto = auto && !!deviceId;
     if (!deviceId || deviceId === state.device.id) {
       this.target = null;

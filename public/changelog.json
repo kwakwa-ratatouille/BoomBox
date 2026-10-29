@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Appareils toujours détectés",
+    "items": [
+      "iPhone en arrière-plan : il continue à signaler qu’il joue, au rythme de la musique, et le PC le voit en permanence.",
+      "Un appareil qui joue un son reste affiché même si son signal a un peu de retard.",
+      "Quand un nouveau son démarre sur le téléphone, le PC se remet à le suivre (avant : rien pendant 20 min après avoir repris la main)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1650",
     "title": "Bascule vers le PC instantanée",
     "items": [
