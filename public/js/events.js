@@ -46,6 +46,9 @@ export function apply(date) {
     img.src = logo || img.dataset.baseSrc;
   });
   window.dispatchEvent(new CustomEvent('bb-event', { detail: current }));
+  // iPhone : icône de l'écran d'accueil habillée elle aussi (une seule fois par changement de thème)
+  const P = window.Capacitor?.getPlatform?.() === 'ios' && window.Capacitor.Plugins?.BoomboxNative;
+  if (P?.setAppIcon && get('bb-app-icon') !== id) P.setAppIcon({ name: id === 'base' ? '' : id }).then(() => set('bb-app-icon', id)).catch(() => {});
   return current;
 }
 

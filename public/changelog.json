@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "L’icône de l’iPhone suit les événements",
+    "items": [
+      "iPhone : l’icône de Boombox sur l’écran d’accueil se déguise pour les événements (Halloween, Noël, Saint-Valentin, été, ton anniversaire…), comme le logo dans l’appli. iOS affiche un petit message à chaque changement (nouvelle version de l’appli)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1804",
     "title": "Lecture qui reste sur le bon appareil, recommandations après une recherche",
     "items": [

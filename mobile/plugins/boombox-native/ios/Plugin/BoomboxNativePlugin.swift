@@ -15,7 +15,8 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setVoicePlaylists", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "takeVoiceCommand", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAudioMode", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setKeepAwake", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setKeepAwake", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setAppIcon", returnType: CAPPluginReturnPromise)
     ]
 
     override public func load() {
@@ -105,6 +106,20 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         // Les phrases avec un nom de playlist se mettent à jour quand la liste change
         if let cls = NSClassFromString("App.BoomboxShortcuts") as? NSObject.Type { _ = cls }
         NotificationCenter.default.post(name: Notification.Name("BoomboxRefreshShortcuts"), object: nil)
+    }
+
+    // Icône de l'écran d'accueil selon l'événement (Halloween, Noël…) ; name vide = icône habituelle.
+    // iOS affiche un petit message « Vous avez changé l'icône » à chaque changement (impossible à éviter).
+    @objc func setAppIcon(_ call: CAPPluginCall) {
+        let name = call.getString("name") ?? ""
+        DispatchQueue.main.async {
+            guard UIApplication.shared.supportsAlternateIcons else { return call.reject("non pris en charge") }
+            let wanted: String? = name.isEmpty ? nil : name
+            if UIApplication.shared.alternateIconName == wanted { return call.resolve() }
+            UIApplication.shared.setAlternateIconName(wanted) { err in
+                if let err = err { call.reject(err.localizedDescription) } else { call.resolve() }
+            }
+        }
     }
 
     @objc func getInfo(_ call: CAPPluginCall) {

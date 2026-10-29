@@ -62,6 +62,50 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleDevelopmentRegion fr" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDevelopmentRegion string fr" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Boombox" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Boombox" "$PLIST"
           sed -i '' "s/MARKETING_VERSION = [^;]*;/MARKETING_VERSION = $VERSION;/g; s/CURRENT_PROJECT_VERSION = [^;]*;/CURRENT_PROJECT_VERSION = ${{ github.run_number }};/g" ios/App/App.xcodeproj/project.pbxproj
+      - name: Icônes des événements (Halloween, Noël…)
+        run: |
+          PLIST=ios/App/App/Info.plist
+          cp mobile/ios-app/icons/*.png ios/App/App/
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons dict" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons dict" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:noel dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:noel:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:noel:CFBundleIconFiles:0 string icon-noel" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:noel:UIPrerenderedIcon bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:nouvel-an dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:nouvel-an:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:nouvel-an:CFBundleIconFiles:0 string icon-nouvel-an" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:nouvel-an:UIPrerenderedIcon bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:valentin dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:valentin:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:valentin:CFBundleIconFiles:0 string icon-valentin" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:valentin:UIPrerenderedIcon bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:paques dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:paques:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:paques:CFBundleIconFiles:0 string icon-paques" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:paques:UIPrerenderedIcon bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:musique dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:musique:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:musique:CFBundleIconFiles:0 string icon-musique" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:musique:UIPrerenderedIcon bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:ete dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:ete:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:ete:CFBundleIconFiles:0 string icon-ete" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:ete:UIPrerenderedIcon bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:rentree dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:rentree:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:rentree:CFBundleIconFiles:0 string icon-rentree" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:rentree:UIPrerenderedIcon bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:halloween dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:halloween:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:halloween:CFBundleIconFiles:0 string icon-halloween" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:halloween:UIPrerenderedIcon bool false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:anniversaire dict" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:anniversaire:CFBundleIconFiles array" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:anniversaire:CFBundleIconFiles:0 string icon-anniversaire" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIcons:CFBundleAlternateIcons:anniversaire:UIPrerenderedIcon bool false" "$PLIST"
+          gem install xcodeproj --no-document --user-install >/dev/null 2>&1 || true
+          ruby -e 'Gem.paths = { "GEM_HOME" => Gem.user_dir, "GEM_PATH" => [Gem.user_dir, *Gem.path] }; require "xcodeproj"; p = Xcodeproj::Project.open("ios/App/App.xcodeproj"); t = p.targets.find { |x| x.name == "App" }; g = p.main_group["App"]; Dir["ios/App/App/icon-*.png"].each { |f| n = File.basename(f); r = g.files.find { |x| x.path == n } || g.new_file(n); t.add_resources([r]) unless t.resources_build_phase.files_references.include?(r) }; p.save'
       - name: Commandes Siri (App Intents)
         run: |
           cp mobile/ios-app/BoomboxIntents.swift ios/App/App/BoomboxIntents.swift
