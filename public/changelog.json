@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2039",
+    "title": "Paroles lisibles sur les pochettes sombres",
+    "items": [
+      "Lecteur en grand : sur une pochette sombre, les paroles passent en clair (avant : texte noir sur fond presque noir)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2029",
     "title": "Avancer dans le son depuis les paroles",
     "items": [

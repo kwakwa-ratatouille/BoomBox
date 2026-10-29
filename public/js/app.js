@@ -1069,7 +1069,14 @@ function renderFullPlayer() {
   fpSeek = slider($('#fp-seek'), { onCommit: (f) => ctl.seek(f * (sync.view().duration || 0)) });
   swipe(fp.querySelector('.fp-art'), { left: () => ctl.next(), right: () => ctl.prev() });
   // (la fermeture vers le bas est gérée par setupFullPlayerSwipe, qui suit le doigt et anime jusqu'en bas)
-  dominantColor(t.thumb).then((c) => c && (fp.style.setProperty('--fp', c), fp.style.setProperty('--lyr', c)));
+  dominantColor(t.thumb).then((c) => {
+    if (!c) return;
+    fp.style.setProperty('--fp', c);
+    fp.style.setProperty('--lyr', c);
+    // Pochette sombre : paroles en clair (sinon texte noir sur fond presque noir, illisible)
+    const [r, g, b] = (c.match(/d+/g) || []).map(Number);
+    fp.classList.toggle('lyr-dark', (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.32);
+  });
   fpCleanup = mountLyrics($('#fp-lyr'), t);
   $('#fp-kara')?.addEventListener('click', openKaraoke);
   // Un appui sur les paroles les met en plein écran

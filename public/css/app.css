@@ -2517,3 +2517,9 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .kara-knob { position: absolute; top: 50%; left: var(--v); width: 14px; height: 14px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); transition: width 0.12s, height 0.12s; pointer-events: none; }
 .kara-bar.drag .kara-knob { width: 22px; height: 22px; }
 .kara-bar.drag { height: 6px; }
+
+/* Lecteur en grand : paroles en clair sur une pochette sombre (texte noir illisible sur fond presque noir) */
+#fullplayer.lyr-dark .fp-lyrics .lyrics p { color: rgba(255, 255, 255, 0.42); }
+#fullplayer.lyr-dark .fp-lyrics .lyrics p.past { color: rgba(255, 255, 255, 0.7); }
+#fullplayer.lyr-dark .fp-lyrics .lyrics p.now, #fullplayer.lyr-dark .fp-lyrics .lyrics.plain p { color: #fff; }
+#fullplayer.lyr-dark .fp-lyrics h4, #fullplayer.lyr-dark .fp-lyrics .lyrics-source { color: rgba(255, 255, 255, 0.75); }
