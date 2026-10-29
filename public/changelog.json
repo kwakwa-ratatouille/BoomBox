@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1614",
+    "title": "Paroles qui défilent toutes seules",
+    "items": [
+      "Paroles du son joué sur l’autre appareil : la ligne en cours reste au centre et le panneau défile tout seul (avant, chaque mise à jour du téléphone le ramenait en haut)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1611",
     "title": "Paroles qui suivent le son de l’autre appareil",
     "items": [

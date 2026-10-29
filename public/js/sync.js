@@ -49,11 +49,7 @@ export const sync = {
           this.remote[d.id] = this._local(d.id, d.state, 300);
         }
         this._refreshDevices();
-        if (this.target) {
-          emit('player:track');
-          emit('player:state');
-          emit('player:queue');
-        }
+        if (this.target) this._remoteEmit();
       }),
       // Commandes reçues d'un autre appareil (télécommande)
       onSnapshot(collection(db, 'spaces', cloud.spaceId, 'devices', device.id, 'commands'), (snap) => {
@@ -140,6 +136,20 @@ export const sync = {
   // 10 min, moins le trajet habituel. L'état est re-daté avec notre horloge : la position avance juste, même si
   // le téléphone a 1 s (ou 1 min) d'avance ou de retard sur le PC.
   _skew: {},
+  // Nouvel état de l'appareil piloté : on ne redessine tout (« player:track ») que si le son a changé. Sinon simple
+  // mise à jour (pause, position) : avant, chaque état reçu redessinait le panneau Paroles, qui repartait en haut
+  // au lieu de suivre la ligne en cours.
+  _remoteEmit() {
+    const st = this.remote[this.target];
+    const id = st?.track?.id || null;
+    if (id !== this._shownRemote) {
+      this._shownRemote = id;
+      emit('player:track');
+      emit('player:queue');
+    }
+    emit('player:state');
+    emit('player:time');
+  },
   _local(id, st, trip) {
     if (!st?.ts) return st;
     const now = Date.now();
@@ -176,10 +186,7 @@ export const sync = {
           // (deux horloges décalées d'1 s mettaient la barre et les paroles en retard d'autant)
           this.remote[m.from] = this._local(m.from, m.state, 40);
           this._lanFresh = Date.now();
-          if (this.target === m.from) {
-            emit('player:track');
-            emit('player:state');
-          }
+          if (this.target === m.from) this._remoteEmit();
         }
       };
       this._lan.onerror = () => {}; // EventSource se reconnecte tout seul
@@ -242,6 +249,7 @@ export const sync = {
       player.remoteSender = (action, args) => (this._autoRoute(action) ? player[action](...args) : this.sendCommand(deviceId, action, args));
       if (!player.paused && !keepPlaying) player.pause();
     }
+    this._shownRemote = undefined; // appareil (ou retour ici) : tout est redessiné
     emit('sync');
     emit('player:track');
     emit('player:state');
