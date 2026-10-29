@@ -86,13 +86,21 @@ export function mountLyrics(el, track) {
 
   // Recentre la ligne en cours en faisant défiler SEULEMENT le cadre des paroles (avant : toute la page bougeait
   // avec, ce qui faisait sauter le lecteur plein écran sur téléphone). Doux, et seulement si la ligne sort du milieu.
+  // Cadre qui défile vraiment : le premier parent qui a une barre de défilement (le panneau Paroles, le lecteur…)
+  const scrollBox = () => {
+    for (let n = el; n && n !== document.body; n = n.parentElement) {
+      const o = getComputedStyle(n).overflowY;
+      if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight + 4) return n;
+    }
+    return scroller;
+  };
   function center(line, force = false) {
-    const box = scroller;
+    const box = scrollBox();
     if (!box || box === document.scrollingElement) return;
     const b = box.getBoundingClientRect();
     const r = line.getBoundingClientRect();
     const mid = b.top + b.height / 2;
-    if (!force && Math.abs(r.top + r.height / 2 - mid) < b.height * 0.18) return;
+    if (!force && Math.abs(r.top + r.height / 2 - mid) < b.height * 0.08) return;
     if (box._centering && Date.now() - box._centering < 450) return; // défilement doux déjà en route
     box._centering = Date.now();
     box.scrollTo({ top: box.scrollTop + (r.top + r.height / 2 - mid), behavior: 'smooth' });

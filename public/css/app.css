@@ -2403,3 +2403,4 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
   #app.has-remote #playerbar { height: auto; min-height: 64px; padding-top: 6px; padding-bottom: 6px; row-gap: 2px; }
   #app.has-remote .remote-banner { margin-top: 0; font-size: 12px; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 }
+#rightpanel .lyrics { padding-bottom: 45vh; } /* la dernière ligne peut aussi venir au milieu */

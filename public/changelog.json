@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Paroles bien au milieu",
+    "items": [
+      "Panneau Paroles : la ligne en cours se place vraiment au milieu du panneau et y reste pendant tout le son."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1638",
     "title": "Changement d’appareil plus propre",
     "items": [
