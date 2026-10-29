@@ -23,46 +23,71 @@ let mode = 'drunk'; // ou 'chipmunk'
 let rate = 1; // vitesse actuelle (glisse vers la vitesse voulue : jamais de saut brusque)
 let shifter = null;
 
-// ---------- Décalage de hauteur sans changer la vitesse (« Jungle », Chris Wilson) ----------
-// Deux lignes de retard dont le retard glisse en dents de scie, en fondu enchaîné l'une avec l'autre : le son est
-// relu un peu plus vite par petits morceaux de 100 ms, donc plus aigu, sans prendre d'avance.
-export function makeShifter(ctx, amount) {
-  const sr = ctx.sampleRate;
-  const BUF = 0.1;
-  const FADE = 0.05;
-  const len1 = Math.round(BUF * sr);
-  const len = len1 + Math.round((BUF - 2 * FADE) * sr);
-  const saw = ctx.createBuffer(1, len, sr);
-  const fade = ctx.createBuffer(1, len, sr);
-  const sp = saw.getChannelData(0);
-  const fp = fade.getChannelData(0);
-  const fl = FADE * sr;
-  for (let i = 0; i < len1; i++) {
-    sp[i] = (len1 - i) / len;
-    fp[i] = i < fl ? Math.sqrt(i / fl) : i >= len1 - fl ? Math.sqrt(Math.max(0, 1 - (i - (len1 - fl)) / fl)) : 1;
+// ---------- Décalage de hauteur sans changer la vitesse ----------
+// Le son est relu un peu plus vite par petits morceaux de 70 ms qui se chevauchent en fondu : plus aigu, sans prendre
+// d'avance. Calculé échantillon par échantillon dans un « worklet » audio : avec des lignes de retard modulées
+// (première version), Safari sur iPhone ne bougeait le retard que par blocs, d'où une voix robotisée et trop grave.
+const WORKLET = `registerProcessor('bbx-pitch', class extends AudioWorkletProcessor {
+  constructor(o) {
+    super();
+    this.r = o.processorOptions.ratio;
+    this.W = Math.round(sampleRate * 0.07);
+    this.N = this.W * 4;
+    this.b = [new Float32Array(this.N), new Float32Array(this.N)];
+    this.w = 0;
+    this.p = 0;
   }
+  read(b, x) {
+    const N = this.N;
+    x = ((x % N) + N) % N;
+    const i = Math.floor(x);
+    const f = x - i;
+    return b[i] * (1 - f) + b[(i + 1) % N] * f;
+  }
+  process(ins, outs) {
+    const inp = ins[0];
+    const out = outs[0];
+    const n = out[0].length;
+    const W = this.W;
+    const step = (this.r - 1) / W;
+    for (let k = 0; k < n; k++) {
+      for (let c = 0; c < 2; c++) {
+        const src = inp && inp.length ? inp[Math.min(c, inp.length - 1)] : null;
+        this.b[c][this.w] = src ? src[k] : 0;
+      }
+      const p1 = this.p;
+      const p2 = (this.p + 0.5) % 1;
+      const g1 = Math.sin(Math.PI * p1) ** 2;
+      const g2 = 1 - g1;
+      const d1 = (1 - p1) * W + 2;
+      const d2 = (1 - p2) * W + 2;
+      for (let c = 0; c < out.length; c++) {
+        const bb = this.b[Math.min(c, 1)];
+        out[c][k] = g1 * this.read(bb, this.w - d1) + g2 * this.read(bb, this.w - d2);
+      }
+      this.w = (this.w + 1) % this.N;
+      this.p += step;
+      if (this.p >= 1) this.p -= 1;
+    }
+    return true;
+  }
+});`;
+const loaded = new WeakMap();
+// ratio : 1.6 ≈ 8 demi-tons plus haut. input / output à brancher tout de suite ; l'effet s'insère dès qu'il est prêt
+export function makeShifter(ctx, ratio = 1.6) {
   const input = ctx.createGain();
   const output = ctx.createGain();
-  output.gain.value = 1.5; // le fondu enchaîné des deux lignes fait perdre du volume : on en rend l’essentiel, sans saturer
-  const loop = (b) => Object.assign(ctx.createBufferSource(), { buffer: b, loop: true });
-  const t = ctx.currentTime + 0.05;
-  const srcs = [];
-  for (const offset of [0, BUF - FADE]) {
-    const mod = loop(saw);
-    const modGain = ctx.createGain();
-    modGain.gain.value = BUF * amount; // amount 0..1 : 1 ≈ une octave au-dessus
-    const delay = ctx.createDelay(1);
-    const mix = ctx.createGain();
-    mix.gain.value = 0;
-    const fd = loop(fade);
-    mod.connect(modGain).connect(delay.delayTime);
-    fd.connect(mix.gain);
-    input.connect(delay).connect(mix).connect(output);
-    mod.start(t + offset);
-    fd.start(t + offset);
-    srcs.push(mod, fd);
-  }
-  return { input, output, stop: () => srcs.forEach((x) => { try { x.stop(); } catch {} }) };
+  input.connect(output); // le temps que l'effet se charge (quelques millisecondes)
+  let node = null;
+  let stopped = false;
+  if (!loaded.has(ctx)) loaded.set(ctx, ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }))));
+  loaded.get(ctx).then(() => {
+    if (stopped) return;
+    node = new AudioWorkletNode(ctx, 'bbx-pitch', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], processorOptions: { ratio } });
+    input.disconnect();
+    input.connect(node).connect(output);
+  }).catch(() => {});
+  return { input, output, stop: () => { stopped = true; node?.disconnect(); } };
 }
 const NATIVE = !!window.Capacitor?.isNativePlatform?.();
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -78,7 +103,7 @@ const pcFx = {
     const g = a.graph;
     if (!g) return;
     if (onOff && !shifter) {
-      shifter = makeShifter(g.ctx, 0.75);
+      shifter = makeShifter(g.ctx);
       shifter.output.connect(g.ctx.destination);
     }
     for (const n of g.nodes) {
@@ -131,7 +156,7 @@ const solo = {
     const fb = ctx.createGain();
     fb.gain.value = 0.45;
     if (mode === 'chipmunk') {
-      shifter = makeShifter(ctx, 0.75);
+      shifter = makeShifter(ctx);
       hp.connect(lp).connect(gain).connect(shifter.input);
       shifter.output.connect(ctx.destination);
     } else hp.connect(lp).connect(gain).connect(ctx.destination);

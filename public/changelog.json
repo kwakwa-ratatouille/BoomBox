@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1520",
+    "title": "Mode chipmunk plus propre",
+    "items": [
+      "Mode chipmunk : effet refait. Sur iPhone, la voix sonnait robotisée et le son paraissait ralenti ; les voix montent maintenant bien plus haut, à la même vitesse, avec un son plus net (sur PC aussi)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1517",
     "title": "Reprendre la musique sur cet appareil",
     "items": [
