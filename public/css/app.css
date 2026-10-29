@@ -2388,3 +2388,10 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .home-recap .hr-go { flex: none; background: rgba(0, 0, 0, 0.25); color: inherit; font-weight: 700; padding: 8px 16px; border-radius: 999px; opacity: 1; }
 .home-recap .hr-x { position: absolute; top: 6px; right: 6px; color: inherit; opacity: 0.7; width: 28px; height: 28px; }
 @media (max-width: 768px) { .home-recap { padding: 14px 16px; } .home-recap b { font-size: 18px; } .home-recap .hr-go { display: none; } }
+
+/* Lecteur en grand (téléphone) : barre d'avance identique à l'œil, mais zone tactile de 40 px de haut, petit rond
+   toujours visible, qui grossit sous le doigt (avant : 12 px de haut, difficile à attraper) */
+#fp-seek { height: 40px; margin: -14px 0; }
+#fp-seek .knob { opacity: 1; width: 14px; height: 14px; transition: width 0.12s, height 0.12s; }
+#fp-seek.drag .knob { width: 22px; height: 22px; }
+#fp-seek.drag::before, #fp-seek.drag .fill { height: 6px; }
