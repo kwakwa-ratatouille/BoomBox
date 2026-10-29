@@ -200,6 +200,9 @@ function updateRail() {
   }
   const sc = scroller(wrap);
   place(Math.min(1, sc.scrollTop / maxScroll(sc)), wrap);
+  // Collé au bord droit de la page des sons, pas de la fenêtre (sinon il passait par-dessus le panneau des amis)
+  const mr = document.getElementById('main')?.getBoundingClientRect();
+  rail.style.right = mr && innerWidth > 768 ? `${Math.max(2, innerWidth - mr.right + 2)}px` : '';
   rail.classList.add('show');
   hideSoon();
 }

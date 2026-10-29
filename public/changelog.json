@@ -3,7 +3,8 @@
     "version": "2026.1029.2042",
     "title": "Photo de profil et bannière animées",
     "items": [
-      "Profil → Détails du profil : bouton « GIF animé » pour la photo et pour la bannière (recherche GIPHY). Tu peux aussi envoyer un GIF depuis ton appareil (45 Ko max pour la photo, 180 Ko pour la bannière) : il reste animé. Tes amis le voient aussi."
+      "Profil → Détails du profil : bouton « GIF animé » pour la photo et pour la bannière (recherche GIPHY). Tu peux aussi envoyer un GIF depuis ton appareil (45 Ko max pour la photo, 180 Ko pour la bannière) : il reste animé. Tes amis le voient aussi.",
+      "PC : le repère de défilement d’une playlist (« 94 / 278 ») reste au bord de la liste, au lieu de passer par-dessus le panneau des amis."
     ],
     "date": "2026-10-29"
   },
