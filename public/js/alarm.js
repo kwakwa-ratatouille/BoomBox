@@ -76,25 +76,37 @@ export async function ring() {
   // Le réveil sonne toujours sur cet appareil, jamais sur un autre qu'on pilotait (ex. le PC, éteint la nuit)
   const { sync } = await import('./sync.js');
   if (sync.target) sync.control(null, { auto: true });
+  stopKeepAlive?.(); // le son muet du soir laisse la place
   const a = alarmConf();
-  const target = player.volume || 0.8;
+  // Volume qui monte doucement pendant 1 min, à partir du moment où le son joue vraiment (avant : si le son mettait
+  // plus de 6 s à arriver, la montée s'arrêtait et le réveil restait bloqué à 10 % : quasi muet).
+  // iPhone : iOS ne laisse pas une appli régler son volume, et ses minuteries ralentissent en arrière-plan : pas de
+  // montée, le réveil sonne au volume du téléphone.
+  const ramp = !(window.Capacitor?.isNativePlatform?.() && window.Capacitor.getPlatform?.() === 'ios');
+  const target = Math.max(0.5, player.volume || 0.8);
+  if (ramp) ctl.setVolume(0.1);
+  else if ((player.volume || 0) < 0.5) ctl.setVolume(target);
   if (a.source === 'track' && a.track?.id) {
-    ctl.setVolume(0.1);
     playFrom(a.track, a.start || 0);
   } else {
     const tracks = tracksOf(a.source);
     if (!tracks.length) return toast('Réveil : la playlist choisie est vide');
     if (!player.shuffle) ctl.toggleShuffle();
-    ctl.setVolume(0.1);
     ctl.playList(tracks, startAt(tracks), { type: 'alarm', name: 'Réveil' });
   }
-  const t0 = Date.now();
-  const iv = setInterval(() => {
-    const k = Math.min(1, (Date.now() - t0) / 60e3);
-    if (player.paused && k > 0.1) return clearInterval(iv);
-    ctl.setVolume(0.1 + (target - 0.1) * k);
-    if (k >= 1) clearInterval(iv);
-  }, 1000);
+  if (ramp) {
+    const asked = player._userPauseAt || 0;
+    let t0 = 0;
+    const iv = setInterval(() => {
+      if ((player._userPauseAt || 0) !== asked) return clearInterval(iv); // tu as mis pause : on n'y touche plus
+      if (player.paused || player.buffering) return; // le son n'est pas encore là : la montée attend
+      t0 ||= Date.now();
+      const k = Math.min(1, (Date.now() - t0) / 60e3);
+      ctl.setVolume(0.1 + (target - 0.1) * k);
+      if (k >= 1) clearInterval(iv);
+    }, 1000);
+    setTimeout(() => (clearInterval(iv), player.volume < target && ctl.setVolume(target)), 5 * 60e3); // au pire, volume normal après 5 min
+  }
   toast('⏰ Bonjour ! Ton réveil Boombox', { timeout: 8000 });
 }
 
@@ -147,6 +159,7 @@ export function startAlarm() {
 // qu'un réveil est prévu dans les 16 h et que Boombox est en arrière-plan sans musique, un son muet tourne en boucle
 // (sans couper la musique des autres applis) : Boombox reste éveillé et lance la musique tout seul à l'heure.
 // Il faut juste laisser Boombox ouvert en arrière-plan (pas fermé en le balayant vers le haut).
+let stopKeepAlive = null;
 function keepAwakeForAlarm() {
   const ios = window.Capacitor?.isNativePlatform?.() && window.Capacitor.getPlatform?.() === 'ios';
   if (!ios) return;
@@ -165,8 +178,10 @@ function keepAwakeForAlarm() {
   const stop = () => {
     if (!el) return;
     el.pause();
+    el.removeAttribute('src');
     el = null;
   };
+  stopKeepAlive = stop;
   const check = () => {
     const a = alarmConf();
     const next = a.on ? nextRing(a) : null;

@@ -821,7 +821,7 @@ export const player = {
   // iPhone : iOS ne laisse pas régler le volume, le son y part et arrive donc d'un coup.
   fadeIn(ms = 1800) {
     const e = this.engine;
-    if (e?.name !== 'audio') return;
+    if (e?.name !== 'audio' || noOverlap) return; // iPhone : pas de volume réglable (il pourrait rester à 0)
     const el = e.a;
     e._setLevel(el, 0);
     const t0 = performance.now();
@@ -834,7 +834,7 @@ export const player = {
   },
   fadeOutPause(ms = 1500) {
     const e = this.engine;
-    if (e?.name !== 'audio' || this.paused) return this.pause();
+    if (e?.name !== 'audio' || this.paused || noOverlap) return this.pause();
     const el = e.a;
     const t0 = performance.now();
     const iv = setInterval(() => {

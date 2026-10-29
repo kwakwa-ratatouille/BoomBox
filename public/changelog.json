@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.1029.1535",
+    "title": "Réveil : on l’entend vraiment",
+    "items": [
+      "Réveil : le son démarrait parfois quasi muet (si la musique mettait plus de 6 s à arriver, le volume restait bloqué à 10 %). La montée du volume attend maintenant que le son joue vraiment.",
+      "Réveil sur iPhone : il sonne directement au volume du téléphone (iOS ne laisse pas une appli régler son volume).",
+      "Passage PC ↔ iPhone : pas de fondu côté iPhone, pour ne jamais rester sans son."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1533",
     "title": "Passage PC ↔ téléphone en fondu",
     "items": [
