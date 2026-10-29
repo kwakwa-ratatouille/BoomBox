@@ -148,6 +148,14 @@ if ($d.ShowDialog($f) -eq 'OK') { $d.SelectedPath }`;
   return new Promise((resolve) => execFile('powershell.exe', ['-NoProfile', '-STA', '-Command', ps], { env: { ...process.env, BBX_START: start }, windowsHide: true, timeout: 10 * 60e3 }, (e, out) => resolve(e ? '' : String(out).trim())));
 }
 app.delete('/api/audio-cache/:id', (req, res) => res.json({ ok: forget(req.params.id) }));
+// Ouvre une page Boombox en ligne (connexion Google) dans le navigateur par défaut du PC : depuis la fenêtre d'appli,
+// la fenêtre surgissante de Google ne s'ouvrait pas (ou restait cachée derrière)
+app.post('/api/open-browser', (req, res) => {
+  const url = String(req.body?.url || '');
+  if (!relay.isLocal(req) || !/^https:\/\/musikal-b72d1\.(web\.app|firebaseapp\.com)\//.test(url)) return res.status(403).end();
+  execFile('rundll32.exe', ['url.dll,FileProtocolHandler', url], () => {});
+  res.json({ ok: true });
+});
 app.post('/api/prefetch/:id', prefetchHandler);
 app.get('/api/audio-file/:id', audioFileHandler);
 

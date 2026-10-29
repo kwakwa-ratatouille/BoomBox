@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.1029.1509",
+    "title": "Connexion Google sur PC, récap et fenêtre réduite",
+    "items": [
+      "PC : « Connecter Google » ouvre la page de connexion dans ton navigateur (la fenêtre de Google ne s’ouvrait pas depuis l’appli). Termine la connexion là-bas, Boombox se connecte tout seul.",
+      "Accueil : le récap du mois s’affiche les 3 premiers jours du mois suivant (et celui de l’année du 1er au 3 janvier), sauf si tu l’as fermé avec la croix.",
+      "Fenêtre réduite : le panneau de droite (amis, file, paroles) rétrécit au lieu d’écraser la page et les conversations."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1504",
     "title": "Appareils liés, « En direct » et classement plus juste",
     "items": [

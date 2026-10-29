@@ -1692,7 +1692,7 @@ async function boot() {
   // d'office qu'en mode superposé (écran étroit), sans oublier qu'il était ouvert
   // Assez de place si la page du milieu garde au moins 560 px à côté de la bibliothèque et du panneau
   const cssPx = (v) => parseInt(getComputedStyle(document.documentElement).getPropertyValue(v)) || 0;
-  const roomForPanel = () => innerWidth > 900 && innerWidth - cssPx('--side-w') - cssPx('--right-w') - 32 >= 560;
+  const roomForPanel = () => innerWidth > 900 && innerWidth - cssPx('--side-w') - Math.min(cssPx('--right-w'), Math.max(280, innerWidth * 0.34)) - 32 >= 560;
   if (ls.get('boombox.panelOpen', true) && roomForPanel()) $('#rightpanel').classList.remove('hidden');
   let wasWide = roomForPanel();
   window.addEventListener('resize', debounce(() => {

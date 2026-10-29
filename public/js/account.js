@@ -13,7 +13,10 @@ import { modal, html, toast } from './ui.js';
 const RELAY = 'https://musikal-b72d1.web.app/google.html';
 const native = !!window.Capacitor?.isNativePlatform?.();
 // Fenêtre Google directe seulement sur les adresses autorisées par Firebase (PC en localhost, site en ligne)
-export const viaRelay = native || !/^(localhost|127\.0\.0\.1)$|\.web\.app$|\.firebaseapp\.com$/.test(location.hostname);
+// PC (Boombox ouvert depuis le PC lui-même) : aussi par la page relais, ouverte dans le vrai navigateur (la fenêtre
+// surgissante de Google ne s'ouvrait pas, ou restait cachée, depuis la fenêtre d'appli)
+const onPc = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+export const viaRelay = native || onPc || !/^(localhost|127\.0\.0\.1)$|\.web\.app$|\.firebaseapp\.com$/.test(location.hostname);
 export const isGoogle = () => !!auth.currentUser && !auth.currentUser.isAnonymous;
 export const googleEmail = () => auth.currentUser?.providerData?.find((p) => p.providerId === 'google.com')?.email || auth.currentUser?.email || '';
 
@@ -63,6 +66,7 @@ function relayCredential(onWaiting) {
     // Appli : une adresse extérieure s'ouvre dans Safari / Chrome (comme la connexion Spotify) ; navigateur : nouvel onglet
     const url = `${RELAY}#id=${id}&k=${b64(raw)}`;
     if (native) location.href = url;
+    else if (onPc) fetch('/api/open-browser', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url }) }).then((r) => r.ok || Promise.reject()).catch(() => window.open(url, '_blank'));
     else if (!window.open(url, '_blank')) location.href = url;
   });
 }

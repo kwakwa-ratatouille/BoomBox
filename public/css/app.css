@@ -64,7 +64,7 @@ svg.ic:not([width]) { width: 24px; height: 24px; }
 .panel { background: var(--panel); border-radius: var(--radius); }
 #sidebar { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 #main { grid-area: main; position: relative; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
-#rightpanel { grid-area: right; width: var(--right-w); overflow-y: auto; min-height: 0; }
+#rightpanel { grid-area: right; width: min(var(--right-w), max(280px, 34vw)); /* fenêtre réduite : le panneau rétrécit au lieu d’écraser la page */ overflow-y: auto; min-height: 0; }
 #playerbar { grid-area: player; }
 #mobilenav { display: none; }
 

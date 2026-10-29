@@ -90,8 +90,10 @@ export function persona(s) {
 export const yearWrappedReady = (y = new Date().getFullYear()) => y < new Date().getFullYear() || new Date().getMonth() === 11;
 
 // Période d'un récap : journée, semaine, mois ou année
-export function wrappedRange(period, year) {
-  const now = new Date();
+// last : le mois qui vient de se terminer (récap mis en avant sur l'accueil les premiers jours du mois suivant)
+export function wrappedRange(period, year, last = false) {
+  const today = new Date();
+  const now = last && period === 'month' ? new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59) : today;
   const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (period === 'day') return { since: d0.getTime(), until: Date.now(), label: 'Ta journée', tag: "aujourd'hui", name: `du ${now.toLocaleDateString('fr-FR')}`, short: "Aujourd'hui" };
   if (period === 'week') {
@@ -102,7 +104,7 @@ export function wrappedRange(period, year) {
   if (period === 'month') {
     const m = now.toLocaleDateString('fr-FR', { month: 'long' });
     const de = /^[aeiouâéèêhô]/i.test(m) ? `d'${m}` : `de ${m}`;
-    return { since: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), until: Date.now(), label: `Ton mois ${de}`, tag: `en ${m}`, name: de, short: m[0].toUpperCase() + m.slice(1) };
+    return { since: new Date(now.getFullYear(), now.getMonth(), 1).getTime(), until: Math.min(Date.now(), now.getTime()), label: `Ton mois ${de}`, tag: `en ${m}`, name: de, short: m[0].toUpperCase() + m.slice(1) };
   }
   return { since: new Date(year, 0, 1).getTime(), until: Math.min(Date.now(), new Date(year + 1, 0, 1).getTime() - 1), label: `Ton ${year}`, tag: `en ${year}`, name: `${year}`, short: String(year) };
 }
@@ -931,7 +933,7 @@ export async function wrappedPage(el, params, ctx) {
     el.innerHTML = String(html`<div class="page"><div class="empty"><h2>Ton Wrapped ${year} arrive le 1er décembre</h2><p>Comme sur Spotify, le récap de l'année s'ouvre en décembre. En attendant, regarde ta semaine ou ton mois.</p><a class="btn white" href="#/wrapped">Choisir une autre période</a></div></div>`);
     return;
   }
-  const range = wrappedRange(period, year);
+  const range = wrappedRange(period, year, !!params.last);
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   const s = await getStatsFull(0, { since: range.since, until: range.until }, 50);
   if (!ctx.alive()) return;

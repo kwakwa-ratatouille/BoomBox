@@ -1574,20 +1574,20 @@ export async function library(el) {
   return { onLibrary: () => !document.querySelector('.ro-drag') && render() };
 }
 
-// Accueil : le récap mis en avant au bon moment. Celui de l'année du 1er décembre au 15 janvier, celui du mois à
-// partir du 20 (et un jour sur trois avant, pour le faire découvrir). Refermable : il ne revient qu'à la période suivante.
+// Accueil : le récap mis en avant à la fin de chaque période, pendant 3 jours (sauf s'il a été fermé avec la croix) :
+// celui du mois qui vient de finir du 1er au 3 du mois, celui de l'année qui vient de finir du 1er au 3 janvier.
 function homeRecap(box) {
   if (!box) return;
   const now = new Date();
-  const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const yearTime = now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15);
-  const monthName = now.toLocaleDateString('fr-FR', { month: 'long' });
-  const pick = yearTime
-    ? { key: `y${y}`, href: `#/wrapped?year=${y}`, kicker: 'Ton récap de l’année', title: `Ton ${y} en musique`, sub: 'Tes sons, tes artistes, tes minutes : tout ton année, à partager en story.', cls: 'year' }
-    : now.getDate() >= 20 || now.getDate() % 3 === 0
-      ? { key: `m${now.getFullYear()}-${now.getMonth()}`, href: '#/wrapped?period=month', kicker: 'Ton récap du mois', title: `Ton mois de ${monthName}`, sub: 'Ton top du mois, tes découvertes et ton temps d’écoute.', cls: 'month' }
-      : null;
-  if (!pick || ls.get(`boombox.recapHidden.${pick.key}`)) return;
+  if (now.getDate() > 3) return;
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const monthName = prev.toLocaleDateString('fr-FR', { month: 'long' });
+  const de = /^[aeiouâéèêhô]/i.test(monthName) ? `d'${monthName}` : `de ${monthName}`;
+  const y = now.getFullYear() - 1;
+  const pick = now.getMonth() === 0
+    ? { key: `y${y}`, href: `#/wrapped?year=${y}`, kicker: 'Ton récap de l’année', title: `Ton ${y} en musique`, sub: 'Tes sons, tes artistes, tes minutes : toute ton année, à partager en story.', cls: 'year' }
+    : { key: `m${prev.getFullYear()}-${prev.getMonth()}`, href: '#/wrapped?period=month&last=1', kicker: 'Ton récap du mois', title: `Ton mois ${de}`, sub: 'Ton top du mois, tes découvertes et ton temps d’écoute.', cls: 'month' };
+  if (ls.get(`boombox.recapHidden.${pick.key}`)) return;
   box.innerHTML = String(html`<a class="home-recap ${pick.cls}" href="${pick.href}">
     <div><small>${pick.kicker}</small><b>${pick.title}</b><span>${pick.sub}</span></div>
     <span class="hr-go">Voir</span><button class="icon-btn hr-x" aria-label="Masquer" title="Masquer">${icon('close', 18)}</button></a>`);
