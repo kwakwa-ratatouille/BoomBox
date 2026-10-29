@@ -2404,3 +2404,4 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
   #app.has-remote .remote-banner { margin-top: 0; font-size: 12px; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 }
 #rightpanel .lyrics { padding-bottom: 45vh; } /* la dernière ligne peut aussi venir au milieu */
+.fc-when .eq, .fa-when .eq { position: static; transform: none; margin-right: 4px; } /* égaliseur « en écoute » à côté du nom, pas au bord du panneau */

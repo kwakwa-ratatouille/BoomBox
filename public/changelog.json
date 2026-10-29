@@ -5,7 +5,8 @@
     "items": [
       "iPhone en arrière-plan : il continue à signaler qu’il joue, au rythme de la musique, et le PC le voit en permanence.",
       "Un appareil qui joue un son reste affiché même si son signal a un peu de retard.",
-      "Quand un nouveau son démarre sur le téléphone, le PC se remet à le suivre (avant : rien pendant 20 min après avoir repris la main)."
+      "Quand un nouveau son démarre sur le téléphone, le PC se remet à le suivre (avant : rien pendant 20 min après avoir repris la main).",
+      "Activité des amis : l’icône « en écoute » est de nouveau à côté du nom de l’ami, et non plus au bord du panneau."
     ],
     "date": "2026-10-29"
   },
