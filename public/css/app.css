@@ -1785,7 +1785,7 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 .pe-photo.static { cursor: default; }
 .pe-photo.static span:not(.avatar-img) { display: none; } /* le texte « Choisir une photo », pas la photo elle-même */
 .pe-photo.static > .avatar-img { position: static; opacity: 1; background-size: cover; background-position: center; background-color: transparent; } /* seule dans le cadre, elle prenait le style du voile « Choisir une photo » (invisible) */
-.pe-photo.static > .avatar-img { display: grid; place-items: center; color: #000; font-weight: 800; font-size: 96px; line-height: 1; padding-bottom: 0.12em; box-sizing: border-box; } /* les majuscules de la police tombent un peu bas : léger remontage */
+.pe-photo.static > .avatar-img { display: grid; place-items: center; color: #000; font-weight: 800; font-size: 96px; line-height: 1; padding: 0 0 0.12em !important; box-sizing: border-box; } /* les majuscules de la police tombent un peu bas : léger remontage */
 @media (max-width: 768px) { .pe-photo.static > .avatar-img { font-size: 64px; } }
 /* Classement */
 .rk-tabs { flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
