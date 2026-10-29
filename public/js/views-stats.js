@@ -7,7 +7,7 @@ import { getStatsFull } from './state.js';
 import { cover, card, trackList, rememberTracks } from './components.js';
 import { shareStatsStory } from './views-wrapped.js';
 import { shareStory } from './story.js';
-import { toast } from './ui.js';
+import { toast, modal } from './ui.js';
 
 const PERIODS = [[7, '7 jours'], [30, '30 jours'], [90, '3 mois'], [365, '1 an'], [3650, 'Tout']];
 const WEEK = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -42,7 +42,7 @@ function barChart(data, { title, labelEvery = 1, unit = 'écoute' }) {
 
 export async function statsPage(el, params, ctx) {
   const days = Number(params.days) || 30;
-  el.innerHTML = String(html`<div class="page stats-page"><h1 class="stats-title">Ton récap</h1>
+  el.innerHTML = String(html`<div class="page stats-page"><h1 class="stats-title">Ton récap <button class="st-info" id="st-info" title="Ajouter tes écoutes d’autres plateformes" aria-label="Infos : ajouter tes écoutes d’autres plateformes">i</button></h1>
     <div class="search-tabs">${PERIODS.map(([d, l]) => html`<a class="chip ${d === days ? 'active' : ''}" href="#/stats?days=${d}">${l}</a>`)}</div>
     <div class="stat-grid">${raw('<div class="sk" style="height:96px"></div>'.repeat(4))}</div><div class="sk" style="height:260px"></div></div>`);
   const s = await getStatsFull(days);
@@ -108,5 +108,15 @@ export async function statsPage(el, params, ctx) {
     `}
   </div>`);
   pixelBackdrop(el.querySelector('.stats-hero'), accentPalette(), { accents: ['#FFD34D'] });
+  // Bulle d'infos : où récupérer ses écoutes sur les autres plateformes (seul Spotify s'importe pour l'instant)
+  el.querySelector('#st-info')?.addEventListener('click', () => modal({
+    title: 'Tes écoutes d’autres plateformes',
+    body: '<p class="muted" style="margin-top:0">Pour que ton récap compte aussi ce que tu écoutais ailleurs, demande tes données à la plateforme (c’est gratuit, elles arrivent par mail en quelques jours).</p>'
+      + '<div class="st-src"><b>Spotify</b> <span class="chip">importable</span><p><a href="https://www.spotify.com/account/privacy/" target="_blank" rel="noopener">spotify.com/account/privacy</a> → coche « Historique de streaming étendu » → Demander. Puis dépose le .zip dans Boombox : Importer une playlist → Données Spotify.</p></div>'
+      + '<div class="st-src"><b>Deezer</b> <span class="chip muted">pas encore importable</span><p><a href="https://www.deezer.com/account" target="_blank" rel="noopener">deezer.com/account</a> → Paramètres → Données personnelles → demander mes données.</p></div>'
+      + '<div class="st-src"><b>Apple Music</b> <span class="chip muted">pas encore importable</span><p><a href="https://privacy.apple.com" target="_blank" rel="noopener">privacy.apple.com</a> → Obtenir une copie de vos données → Apple Media Services.</p></div>'
+      + '<div class="st-src"><b>YouTube Music</b> <span class="chip muted">pas encore importable</span><p><a href="https://takeout.google.com" target="_blank" rel="noopener">takeout.google.com</a> → coche seulement « YouTube et YouTube Music » → historique.</p></div>',
+    actions: [{ label: 'OK', primary: true }],
+  }));
   el.querySelector('#st-share')?.addEventListener('click', share);
 }
