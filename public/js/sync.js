@@ -169,7 +169,9 @@ export const sync = {
   // Transfère la lecture vers un autre appareil (ou la récupère ici).
   transfer(deviceId) {
     if (deviceId === state.device.id) {
-      const from = this.target;
+      // Comme Spotify : l'appareil piloté, sinon celui qui joue en ce moment (le son s'y arrête et reprend ici,
+      // au même moment). Avant, sans appareil piloté, choisir cet appareil ne faisait rien.
+      const from = this.target || this.devices.find((d) => d.id !== state.device.id && d.playing)?.id;
       const st = from && this.remote[from];
       if (from) this.sendCommand(from, 'pause');
       this.control(null);

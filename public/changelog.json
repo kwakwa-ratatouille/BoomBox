@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1517",
+    "title": "Reprendre la musique sur cet appareil",
+    "items": [
+      "Appareils : toucher cet appareil dans la liste arrête le son sur ton téléphone (ou ton PC) et le reprend ici au même moment, avec la suite de la file, comme Spotify."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1516",
     "title": "Télécommande entre appareils plus réactive",
     "items": [
