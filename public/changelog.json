@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2056",
+    "title": "Photo de profil des amis",
+    "items": [
+      "Profil d’un ami : sa photo de profil s’affiche de nouveau en grand (elle était cachée par erreur)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2055",
     "title": "Une seule barre de défilement sur PC",
     "items": [
