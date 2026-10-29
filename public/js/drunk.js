@@ -1,6 +1,6 @@
 // Mode bourré (caché) : le son n'est jamais constant — accélérés, ralentis, montées et descentes de vitesse (la
 // hauteur suit, comme un disque) — et l'appli tangue avec. Plus de filtres ni d'écho : ça sonnait comme un son cassé.
-// Mode chipmunk (caché aussi, « chipmunk » tapé dans la recherche) : voix toutes aiguës, à la même vitesse. Effets légers pour ne pas faire ramer :
+// Mode chipmunk (caché aussi, « chipmunk » tapé dans la recherche) : voix toutes aiguës, son accéléré comme les vrais Chipmunks. Effets légers pour ne pas faire ramer :
 // transformations CSS (carte graphique) et une couche de couleur, pas de flou sur toute la page.
 // Activation : 5 appuis rapides sur le logo (PC) ou sur la pochette du lecteur plein écran (téléphone).
 //
@@ -22,6 +22,8 @@ let ev = null; // effet en cours : { kind, at, until, to }
 let mode = 'drunk'; // ou 'chipmunk'
 let rate = 1; // vitesse actuelle (glisse vers la vitesse voulue : jamais de saut brusque)
 let shifter = null;
+let chipWatch = null;
+const CHIP_RATE = 1.35;
 
 // ---------- Décalage de hauteur sans changer la vitesse ----------
 // Le son est relu un peu plus vite par petits morceaux de 70 ms qui se chevauchent en fondu : plus aigu, sans prendre
@@ -104,26 +106,19 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const audio = () => player.engines?.audio;
 const pcFx = {
   // Voix aiguës : le décalage de hauteur est glissé entre le volume et la sortie de chaque lecteur
+  // Chipmunk : le son est accéléré et la voix monte avec, comme les vrais Chipmunks. Le lecteur le fait lui-même :
+  // aucun calcul audio (l'ancien décalage de hauteur « à vitesse égale » sonnait robotique et saccadait)
   chipmunk(onOff) {
-    const a = audio();
-    if (!a) return;
-    if (onOff) a.enableGraph?.();
-    const g = a.graph;
-    if (!g) return;
-    if (onOff && !shifter) {
-      shifter = makeShifter(g.ctx);
-      shifter.output.connect(g.ctx.destination);
-    }
-    for (const n of g.nodes) {
-      n.gain.disconnect();
-      n.gain.connect(onOff ? shifter.input : g.ctx.destination);
-      n.gain.connect(n.send);
-    }
-    if (!onOff && shifter) {
-      shifter.stop();
-      shifter.output.disconnect();
-      shifter = null;
-    }
+    const apply = () => {
+      for (const el of audio()?.els || []) {
+        el.preservesPitch = el.webkitPreservesPitch = el.mozPreservesPitch = !onOff;
+        el.playbackRate = onOff ? CHIP_RATE : player.rate || 1;
+      }
+    };
+    apply();
+    // Nouveau son : le lecteur remet la vitesse normale, on la réapplique
+    if (onOff && !chipWatch) bus.addEventListener('player:state', (chipWatch = () => on && mode === 'chipmunk' && apply()));
+    if (!onOff && chipWatch) (bus.removeEventListener('player:state', chipWatch), (chipWatch = null));
   },
   setRate(r) {
     for (const el of audio()?.els || []) {
@@ -163,11 +158,8 @@ const solo = {
     delay.delayTime.value = 0.33;
     const fb = ctx.createGain();
     fb.gain.value = 0.45;
-    if (mode === 'chipmunk') {
-      shifter = makeShifter(ctx);
-      hp.connect(lp).connect(gain).connect(shifter.input);
-      shifter.output.connect(ctx.destination);
-    } else hp.connect(lp).connect(gain).connect(ctx.destination);
+    hp.connect(lp).connect(gain).connect(ctx.destination);
+    if (mode === 'chipmunk') this.rate = CHIP_RATE; // chipmunk : son accéléré, voix qui monte avec
     gain.connect(send).connect(delay).connect(ctx.destination);
     delay.connect(fb).connect(delay);
     this.nodes = { hp, lp, gain, send, fb };

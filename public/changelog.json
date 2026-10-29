@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Mode chipmunk naturel",
+    "items": [
+      "Mode chipmunk refait : le son est accéléré et la voix monte avec, comme les vrais Chipmunks. Plus de voix robotique ni de saccades."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1716",
     "title": "Récaps animés selon l’événement",
     "items": [
