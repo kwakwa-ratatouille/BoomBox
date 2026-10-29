@@ -497,6 +497,7 @@ export async function settings(el) {
     <h2 style="font-size:20px;margin-top:32px">Lecture</h2>
     <div class="settings-row"><div><b>Lecture automatique</b><p>À la fin d'une playlist, continue avec des titres similaires.</p></div><label class="switch"><input type="checkbox" id="s-autoplay" ${setting('autoplay', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Liker les titres ajoutés aux playlists</b><p>Dès qu'un titre entre dans une de tes playlists, il est aussi ajouté à tes Titres likés.</p></div><label class="switch"><input type="checkbox" id="s-autolike" ${setting('autoLike', true) ? 'checked' : ''}><span></span></label></div>
+    <div class="settings-row"><div><b>Liker les titres des playlists que j'enregistre</b><p>Quand tu likes ou enregistres une playlist (d'un ami, de YouTube, un import…), ses titres vont aussi dans tes Titres likés. Désactivé : la playlist est enregistrée, tes likés ne bougent pas.</p></div><label class="switch"><input type="checkbox" id="s-likesaved" ${setting('likeSavedPlaylists', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Fondu enchaîné</b><p>${isNative && platform === 'ios' ? 'Pas possible sur iPhone : iOS ne laisse pas régler le volume des sons, les titres s’enchaînent directement.' : st.ytdlp || isNative ? 'Les titres se chevauchent en fondu : la fin du titre s’éteint pendant que le suivant démarre. Le mix, quand il est activé, gère lui-même ses transitions ; ce réglage reprend dès qu’il est coupé.' : 'Nécessite la lecture audio directe (yt-dlp).'}</p></div>
       <div class="xf-control"><div class="slider xf-slider" id="s-xf" role="slider" aria-label="Durée du fondu" aria-valuemin="0" aria-valuemax="12" tabindex="0"><div class="fill"></div><div class="knob"></div></div><span class="xf-value" id="s-xf-val"></span></div></div>
     <div class="settings-row"><div><b>Automix (enchaînements façon DJ)</b><p>Analyse le tempo et la tonalité de chaque titre : les transitions démarrent sur un temps fort, le tempo est calé, les basses sont échangées et les volumes égalisés. En lecture aléatoire, le titre suivant est choisi pour bien s'enchaîner. ${st.ytdlp ? '' : 'Nécessite la lecture audio directe (yt-dlp).'}</p></div><label class="switch"><input type="checkbox" id="s-automix" ${setting('automix', false) ? 'checked' : ''} ${st.ytdlp ? '' : 'disabled'}><span></span></label></div>
@@ -511,6 +512,7 @@ export async function settings(el) {
 
     <h2 style="font-size:20px;margin-top:32px">Appareils</h2>
     <div class="settings-row"><div><b>Boombox sur PC (Windows)</b><p>Installateur à donner à tes amis : Boombox s'installe en un clic (rien d'autre à installer), puis chacun lie son téléphone à son PC avec le QR code des paramètres.</p></div><a class="btn ghost" href="https://github.com/kwakwa-ratatouille/BoomBox/releases/latest/download/Boombox-Setup.exe" target="_blank" rel="noopener">Télécharger</a></div>
+    <div class="settings-row"><div><b>Suivre mes autres appareils</b><p>Quand rien ne joue ici, cet appareil affiche en direct le son qui passe sur ton téléphone ou ton PC, sans le jouer (comme Spotify). Pause et suivant pilotent l'autre appareil ; lancer un son ici le joue ici.</p></div><label class="switch"><input type="checkbox" id="s-follow" ${setting('followDevices', true) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Nom de cet appareil</b><p>Affiché dans la liste des appareils et dans les Jams.</p></div><input class="input" id="s-dname" value="${state.device.name}" maxlength="40"></div>
 
         <div class="settings-row"><div style="flex:1"><b>Ajouter un appareil</b><p>Les deux QR codes font la même chose — relier un appareil à ta bibliothèque — : le premier ouvre l'appli Boombox installée, le second ouvre Boombox dans un navigateur (pour un appareil sans l'appli). Tes playlists, likes et artistes seront synchronisés en direct, même si ce PC est éteint.</p>
@@ -578,6 +580,13 @@ export async function settings(el) {
   };
   el.querySelector('#s-autoplay').onchange = (e) => saveSettings({ autoplay: e.target.checked });
   el.querySelector('#s-autolike').onchange = (e) => saveSettings({ autoLike: e.target.checked });
+  el.querySelector('#s-follow').onchange = async (e) => {
+    await saveSettings({ followDevices: e.target.checked });
+    const { sync } = await import('./sync.js');
+    if (!e.target.checked && sync._auto) sync.control(null, { auto: true });
+    else sync._autoFollow?.();
+  };
+  el.querySelector('#s-likesaved').onchange = (e) => saveSettings({ likeSavedPlaylists: e.target.checked });
   el.querySelector('#s-lim')?.addEventListener('input', (e) => (el.querySelector('#s-lim-v').textContent = e.target.value));
   el.querySelector('#s-lim')?.addEventListener('change', (e) => {
     ls.set('boombox.storageLimitGB', Number(e.target.value));

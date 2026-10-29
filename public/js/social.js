@@ -16,6 +16,7 @@ const slim = (t) => {
   return c && { id: c.id, title: c.title, artists: c.artists.map((a) => ({ name: a.name, id: a.id })), duration: c.duration, thumb: c.thumb };
 };
 const LIKES = '__likes';
+const LIKES_PART = 1500; // titres par fiche
 const smallBanner = (p) => (p.banner && p.banner.length < 250000 ? p.banner : null);
 const smallPhoto =(p) => (p.photo && p.photo.length < 60000 ? p.photo : null);
 
@@ -50,6 +51,9 @@ export const social = {
     this._startPlaylistSharing();
     setTimeout(() => this.publishTop(), 15e3);
     setInterval(() => this.publishTop(), 3600e3);
+    // Écoute comptée : le classement suit dans les 5 minutes (au lieu d'attendre la mise à jour de l'heure)
+    let topTimer = null;
+    on('history', () => topTimer || (topTimer = setTimeout(() => ((topTimer = null), this.publishTop()), 5 * 60e3)));
     on('player:track', () => this.publishActivity());
     on('player:state', () => this.publishActivity());
     // Nom / photo changés dans le profil : la fiche suit
@@ -310,10 +314,20 @@ export const social = {
     const likesRef = doc(db, 'people', this.code, 'playlists', LIKES);
     const liked = state.library.liked;
     const lsig = this.sharingLikes ? `${liked.length}:${liked.slice(0, 50).map((t) => t.id).join(',')}` : null;
+    // Plus de LIKES_PART titres : la suite va dans des fiches « __likes~1 », « __likes~2 »… (une fiche Firestore
+    // ne peut pas dépasser 1 Mo : avant, les amis ne voyaient que les 2 000 premiers likes)
+    const parts = this.sharingLikes ? Math.ceil(liked.length / LIKES_PART) : 0;
+    for (let i = 1; i < parts; i++) seen.add(`${LIKES}~${i}`); // les fiches en trop (likes retirés, partage coupé) sont supprimées plus bas
     if (lsig !== this._pubSig.get(LIKES) && (lsig || this._pubSig.has(LIKES))) {
       if (lsig) {
-        setDoc(likesRef, { owner: this.code, ownerName: state.profile.name, visibility: 'likes', name: 'Titres likés', tracks: liked.slice(0, 2000).map(slim).filter(Boolean), collaborators: [], editor: this.code, updatedAt: Date.now() })
+        const chunk = (i) => liked.slice(i * LIKES_PART, (i + 1) * LIKES_PART).map(slim).filter(Boolean);
+        setDoc(likesRef, { owner: this.code, ownerName: state.profile.name, visibility: 'likes', name: 'Titres likés', tracks: chunk(0), parts: Math.max(1, parts), total: liked.length, collaborators: [], editor: this.code, updatedAt: Date.now() })
           .then(() => this._pubSig.set(LIKES, lsig)).catch((e) => console.warn('Likes partagés :', e.message));
+        for (let i = 1; i < parts; i++) {
+          const id = `${LIKES}~${i}`;
+          setDoc(doc(db, 'people', this.code, 'playlists', id), { owner: this.code, visibility: 'likes-part', tracks: chunk(i), collaborators: [], editor: this.code, updatedAt: Date.now() })
+            .then(() => this._pubSig.set(id, lsig)).catch(() => {});
+        }
       } else deleteDoc(likesRef).then(() => this._pubSig.delete(LIKES)).catch(() => {});
     }
     for (const id of [...this._pubSig.keys()]) if (!seen.has(id)) deleteDoc(doc(db, 'people', this.code, 'playlists', id)).then(() => this._pubSig.delete(id)).catch(() => {});
@@ -364,7 +378,10 @@ export const social = {
   // Titres likés d'un ami (null s'il ne les partage pas)
   async friendLikes(code) {
     const s = await getDoc(doc(db, 'people', code, 'playlists', LIKES)).catch(() => null);
-    return s?.exists() ? s.data().tracks || [] : null;
+    if (!s?.exists()) return null;
+    const d = s.data();
+    const rest = await Promise.all(Array.from({ length: Math.max(0, (d.parts || 1) - 1) }, (_, i) => getDoc(doc(db, 'people', code, 'playlists', `${LIKES}~${i + 1}`)).then((x) => x.data()?.tracks || []).catch(() => [])));
+    return [...(d.tracks || []), ...rest.flat()];
   },
   // Playlists publiques d'un ami (pour son profil), et une playlist partagée précise
   async publicPlaylists(code) {

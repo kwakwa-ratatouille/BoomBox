@@ -1,6 +1,6 @@
 // Lecteur : moteurs de lecture (YouTube intégré ou audio direct via yt-dlp), file d'attente,
 // aléatoire, répétition, lecture automatique, minuteur de sommeil, contrôles système.
-import { state, emit, bus, api, ls, setting, addHistory } from './state.js';
+import { state, emit, bus, api, ls, setting, addHistory, setHeard } from './state.js';
 import { toast, artistNames } from './ui.js';
 import { automix } from './automix.js';
 import { isNative, platform, localApi } from './native.js';
@@ -598,6 +598,9 @@ export const player = {
     bus.addEventListener('player:queue', () => this._mixPlan !== undefined && this._automixOn() && setTimeout(() => this._planNext(), 0));
     this._setupMediaSession();
     window.addEventListener('beforeunload', () => this._persist());
+    // Appli fermée en plein son : le temps écouté jusque-là est noté
+    window.addEventListener('pagehide', () => this._histEntry && setHeard(this._histEntry, this._heard));
+    document.addEventListener('visibilitychange', () => document.hidden && this._histEntry && setHeard(this._histEntry, this._heard));
     emit('player:track');
     emit('player:queue');
   },
@@ -778,10 +781,7 @@ export const player = {
     this._xfading = false;
     this._mixPlan = null;
     this._preparedFor = null;
-    this._logged = false;
-    this._heard = 0; // secondes réellement écoutées de ce son (pour les stats)
-    this._heardAt = 0;
-    this._heardPos = null;
+    this._newListen();
     this._fallbackTried = null;
     this._retryTried = null;
     this.buffering = true;
@@ -803,6 +803,18 @@ export const player = {
     emit('player:state');
     this._persist();
     document.title = `${track.title} · ${artistNames(track)}`;
+  },
+
+  // Fin d'une écoute et début d'une nouvelle : le temps écouté est noté sur l'écoute qui se termine. Une écoute compte
+  // après 30 s réellement entendues (la moitié pour un son de moins d'une minute) : pauses, chargements, avance
+  // rapide et sauts dans le son ne comptent pas, et le compteur repart de zéro à chaque nouvelle écoute.
+  _newListen() {
+    if (this._histEntry) setHeard(this._histEntry, this._heard);
+    this._histEntry = null;
+    this._logged = false;
+    this._heard = 0; // secondes réellement écoutées de ce son (pour les stats)
+    this._heardAt = 0;
+    this._heardPos = null;
   },
 
   toggle() {
@@ -834,6 +846,7 @@ export const player = {
     // Invité qui écoute la Jam : en fin de titre on attend le suivant choisi par l'hôte (pas notre propre playlist)
     if (auto && this._followsJam()) return;
     if (this.repeat === 'one' && auto) {
+      this._newListen(); // en boucle : chaque tour est une nouvelle écoute (avant, seul le premier comptait)
       this.seek(0);
       return this.play();
     }
@@ -882,6 +895,7 @@ export const player = {
   // Précédent / suivant lancent toujours la lecture (comme Spotify), même depuis la pause
   prev() {
     if (this.time() > 3 || this.pos <= 0) {
+      if (this._logged) this._newListen(); // son déjà compté, réécouté depuis le début : nouvelle écoute
       this.seek(0);
       if (this.paused) this.play();
       return;
@@ -1282,7 +1296,7 @@ export const player = {
     const d = this.duration();
     if (!this._logged && this._heard >= (d && d < 60 ? d / 2 : 30)) {
       this._logged = true;
-      addHistory(this.track);
+      this._histEntry = addHistory(this.track);
     }
     if (this.sleep?.at && Date.now() >= this.sleep.at) {
       this.sleep = null;

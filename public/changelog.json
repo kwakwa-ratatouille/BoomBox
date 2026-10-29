@@ -1,5 +1,20 @@
 [
   {
+    "version": "2026.1029.1504",
+    "title": "Appareils liés, « En direct » et classement plus juste",
+    "items": [
+      "Appareils liés (comme Spotify) : quand rien ne joue sur ton PC, il affiche en direct le son de ton téléphone (et inversement), sans le jouer. Pause et suivant pilotent l’autre appareil ; lancer un son ici le joue ici. Désactivable : Paramètres → Suivre mes autres appareils.",
+      "Accueil : « En direct » montre ce que tes amis écoutent en ce moment (ou à l’instant). Touche la photo pour son profil, le son pour l’écouter.",
+      "Accueil : ton récap du mois (à partir du 20) et de l’année (de décembre à mi-janvier) sont mis en avant.",
+      "Classement : un son écouté en boucle compte à chaque tour, et les minutes comptent le temps vraiment écouté (plus la durée entière du son après 30 s). Il se met à jour dans les 5 minutes.",
+      "Recherche : clic droit, appui sur ⋯ ou bouton ⋯ sur téléphone pour le « Meilleur résultat » (playlist, likés, file d’attente…).",
+      "Messages : stickers plus petits sans bulle autour, réactions plus discrètes.",
+      "Profils : les amis voient tous tes titres likés (avant : 2 000 maximum).",
+      "Paramètres : « Liker les titres des playlists que j’enregistre » peut être désactivé."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1438",
     "title": "Éditeur de transitions plus lisible",
     "items": [

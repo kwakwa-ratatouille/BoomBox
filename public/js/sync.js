@@ -1,7 +1,7 @@
 // Synchronisation entre appareils via Firestore (fonctionne par Internet, sans serveur à faire tourner) :
 // appareils connectés (contrôle à distance façon Spotify Connect) et Jam (écoute à plusieurs).
 // La bibliothèque, elle, se synchronise toute seule (voir state.js).
-import { state, emit, on, ls, api } from './state.js';
+import { state, emit, on, ls, api, setting } from './state.js';
 import { player } from './player.js';
 import { toast } from './ui.js';
 import { cloud, db, doc, collection, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, arrayUnion, arrayRemove, runTransaction, deleteField } from './cloud.js';
@@ -78,10 +78,29 @@ export const sync = {
       .filter((d) => d.id === state.device.id || (d.online !== false && now - (d.lastSeen || 0) < ONLINE_MS))
       .map((d) => ({ id: d.id, name: d.name, kind: d.kind, playing: !!(d.state?.track && !d.state.paused) }));
     if (this.target && !this.devices.some((d) => d.id === this.target)) {
-      toast("L'appareil piloté s'est déconnecté");
-      this.control(null);
+      if (!this._auto) toast("L'appareil piloté s'est déconnecté");
+      this.control(null, { auto: true });
     }
+    this._autoFollow();
     emit('sync');
+  },
+
+  // Appareils liés (comme Spotify, réglage « Suivre mes autres appareils », activé par défaut) : un appareil qui ne
+  // joue rien affiche en direct le son qui passe sur un autre (titre, avancée, pause) sans le jouer lui-même.
+  // Pause / suivant / précédent pilotent l'autre appareil ; lancer un son ici reprend la main (voir _autoRoute).
+  _autoFollow() {
+    if (!setting('followDevices', true) || this.target || this.jam || Date.now() < (this._noAutoUntil || 0)) return;
+    if (player.track && !player.paused) return;
+    const now = Date.now();
+    const other = this.devices.find((d) => d.id !== state.device.id && d.playing && now - (this.remote[d.id]?.ts || 0) < 15 * 60e3);
+    if (other) this.control(other.id, { auto: true });
+  },
+  // Suivi automatique : lancer un son ou une liste ici, c'est le jouer ici (l'autre appareil se met en pause)
+  _autoRoute(action) {
+    if (!this._auto || !this.target || !['playList', 'playTrack', 'playRadio', 'jumpTo'].includes(action)) return false;
+    this.sendCommand(this.target, 'pause');
+    this.control(null);
+    return true;
   },
 
   sendCommand(target, action, args = []) {
@@ -104,13 +123,16 @@ export const sync = {
   },
 
   // ----- Contrôle d'un autre appareil -----
-  control(deviceId) {
+  control(deviceId, { auto = false } = {}) {
+    // Suivi automatique quitté à la main (choix de cet appareil, son lancé ici) : pas de nouveau suivi avant 20 min
+    if (this._auto && !auto) this._noAutoUntil = Date.now() + 20 * 60e3;
+    this._auto = auto && !!deviceId;
     if (!deviceId || deviceId === state.device.id) {
       this.target = null;
       player.remoteSender = null;
     } else {
       this.target = deviceId;
-      player.remoteSender = (action, args) => this.sendCommand(deviceId, action, args);
+      player.remoteSender = (action, args) => (this._autoRoute(action) ? player[action](...args) : this.sendCommand(deviceId, action, args));
       if (!player.paused) player.pause();
     }
     emit('sync');

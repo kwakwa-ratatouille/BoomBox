@@ -420,7 +420,7 @@ export async function createPlaylist(name, tracks = [], description = '', extra 
   const uniq = tracks.filter((t) => t?.id && !seen.has(t.id) && seen.add(t.id));
   await batched([(b) => b.set(ref, p), ...itemOps(ref.id, uniq, 0)]);
   // Option (activée par défaut) : tout titre ajouté à une playlist est aussi liké
-  if (uniq.length && setting('autoLike', true)) likeMany(uniq).catch(() => {});
+  if (uniq.length && setting('autoLike', true) && setting('likeSavedPlaylists', true)) likeMany(uniq).catch(() => {});
   return { id: ref.id, ...p };
 }
 
@@ -655,11 +655,23 @@ export async function getReports(n = 60) {
 }
 
 // ---------- Historique & stats ----------
+// Renvoie de quoi noter ensuite le temps réellement écouté (setHeard), à la fin de l'écoute
 export function addHistory(track) {
   const h = { ...cleanTrack(track), playedAt: Date.now() };
   if (hist?.pid === state.profile.id) hist.list.unshift(h);
-  addDoc(pcol('history'), h).catch(() => {});
+  const ref = addDoc(pcol('history'), h).catch(() => null);
+  emit('history', h);
+  return { h, ref };
 }
+// Temps réellement écouté (secondes) : les minutes du classement et des stats comptent ce temps-là, pas la durée
+// entière du son (avant : 30 s d'écoute d'un son de 4 min comptaient 4 min)
+export function setHeard(entry, sec) {
+  if (!entry?.h || !(sec > 0)) return;
+  entry.h.heard = Math.round(sec);
+  entry.ref.then((r) => r && updateDoc(r, { heard: entry.h.heard })).catch(() => {});
+}
+// Durée comptée d'une écoute : le temps écouté s'il est connu (au plus la durée du son), sinon la durée du son
+const listenSec = (x) => (x.heard != null ? Math.min(x.heard, x.duration || x.heard) : x.duration || 0);
 
 // Historique : les écoutes ne changent jamais une fois écrites. On garde tout dans le cache de l'appareil et on ne
 // demande au serveur que les écoutes plus récentes que la dernière synchro (au lieu de relire 5 000 documents
@@ -771,7 +783,7 @@ export async function getStats(days = 30) {
       artists.set(k, ea);
     }
   };
-  for (const x of h) count(x, 1, x.duration || 0);
+  for (const x of h) count(x, 1, listenSec(x));
   for (const e of imported) {
     let n = 0;
     let sec = 0;
@@ -807,7 +819,7 @@ export async function getStatsFull(days = 30, range = null, top = 10) {
   const prevSince = all ? 0 : since - days * DAY;
   const [live, imported] = await Promise.all([getHistory(5000).catch(() => []), getImported().catch(() => [])]);
   const events = [];
-  for (const x of live) events.push({ ts: x.playedAt, n: 1, sec: x.duration || 0, t: x, exact: true });
+  for (const x of live) events.push({ ts: x.playedAt, n: 1, sec: listenSec(x), t: x, exact: true });
   for (const e of imported) {
     for (const [k, c] of Object.entries(e.b || {})) {
       const month = k.length === 7;

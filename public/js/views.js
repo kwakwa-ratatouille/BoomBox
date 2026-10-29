@@ -4,9 +4,9 @@ import { html, raw, esc, icon, fmtTotal, fmtAgo, plural, toast, promptText, conf
 import { state, api, ls, emit, setting, saveSettings, toggleFollow, isFollowing, createPlaylist, addToPlaylist, getHistory, updatePlaylist, deletePlaylist, restorePlaylist, purgePlaylist, TRASH_DAYS, sharePlaylist, movePlaylist, moveRoot, rootEntries, folderOf, followMany, setKnownReleases, setFollowThumbs, likeAllPlaylistTracks, createFolder, renameFolder, deleteFolder, movePlaylistToFolder, removeItems, isLiked, toggleLike } from './state.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
-import { cover, playlistCover, likedCover, trackList, card, rememberTracks, playlistSubmenu, playKey, openPlaylistPicker } from './components.js';
+import { cover, playlistCover, likedCover, trackList, card, rememberTracks, playlistSubmenu, playKey, openPlaylistPicker, registerCard } from './components.js';
 import { mergeResults, fixTrack } from './twins.js';
-import { sendToFriend } from './views-social.js';
+import { sendToFriend, mountLiveStrip } from './views-social.js';
 import { playlistShareItems } from './views-share.js';
 import { dailyMixes, lastMixes } from './dailymix.js';
 import { isNative } from './native.js';
@@ -243,6 +243,8 @@ export async function home(el, _p, ctx) {
   const lib = state.library;
   el.innerHTML = String(html`<div class="home-bg"></div><div class="page" style="position:relative">
     <div class="quick" id="quick"></div>
+    <div id="home-recap"></div>
+    <div id="home-live"></div>
     <div id="home-sections">${loading}</div>
   </div>`);
 
@@ -258,6 +260,8 @@ export async function home(el, _p, ctx) {
     .map((q) => String(html`<div class="quick-item" data-href="${q.href}">${q.coverHtml}<b class="ellipsis">${q.name}</b><button class="card-play" data-play="${q.play}">${icon('play')}</button></div>`))
     .join('');
 
+  mountLiveStrip(el.querySelector('#home-live'));
+  homeRecap(el.querySelector('#home-recap'));
   const history = await getHistory(400).catch(() => []);
   if (!ctx.alive()) return;
   const sections = [];
@@ -533,9 +537,12 @@ export async function search(el, params, ctx) {
   }
   rememberTracks([...songs, ...res.videos]);
   if (top && (top.type === 'song' || top.type === 'video')) rememberTracks([top]);
+  // Clic droit, appui long ou bouton ⋯ : même menu qu'un son ou un album (ajouter à une playlist, file d'attente…)
+  const topCk = top ? registerCard(top.type === 'video' ? { ...top, type: 'song' } : top) : '';
   const topHtml = top
     ? html`<div><div class="section-head"><h2>Meilleur résultat</h2></div>
-      <div class="top-result" data-href="${top.type === 'artist' ? `#/artist/${top.id}` : top.type === 'album' ? `#/album/${top.id}` : ''}">
+      <div class="top-result" data-ck="${topCk}" data-href="${top.type === 'artist' ? `#/artist/${top.id}` : top.type === 'album' ? `#/album/${top.id}` : ''}">
+        <button class="icon-btn tr-more" data-cardmenu="${topCk}" aria-label="Plus d'options" title="Plus d'options">${icon('more', 22)}</button>
         ${cover(top, top.type === 'artist' ? 'round' : '')}
         <h3>${top.name || top.title}</h3>
         <div class="muted">${top.type === 'artist' ? html`<span class="chip" style="background:#121212">Artiste</span>` : top.type === 'album' ? 'Album' : artistLinks(top)}</div>
@@ -1565,4 +1572,29 @@ export async function library(el) {
   }
   render();
   return { onLibrary: () => !document.querySelector('.ro-drag') && render() };
+}
+
+// Accueil : le récap mis en avant au bon moment. Celui de l'année du 1er décembre au 15 janvier, celui du mois à
+// partir du 20 (et un jour sur trois avant, pour le faire découvrir). Refermable : il ne revient qu'à la période suivante.
+function homeRecap(box) {
+  if (!box) return;
+  const now = new Date();
+  const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const yearTime = now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15);
+  const monthName = now.toLocaleDateString('fr-FR', { month: 'long' });
+  const pick = yearTime
+    ? { key: `y${y}`, href: `#/wrapped?year=${y}`, kicker: 'Ton récap de l’année', title: `Ton ${y} en musique`, sub: 'Tes sons, tes artistes, tes minutes : tout ton année, à partager en story.', cls: 'year' }
+    : now.getDate() >= 20 || now.getDate() % 3 === 0
+      ? { key: `m${now.getFullYear()}-${now.getMonth()}`, href: '#/wrapped?period=month', kicker: 'Ton récap du mois', title: `Ton mois de ${monthName}`, sub: 'Ton top du mois, tes découvertes et ton temps d’écoute.', cls: 'month' }
+      : null;
+  if (!pick || ls.get(`boombox.recapHidden.${pick.key}`)) return;
+  box.innerHTML = String(html`<a class="home-recap ${pick.cls}" href="${pick.href}">
+    <div><small>${pick.kicker}</small><b>${pick.title}</b><span>${pick.sub}</span></div>
+    <span class="hr-go">Voir</span><button class="icon-btn hr-x" aria-label="Masquer" title="Masquer">${icon('close', 18)}</button></a>`);
+  box.querySelector('.hr-x').onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    ls.set(`boombox.recapHidden.${pick.key}`, true);
+    box.innerHTML = '';
+  };
 }

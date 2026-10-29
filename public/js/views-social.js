@@ -592,3 +592,29 @@ function reactBar(el, code, at, onReply) {
     close();
   };
 }
+
+// ---------- Accueil : « En direct », qui écoute quoi en ce moment ----------
+// Amis en écoute d'abord (avec l'égaliseur animé), puis ceux qui ont écouté dans la dernière heure.
+// Toucher la photo ouvre son profil ; toucher le son le lance chez soi. Se met à jour en direct.
+export function mountLiveStrip(box) {
+  const draw = () => {
+    if (!box.isConnected) return off();
+    const recent = sortedFriends().filter((f) => f.share && f.activity?.track && (listeningNow(f.activity) || Date.now() - (f.activity.at || 0) < 3600e3));
+    const live = recent.filter((f) => listeningNow(f.activity)).length;
+    if (!recent.length) return void (box.innerHTML = '');
+    box.innerHTML = String(html`<section class="section live-strip"><div class="section-head"><h2>${live ? html`<i class="live-dot"></i>En direct` : 'Écouté à l’instant'}</h2><a href="#/friends">${live ? plural(live, 'ami') + ' en écoute' : 'Tous les amis'}</a></div>
+      <div class="ls-row">${recent.slice(0, 20).map((f) => {
+        const a = f.activity;
+        const now = listeningNow(a);
+        return html`<div class="ls-item ${now ? 'on' : ''}">
+          <a class="ls-av" href="#/user/${f.code}" title="Profil de ${f.name}">${avatar(f)}${now ? html`<i class="eq"><b></b><b></b><b></b></i>` : ''}</a>
+          <b class="ellipsis">${f.name}</b>
+          <button class="ls-track" data-play-act="${f.code}" title="Écouter « ${a.track.title} »"><span class="ellipsis">${a.track.title}</span><small class="ellipsis muted">${now ? artists(a.track) : ago(a.at)}</small></button>
+        </div>`;
+      })}</div></section>`);
+    bindActivity(box);
+  };
+  const off = listen('social', draw);
+  const timer = setInterval(() => (box.isConnected ? draw() : (clearInterval(timer), off())), 60e3);
+  draw();
+}

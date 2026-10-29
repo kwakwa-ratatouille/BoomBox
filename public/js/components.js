@@ -549,6 +549,13 @@ export function card(item, { sub, href, play, isNew } = {}) {
 
 // ---------- Clic droit sur une carte (album, single, EP, playlist, artiste, titre) ----------
 const cardItems = new Map();
+// Élément hors carte (ex. « Meilleur résultat » de la recherche) qui a le même menu : renvoie sa clé data-ck
+export function registerCard(item) {
+  if (!item?.id) return '';
+  const ck = `${item.type || 'song'}:${item.id}`;
+  cardItems.set(ck, item);
+  return ck;
+}
 const tracksCache = new Map();
 async function cardTracks(item) {
   const k = `${item.type}:${item.id}`;
@@ -714,6 +721,13 @@ export function setupDelegation() {
       e.preventDefault();
       return playKey(playBtn.dataset.play);
     }
+    // Bouton ⋯ d'un élément à menu (« Meilleur résultat ») : même menu que le clic droit
+    const cm = e.target.closest('[data-cardmenu]');
+    if (cm && cardItems.has(cm.dataset.cardmenu)) {
+      e.stopPropagation();
+      const r = cm.getBoundingClientRect();
+      return cardMenu(cardItems.get(cm.dataset.cardmenu), r.left - 200, r.bottom);
+    }
     const act = e.target.closest('[data-act]');
     const info = rowInfo(e.target);
     if (act && info) {
@@ -741,7 +755,7 @@ export function setupDelegation() {
       const pid = e.target.closest('.card[data-href^="#/playlist/"], .quick-item[data-href^="#/playlist/"]')?.dataset.href.split('/')[2];
       const p = pid && state.library.playlists.find((x) => x.id === pid);
       // Autres cartes : album, single, EP, playlist YouTube, artiste, titre
-      const ck = !p && e.target.closest('.card[data-ck]')?.dataset.ck;
+      const ck = !p && e.target.closest('.card[data-ck], .top-result[data-ck]')?.dataset.ck;
       if (ck && cardItems.has(ck)) {
         e.preventDefault();
         return cardMenu(cardItems.get(ck), e.clientX, e.clientY);
