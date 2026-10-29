@@ -37,38 +37,46 @@ const WORKLET = `registerProcessor('bbx-pitch', class extends AudioWorkletProces
     this.w = 0;
     this.p = 0;
   }
-  read(b, x) {
-    const N = this.N;
-    x = ((x % N) + N) % N;
-    const i = Math.floor(x);
-    const f = x - i;
-    return b[i] * (1 - f) + b[(i + 1) % N] * f;
-  }
+  // Version allégée (le son saccadait) : pas de modulo ni de fonctions par échantillon, mono si l'entrée l'est
   process(ins, outs) {
     const inp = ins[0];
     const out = outs[0];
     const n = out[0].length;
     const W = this.W;
+    const N = this.N;
     const step = (this.r - 1) / W;
+    const L = inp && inp.length ? inp[0] : null;
+    const R = inp && inp.length > 1 ? inp[1] : L;
+    const bl = this.b[0];
+    const br = this.b[1];
+    const oL = out[0];
+    const oR = out[1] || out[0];
+    let w = this.w;
+    let p = this.p;
     for (let k = 0; k < n; k++) {
-      for (let c = 0; c < 2; c++) {
-        const src = inp && inp.length ? inp[Math.min(c, inp.length - 1)] : null;
-        this.b[c][this.w] = src ? src[k] : 0;
-      }
-      const p1 = this.p;
-      const p2 = (this.p + 0.5) % 1;
-      const g1 = Math.sin(Math.PI * p1) ** 2;
-      const g2 = 1 - g1;
-      const d1 = (1 - p1) * W + 2;
-      const d2 = (1 - p2) * W + 2;
-      for (let c = 0; c < out.length; c++) {
-        const bb = this.b[Math.min(c, 1)];
-        out[c][k] = g1 * this.read(bb, this.w - d1) + g2 * this.read(bb, this.w - d2);
-      }
-      this.w = (this.w + 1) % this.N;
-      this.p += step;
-      if (this.p >= 1) this.p -= 1;
+      bl[w] = L ? L[k] : 0;
+      br[w] = R ? R[k] : 0;
+      const p2 = p < 0.5 ? p + 0.5 : p - 0.5;
+      const s1 = Math.sin(3.141592653589793 * p);
+      const g1 = s1 * s1;
+      let x1 = w - ((1 - p) * W + 2);
+      let x2 = w - ((1 - p2) * W + 2);
+      if (x1 < 0) x1 += N;
+      if (x2 < 0) x2 += N;
+      const i1 = x1 | 0;
+      const f1 = x1 - i1;
+      const j1 = i1 + 1 === N ? 0 : i1 + 1;
+      const i2 = x2 | 0;
+      const f2 = x2 - i2;
+      const j2 = i2 + 1 === N ? 0 : i2 + 1;
+      oL[k] = g1 * (bl[i1] + (bl[j1] - bl[i1]) * f1) + (1 - g1) * (bl[i2] + (bl[j2] - bl[i2]) * f2);
+      if (oR !== oL) oR[k] = g1 * (br[i1] + (br[j1] - br[i1]) * f1) + (1 - g1) * (br[i2] + (br[j2] - br[i2]) * f2);
+      w = w + 1 === N ? 0 : w + 1;
+      p += step;
+      if (p >= 1) p -= 1;
     }
+    this.w = w;
+    this.p = p;
     return true;
   }
 });`;
