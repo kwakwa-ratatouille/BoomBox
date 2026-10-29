@@ -3,7 +3,8 @@
     "version": "2026.1029.2058",
     "title": "Photo de profil des amis (pour de bon)",
     "items": [
-      "Profil d’un ami : sa grande photo ronde s’affiche (elle restait invisible)."
+      "Profil d’un ami : sa grande photo ronde s’affiche (elle restait invisible).",
+      "La photo est cadrée comme la personne l’a recadrée (elle apparaissait trop zoomée)."
     ],
     "date": "2026-10-29"
   },
