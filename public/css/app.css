@@ -2398,3 +2398,8 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 /* Recadrage de la photo de profil : cadre rond */
 .pe-round { width: min(260px, 70vw); aspect-ratio: 1; border-radius: 50%; margin: 12px auto 0; background-color: var(--elev-2); box-shadow: 0 0 0 3px var(--accent); }
 #pe-pcrop .pe-crop { margin-top: 8px; }
+/* Téléphone : « Lecture sur … » dans le mini-lecteur sans être coupé (le mini-lecteur grandit un peu) */
+@media (max-width: 768px) {
+  #app.has-remote #playerbar { height: auto; min-height: 64px; padding-top: 6px; padding-bottom: 6px; row-gap: 2px; }
+  #app.has-remote .remote-banner { margin-top: 0; font-size: 12px; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+}
