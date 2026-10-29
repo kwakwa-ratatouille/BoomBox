@@ -10,6 +10,7 @@ import { isNative, localApi } from './native.js';
 
 const BARS = [2, 4, 8, 16, 32];
 const cache = new Map(); // id -> { buf (AudioBuffer), peaks, duration }
+const RES = 100; // précision de la forme d'onde (valeurs par seconde)
 const BEFORE = 12; // secondes affichées avant la transition
 const AFTER = 12; // et après
 
@@ -21,7 +22,7 @@ async function loadSound(id) {
   });
   const buf = await new OfflineAudioContext(2, 44100, 44100).decodeAudioData(data);
   const d = buf.getChannelData(0);
-  const n = Math.ceil(buf.duration * 40); // 40 valeurs par seconde
+  const n = Math.ceil(buf.duration * RES); // RES valeurs par seconde
   const step = Math.floor(d.length / n);
   const peaks = new Float32Array(n);
   for (let i = 0; i < n; i++) {
@@ -103,51 +104,47 @@ export async function openMixEditor(p, a, b) {
       // Frise : t = secondes par rapport au début de la transition (0) ; A y est placé à out, B à inn
       const span = () => BEFORE + len() + AFTER;
       const tx = (t, W) => ((t + BEFORE) / span()) * W;
+      const styleNow = () => (style === 'auto' ? auto0?.style || 'crossfade' : style);
+      // Volume d'un son à l'instant t de la frise (0 = début de la transition)
+      const vol = (t, top) => (t < 0 ? (top ? 1 : 0) : t > len() ? (top ? 0 : 1) : curves(styleNow(), t / len())[top ? 0 : 1]);
       const drawOne = (c, snd, offset, color, id, top) => {
         const g = c.getContext('2d');
         const W = (c.width = c.clientWidth * devicePixelRatio);
         const H = (c.height = c.clientHeight * devicePixelRatio);
         g.clearRect(0, 0, W, H);
-        // Zone de transition
         g.fillStyle = 'rgba(255,255,255,0.05)';
         g.fillRect(tx(0, W), 0, tx(len(), W) - tx(0, W), H);
-        // Grille des temps (fine) et des mesures (marquée)
+        // Grille : un trait par temps, plus marqué à chaque mesure
         const an = automix.get(id);
         if (an?.beat) {
-          const t0 = -BEFORE + offset;
-          let k = Math.ceil((t0 - an.firstBeat) / an.beat);
-          for (let s = an.firstBeat + k * an.beat; s < offset + len() + AFTER; s += an.beat, k++) {
-            const x = tx(s - offset, W);
-            g.fillStyle = k % 4 === 0 ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.08)';
-            g.fillRect(x, 0, k % 4 === 0 ? 1.5 * devicePixelRatio : devicePixelRatio, H);
+          let k = Math.ceil((-BEFORE + offset - an.firstBeat) / an.beat);
+          for (let t = an.firstBeat + k * an.beat; t < offset + len() + AFTER; t += an.beat, k++) {
+            const x = Math.round(tx(t - offset, W));
+            g.fillStyle = k % 4 === 0 ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.07)';
+            g.fillRect(x, 0, k % 4 === 0 ? 2 : 1, H);
           }
         }
-        // Forme d'onde
-        if (snd) {
+        if (!snd) return;
+        // Une colonne = le plus fort de toutes les valeurs qu'elle couvre (stable quand on fait glisser)
+        const col = 3 * devicePixelRatio;
+        const perPx = (span() / W) * RES;
+        for (let px = 0; px < W; px += col) {
+          const t = -BEFORE + (px / W) * span();
+          const s0 = Math.floor((t + offset) * RES);
+          const s1 = Math.max(s0 + 1, Math.floor(s0 + perPx * col));
+          let v = 0;
+          for (let k = Math.max(0, s0); k < Math.min(snd.peaks.length, s1); k++) v = Math.max(v, snd.peaks[k]);
+          if (!v) continue;
+          const loud = vol(t, top);
+          const h = Math.max(2, v * H * 0.9 * (0.15 + 0.85 * loud));
+          g.globalAlpha = 0.25 + 0.75 * loud;
           g.fillStyle = color;
-          for (let px = 0; px < W; px += 2 * devicePixelRatio) {
-            const s = -BEFORE + (px / W) * span() + offset;
-            if (s < 0 || s >= snd.duration) continue;
-            const v = snd.peaks[Math.floor(s * 40)] || 0;
-            const h = Math.max(1, v * H * 0.85);
-            g.fillRect(px, (H - h) / 2, 1.4 * devicePixelRatio, h);
-          }
+          g.fillRect(px, (H - h) / 2, col - devicePixelRatio, h);
         }
-        // Courbe de volume pendant la transition
-        g.strokeStyle = top ? '#ff9ad5' : '#ffd36b';
-        g.lineWidth = 2 * devicePixelRatio;
-        g.beginPath();
-        for (let i = 0; i <= 40; i++) {
-          const k = i / 40;
-          const v = curves(style === 'auto' ? auto0?.style || 'crossfade' : style, k)[top ? 0 : 1];
-          const x = tx(k * len(), W);
-          const y = H * 0.9 - v * H * 0.8;
-          i ? g.lineTo(x, y) : g.moveTo(x, y);
-        }
-        g.stroke();
+        g.globalAlpha = 1;
       };
       const paint = () => {
-        drawOne(ca, A, out, '#f0a35e', a.id, true);
+        drawOne(ca, A, out, '#f29b52', a.id, true);
         drawOne(cb, B, inn, '#6f8cff', b.id, false);
         $('#mx-out-l').textContent = fmtTime(out);
         $('#mx-in-l').textContent = fmtTime(inn);
@@ -156,92 +153,114 @@ export async function openMixEditor(p, a, b) {
         $('#mx-ib').textContent = info(b.id);
         w.querySelectorAll('[data-style]').forEach((x) => x.classList.toggle('active', x.dataset.style === style));
       };
-      // Glisser un son : la frise bouge sous le doigt / la souris, calée sur les temps à la fin
+      // Calage sur le temps le plus proche, pendant le glisser (on sent les temps « cliquer » ensemble)
       const snap = (id, t) => {
         const an = automix.get(id);
         return an?.beat ? an.firstBeat + Math.round((t - an.firstBeat) / an.beat) * an.beat : t;
       };
+      // Écoute : se joue à partir de « from » (secondes de la frise) avec le réglage du moment ; tout changement la
+      // relance au même endroit, pour entendre le résultat tout de suite
+      const ph = $('#mx-ph');
+      let playing = false;
+      let pos = -6; // reprise de l'écoute (secondes de la frise)
+      const now = () => (playing ? playT0 + (ctx.currentTime - ctxT0) : pos);
+      const setBtn = () => ($('#mx-play').innerHTML = String(icon(playing ? 'pause' : 'play', 26)));
+      const start = (from) => {
+        stop();
+        if (!A || !B) return toast('Chargement des sons…');
+        ctx ||= new (window.AudioContext || window.webkitAudioContext)();
+        ctx.resume?.();
+        from = Math.max(-Math.min(BEFORE, out), Math.min(len() + AFTER - 1, from));
+        const t0 = ctx.currentTime + 0.04;
+        const end = len() + AFTER;
+        const voice = (snd, top) => {
+          const offset = top ? out : inn;
+          const src = ctx.createBufferSource();
+          src.buffer = snd.buf;
+          const g = ctx.createGain();
+          src.connect(g).connect(ctx.destination);
+          const step = 0.05;
+          const vals = new Float32Array(Math.max(2, Math.ceil((end - from) / step)));
+          for (let i = 0; i < vals.length; i++) vals[i] = vol(from + i * step, top);
+          g.gain.setValueCurveAtTime(vals, t0, end - from);
+          const startIn = top ? 0 : Math.max(0, -from); // B attend le début de la transition
+          src.start(t0 + startIn, Math.max(0, offset + from + startIn));
+          nodes.push(src);
+        };
+        voice(A, true);
+        voice(B, false);
+        playT0 = from;
+        ctxT0 = t0;
+        playing = true;
+        setBtn();
+        ph.style.display = 'block';
+        const tick = () => {
+          const t = now();
+          if (t >= end) return pause(-6);
+          ph.style.left = `${((t + BEFORE) / span()) * 100}%`;
+          raf = requestAnimationFrame(tick);
+        };
+        tick();
+      };
+      const pause = (at = now()) => {
+        pos = at;
+        stop();
+        playing = false;
+        setBtn();
+        if (at === -6) ph.style.display = 'none';
+      };
+      const play = () => (playing ? pause() : start(pos));
+      // Après un réglage : on redessine, et l'écoute en cours repart au même endroit avec le nouveau réglage
+      let relaunch = 0;
+      const changed = () => {
+        paint();
+        if (!playing) return;
+        const at = now();
+        clearTimeout(relaunch);
+        relaunch = setTimeout(() => start(at), 120);
+      };
       const drag = (c, which) => {
         let x0 = null;
         let v0 = 0;
+        let resume = null;
         c.addEventListener('pointerdown', (e) => {
           x0 = e.clientX;
           v0 = which === 'a' ? out : inn;
           c.setPointerCapture(e.pointerId);
-          stop();
+          resume = playing ? now() : null;
+          if (playing) pause();
         });
         c.addEventListener('pointermove', (e) => {
           if (x0 == null) return;
           const dt = ((x0 - e.clientX) / c.clientWidth) * span();
-          if (which === 'a') out = Math.max(5, Math.min((A?.duration || a.duration || 240) - 1, v0 + dt));
-          else inn = Math.max(0, Math.min((B?.duration || b.duration || 240) - 5, v0 + dt));
+          if (which === 'a') out = Math.max(5, Math.min((A?.duration || a.duration || 240) - 1, snap(a.id, v0 + dt)));
+          else inn = Math.max(0, Math.min((B?.duration || b.duration || 240) - 5, snap(b.id, v0 + dt)));
           paint();
         });
         const end = () => {
           if (x0 == null) return;
           x0 = null;
-          if (which === 'a') out = snap(a.id, out);
-          else inn = Math.max(0, snap(b.id, inn));
           paint();
+          if (resume != null) start(resume);
         };
         c.addEventListener('pointerup', end);
         c.addEventListener('pointercancel', end);
       };
       drag(ca, 'a');
       drag(cb, 'b');
-      // Écoute dans l'éditeur : A puis B mélangés selon les courbes, curseur qui avance
-      const ph = $('#mx-ph');
-      const play = () => {
-        if (raf) return (stop(), ($('#mx-play').innerHTML = String(icon('play', 26))), (ph.style.display = 'none'));
-        if (!A || !B) return toast('Chargement des sons…');
-        ctx ||= new (window.AudioContext || window.webkitAudioContext)();
-        ctx.resume?.();
-        const L = len();
-        const st = style === 'auto' ? auto0?.style || 'crossfade' : style;
-        const from = -Math.min(BEFORE, out); // secondes avant la transition
-        const now = ctx.currentTime + 0.05;
-        const voice = (snd, startAt, offset, which) => {
-          const src = ctx.createBufferSource();
-          src.buffer = snd.buf;
-          const g = ctx.createGain();
-          src.connect(g).connect(ctx.destination);
-          // Courbe de volume échantillonnée
-          const steps = 60;
-          const vals = new Float32Array(steps + 1);
-          for (let i = 0; i <= steps; i++) vals[i] = curves(st, i / steps)[which];
-          g.gain.setValueAtTime(which === 0 ? 1 : vals[0], now);
-          g.gain.setValueCurveAtTime(vals, now + Math.max(0, -from), L);
-          src.start(now + startAt, Math.max(0, offset));
-          nodes.push(src);
-        };
-        voice(A, 0, out + from, 0);
-        voice(B, Math.max(0, -from), inn, 1);
-        playT0 = from;
-        ctxT0 = now;
-        $('#mx-play').innerHTML = String(icon('pause', 26));
-        ph.style.display = 'block';
-        const tick = () => {
-          const t = playT0 + (ctx.currentTime - ctxT0);
-          if (t > L + AFTER) return play();
-          ph.style.left = `${((t + BEFORE) / span()) * 100}%`;
-          raf = requestAnimationFrame(tick);
-        };
-        tick();
-      };
       $('#mx-play').onclick = play;
       $('#mx-bars').onclick = (e) => {
         e.stopPropagation();
         const i = BARS.indexOf(bars);
         bars = BARS[(i + 1) % BARS.length];
-        stop();
-        paint();
+        changed();
       };
-      w.querySelectorAll('[data-style]').forEach((x) => (x.onclick = () => ((style = x.dataset.style), paint())));
+      w.querySelectorAll('[data-style]').forEach((x) => (x.onclick = () => ((style = x.dataset.style), changed())));
       $('#mx-reset').onclick = () => {
         const pl = automix.plan(a.id, b.id, 'auto');
         style = 'auto';
         if (pl) ((out = pl.mixStart), (inn = pl.inStart), (bars = Math.max(2, Math.round(pl.mixLen / (4 * beatOf(a.id))))));
-        paint();
+        changed();
       };
       const unsub = automix.onAnalyzed(() => paint());
       new MutationObserver(() => !document.body.contains(stage) && (stop(), unsub(), ctx?.close().catch(() => {}))).observe(document.body, { childList: true, subtree: true });

@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Éditeur de transitions plus lisible",
+    "items": [
+      "Les formes d’onde ne tremblent plus quand tu fais glisser un son, et elles montrent le volume réel : on voit le premier son s’éteindre et le suivant monter.",
+      "Le glisser se cale sur les temps pendant que tu bouges : les temps des deux sons « cliquent » ensemble.",
+      "L’écoute s’adapte : si tu changes la durée, le style ou la position d’un son pendant l’écoute, elle repart au même endroit avec le nouveau réglage. Pause puis lecture reprend où tu en étais."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1431",
     "title": "Éditeur de transitions façon Spotify",
     "items": [
