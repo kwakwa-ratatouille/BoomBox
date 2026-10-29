@@ -280,7 +280,11 @@ class AudioEngine {
     // Streaming direct seulement hors chaîne Web Audio (un flux d'un autre domaine y serait muet) et pour le titre lancé
     const src = await audioSrc(id, fresh, !this.graph && el === this.a);
     if (el.dataset.track !== id) return; // un autre titre a été demandé entre-temps
-    if (start) el.addEventListener('loadedmetadata', () => (el.currentTime = start), { once: true });
+    if (start) {
+      el.addEventListener('loadedmetadata', () => (el.currentTime = start), { once: true });
+      // Flux pas encore prêt à se placer au début de la lecture : on recale dès qu'il joue (sinon il repartait de 0)
+      el.addEventListener('playing', () => el.dataset.track === id && el.currentTime < start - 2 && (el.currentTime = start), { once: true });
+    }
     el.src = src;
   }
   async load(id, start = 0, autoplay = true, fresh = false) {

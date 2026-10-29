@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Bascule vers le PC instantanée",
+    "items": [
+      "Le PC prépare en avance le son qui joue sur le téléphone (et le suivant) : en basculant sur le PC, il démarre tout de suite au bon endroit.",
+      "Si le son n’a pas pu se placer au bon moment au démarrage, il s’y recale dès qu’il joue (avant : il repartait de 0:00)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1645",
     "title": "File d’attente à distance",
     "items": [

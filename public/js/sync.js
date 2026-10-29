@@ -47,6 +47,7 @@ export const sync = {
           if (d.state.ts && d.state.ts === this._lastTs[d.id] && this.remote[d.id]) continue; // même état qu'avant : on garde sa date
           this._lastTs[d.id] = d.state.ts;
           this.remote[d.id] = this._local(d.id, d.state, 300);
+          this._warm(d.state);
         }
         this._refreshDevices();
         if (this.target) this._remoteEmit();
@@ -188,6 +189,7 @@ export const sync = {
           // Reçu à l'instant (quelques dizaines de ms) : on date l'état avec NOTRE horloge, pas celle de l'autre appareil
           // (deux horloges décalées d'1 s mettaient la barre et les paroles en retard d'autant)
           this.remote[m.from] = this._local(m.from, m.state, 40);
+          this._warm(m.state);
           this._lanFresh = Date.now();
           if (this.target === m.from) this._remoteEmit();
         }
@@ -288,14 +290,15 @@ export const sync = {
           player.fadeIn(); // … pendant que celui-ci monte
           // Toujours rien au bout de 4 s : nouveau chargement du son (lien neuf), au même endroit
           const id = st.track.id;
+          const t0 = Date.now();
           setTimeout(() => {
             if (player.track?.id !== id || this.target) return;
             const el = player.engine?.a;
-            if (player.engine?.name === 'audio' && el && (el.paused || el.readyState < 2)) {
+            if (player.engine?.name === 'audio' && el && el.paused && el.readyState === 0) {
               player.engine._setLevel?.(el, 1);
-              player.engine.load(id, pos + 4, true, true);
+              player.engine.load(id, pos + (Date.now() - t0) / 1000, true, true);
             }
-          }, 4000);
+          }, 8000);
         }
         emit('player:queue');
       }
@@ -326,6 +329,14 @@ export const sync = {
 
   // Où en est le son de l'autre appareil. Jamais au-delà de la fin du son ni dans le passé : avec un état ancien ou
   // une horloge décalée, la position filait trop loin (paroles toutes « passées », barre au bout)
+  // PC : le son qui joue sur un autre appareil est préparé ici en avance (et le suivant), pour que la reprise sur
+  // le PC démarre tout de suite au bon endroit au lieu de charger depuis le début
+  _warm(st) {
+    if (isNative || !st?.track?.id || this._warmed === st.track.id) return;
+    this._warmed = st.track.id;
+    for (const id of [st.track.id, st.upcoming?.[0]?.id].filter(Boolean)) fetch(`/api/prefetch/${id}`, { method: 'POST' }).catch(() => {});
+  },
+
   position(st) {
     if (!st) return 0;
     const p = st.paused ? st.position : st.position + Math.max(0, Date.now() - st.ts) / 1000 * (st.rate || 1);
