@@ -3,7 +3,8 @@
     "version": "2026.1029.2103",
     "title": "Bouton lecture qui ne clignote plus",
     "items": [
-      "Android (Samsung, Huawei…) : le bouton lecture ne clignote plus pendant la lecture. L’effet « chargement » n’apparaît qu’après un vrai chargement de plus d’une demi-seconde."
+      "Android (Samsung, Huawei…) : le bouton lecture ne clignote plus pendant la lecture. L’effet « chargement » n’apparaît qu’après un vrai chargement de plus d’une demi-seconde.",
+      "Profil d’un ami sans photo : la grande lettre est bien centrée et à la bonne taille dans le rond."
     ],
     "date": "2026-10-29"
   },
