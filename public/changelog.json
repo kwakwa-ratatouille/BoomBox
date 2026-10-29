@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2058",
+    "title": "Photo de profil des amis (pour de bon)",
+    "items": [
+      "Profil d’un ami : sa grande photo ronde s’affiche (elle restait invisible)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2057",
     "title": "« Vu » sous les messages",
     "items": [
