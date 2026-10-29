@@ -798,8 +798,11 @@ export async function playlist(el, { id }, ctx) {
       </div>`);
     heroColor(el, p.cover || p.tracks[0]?.thumb);
     if (!p.banner) heroBackdrop(el.querySelector('.hero'), p, p.cover || p.tracks[0]?.thumb);
-    wireListActions(el, () => el._shown || p.tracks, pctx);
-    if (p.tracks.length) wireTools(el, `pl.${p.id}`, () => p.tracks, (tr, custom) => ((el._shown = tr), trackList(tr, { context: pctx, added: true, playlistId: p.id, reorder: custom, counts: p.playCounts })), (list, tr) => p.mixed && drawTransitions(list, tr, p));
+    // Playlist « Ton top {année} » : toujours du plus écouté au moins écouté (le nombre d'écoutes est affiché sur
+    // chaque son, seulement dans ces playlists spéciales)
+    const ordered = () => (p.topYear && p.playCounts ? [...p.tracks].sort((a, b) => (p.playCounts[b.id] || 0) - (p.playCounts[a.id] || 0)) : p.tracks);
+    wireListActions(el, () => el._shown || ordered(), pctx);
+    if (p.tracks.length) wireTools(el, `pl.${p.id}`, ordered, (tr, custom) => ((el._shown = tr), trackList(tr, { context: pctx, added: true, playlistId: p.id, reorder: custom, counts: p.playCounts })), (list, tr) => p.mixed && drawTransitions(list, tr, p));
     el.addEventListener('tracks:more', () => p.mixed && drawTransitions(el.querySelector('#list'), el._shown || p.tracks, p));
     el.querySelector('#pl-name').onclick = () => editPlaylist(p);
     el.querySelector('#pl-cover').onclick = () => editPlaylist(p);

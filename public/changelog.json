@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.2158",
+    "title": "« Ton top » dans le bon ordre",
+    "items": [
+      "Playlists « Ton top {année} » : les sons sont rangés du plus écouté au moins écouté, avec le nombre d’écoutes de l’année sur chacun (seulement dans ces playlists spéciales)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.2156",
     "title": "Titres longs bien affichés",
     "items": [
