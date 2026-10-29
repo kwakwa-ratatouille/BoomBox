@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1611",
+    "title": "Paroles qui suivent le son de l’autre appareil",
+    "items": [
+      "Appareils liés : Boombox mesure l’écart d’horloge entre ton PC et ton téléphone et le corrige. Les paroles et la barre suivent le son de l’autre appareil en direct (avant, une horloge en avance figeait tout)."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1610",
     "title": "Paroles du son joué sur l’autre appareil",
     "items": [

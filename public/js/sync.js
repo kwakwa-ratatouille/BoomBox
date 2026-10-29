@@ -45,9 +45,8 @@ export const sync = {
           // Nouvel état qui vient d'arriver par Internet (daté de moins de 10 s par l'autre appareil) : daté avec notre
           // horloge, moins le trajet habituel (~0,3 s) ; les horloges des appareils ont souvent 1 s d'écart
           if (d.state.ts && d.state.ts === this._lastTs[d.id] && this.remote[d.id]) continue; // même état qu'avant : on garde sa date
-          const fresh = d.state.ts && Math.abs(Date.now() - d.state.ts) < 10e3;
           this._lastTs[d.id] = d.state.ts;
-          this.remote[d.id] = fresh && !d.state.paused ? { ...d.state, ts: Date.now() - 300 } : d.state;
+          this.remote[d.id] = this._local(d.id, d.state, 300);
         }
         this._refreshDevices();
         if (this.target) {
@@ -137,6 +136,19 @@ export const sync = {
   // PC : son propre serveur ; téléphone : le PC trouvé par relay.js. Firebase reste le chemin de secours.
   _seenCmd: new Set(),
   _lastTs: {},
+  // Écart d'horloge avec chaque appareil (ms) : le plus petit « heure de réception − heure de l'état » vu depuis
+  // 10 min, moins le trajet habituel. L'état est re-daté avec notre horloge : la position avance juste, même si
+  // le téléphone a 1 s (ou 1 min) d'avance ou de retard sur le PC.
+  _skew: {},
+  _local(id, st, trip) {
+    if (!st?.ts) return st;
+    const now = Date.now();
+    const o = now - st.ts - trip;
+    const k = this._skew[id];
+    // Nouvel échantillon plus petit (meilleur), ou ancien trop vieux : on le prend
+    if (!k || o < k.o || now - k.at > 10 * 60e3) this._skew[id] = { o, at: now };
+    return { ...st, ts: st.ts + this._skew[id].o };
+  },
   async _lanBase(p) {
     if (!isNative) return /^(localhost|127.0.0.1)$/.test(location.hostname) ? p : null;
     return (await localApi()).media.relayHref?.(p) || null;
@@ -162,7 +174,7 @@ export const sync = {
           if (p?.target === m.from) this._pending = null;
           // Reçu à l'instant (quelques dizaines de ms) : on date l'état avec NOTRE horloge, pas celle de l'autre appareil
           // (deux horloges décalées d'1 s mettaient la barre et les paroles en retard d'autant)
-          this.remote[m.from] = { ...m.state, ts: Date.now() - 40 };
+          this.remote[m.from] = this._local(m.from, m.state, 40);
           this._lanFresh = Date.now();
           if (this.target === m.from) {
             emit('player:track');
