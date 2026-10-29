@@ -41,6 +41,7 @@ export const sync = {
           const p = this._pending;
           if (p?.target === d.id && Date.now() < p.until && Object.entries(p.patch).some(([k, v]) => (k === 'position' ? Math.abs(this.position(d.state) - v) > 2.5 : d.state[k] !== v))) continue;
           if (p?.target === d.id) this._pending = null;
+          if (Date.now() - (this._lanFresh || 0) < 30e3 && this.remote[d.id]?.track?.id === d.state.track?.id && this.remote[d.id]?.paused === d.state.paused) continue;
           this.remote[d.id] = d.state;
         }
         this._refreshDevices();
@@ -153,7 +154,10 @@ export const sync = {
           const p = this._pending;
           if (p?.target === m.from && Date.now() < p.until && Object.entries(p.patch).some(([k, v]) => (k === 'position' ? Math.abs(this.position(m.state) - v) > 2.5 : m.state[k] !== v))) return;
           if (p?.target === m.from) this._pending = null;
-          this.remote[m.from] = m.state;
+          // Reçu à l'instant (quelques dizaines de ms) : on date l'état avec NOTRE horloge, pas celle de l'autre appareil
+          // (deux horloges décalées d'1 s mettaient la barre et les paroles en retard d'autant)
+          this.remote[m.from] = { ...m.state, ts: Date.now() - 40 };
+          this._lanFresh = Date.now();
           if (this.target === m.from) {
             emit('player:track');
             emit('player:state');
@@ -557,6 +561,8 @@ export const sync = {
 // Publie l'état à chaque changement (regroupé pour limiter les écritures).
 let pubTimer = null;
 const schedulePublish = () => {
+  // Par le PC (même Wi-Fi) : tout de suite ; Firebase : regroupé
+  if (sync.connected && player.track && !player.remoteSender) sync._lanSend(sync.devices.filter((d) => d.id !== state.device.id).map((d) => d.id), { type: 'state', from: state.device.id, state: player.snapshot() });
   clearTimeout(pubTimer);
   pubTimer = setTimeout(() => sync.publish(), sync.isJamHost() ? 120 : 800); // party : les autres suivent vite
 };

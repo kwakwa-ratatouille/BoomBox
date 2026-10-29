@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1029.1606",
+    "title": "PC ↔ téléphone parfaitement calés",
+    "items": [
+      "Appareils liés : la seconde d’écart entre la barre (et les paroles) du PC et le son du téléphone disparaît. Chaque changement est envoyé tout de suite, et l’horloge de l’autre appareil (souvent décalée d’1 s) n’est plus utilisée."
+    ],
+    "date": "2026-10-29"
+  },
+  {
     "version": "2026.1029.1603",
     "title": "PC : la musique continue fenêtre fermée",
     "items": [
