@@ -57,9 +57,12 @@ $restart.add_Click({ Stop-Server; Start-Sleep -Milliseconds 800; Start-Server; $
 $quit = $menu.Items.Add('Quitter Boombox')
 $quit.add_Click({
   $script:quitting = $true
+  # La musique jouée en fond s'arrête aussi (son lecteur gardait le programme en vie : le son continuait)
+  try { $bgTimer.Stop(); $player.Stop(); $player.Close() } catch {}
   Stop-Server
   $icon.Visible = $false
   [System.Windows.Forms.Application]::Exit()
+  [Environment]::Exit(0)
 })
 $icon.ContextMenuStrip = $menu
 $icon.add_DoubleClick({ Open-Boombox })
@@ -106,9 +109,12 @@ function Bg-Tick {
   if ($s.seq -ne $script:bgSeq) {
     $script:bgSeq = $s.seq
     if ($s.track) {
+      # Prise de relais à la fermeture de la fenêtre : on le dit (sinon on ne sait pas d'où vient la musique)
+      if (-not $script:bgShown) { $icon.ShowBalloonTip(5000, 'Boombox continue en fond', "« $($s.track.title) » — clic droit sur l'icône Boombox pour mettre pause ou arrêter.", 'Info') }
+      $script:bgShown = $true
       $player.Open([Uri]"http://127.0.0.1:8787/api/audio-file/$($s.track.id)")
       $script:seekTo = [double]$s.position
-    } else { $player.Close() }
+    } else { $player.Close(); $script:bgShown = $false }
   }
   $has = $player.NaturalDuration.HasTimeSpan
   if ($has -and $null -ne $script:seekTo) { $player.Position = [TimeSpan]::FromSeconds($script:seekTo); $script:seekTo = $null }

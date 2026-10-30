@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1030.1551",
+    "title": "Quitter Boombox coupe vraiment la musique",
+    "items": [
+      "PC : « Quitter Boombox » (clic droit sur l’icône près de l’horloge) arrête aussi la musique jouée en fond (elle continuait). Quand la musique passe en fond à la fermeture de la fenêtre, une bulle le signale."
+    ],
+    "date": "2026-10-30"
+  },
+  {
     "version": "2026.1030.1536",
     "title": "Accélération matérielle au choix",
     "items": [
