@@ -21,10 +21,25 @@ export const offline = {
     this.loadCovers();
     this.refreshSet();
     document.body.classList.toggle('offline', !this.media.net.connected);
+    // Messages seulement pour une vraie coupure : le réseau change souvent quelques secondes (Wi-Fi ↔ 4G, appli qui
+    // revient au premier plan), et chaque micro-coupure affichait « Hors ligne » puis « De nouveau en ligne »
+    let offT = 0;
+    let warned = false;
     this.media.net.listeners.add((n) => {
-      document.body.classList.toggle('offline', !n.connected);
-      toast(n.connected ? 'De nouveau en ligne' : 'Hors ligne : seuls les titres téléchargés sont disponibles');
-      if (n.connected) this.sync();
+      clearTimeout(offT);
+      if (!n.connected) {
+        offT = setTimeout(() => {
+          if (this.media.net.connected) return;
+          document.body.classList.add('offline');
+          warned = true;
+          toast('Hors ligne : seuls les titres téléchargés sont disponibles');
+        }, 8000);
+        return;
+      }
+      document.body.classList.remove('offline');
+      if (warned) toast('De nouveau en ligne');
+      warned = false;
+      this.sync();
     });
     on('library', () => this.sync());
     this.sync();

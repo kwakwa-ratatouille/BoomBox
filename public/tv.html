@@ -2,6 +2,9 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
+  <!-- Chromecast : l'appli réceptrice de Boombox est cast.html (c'est elle qui répond au téléphone) ; si la télé arrive ici,
+       elle y part tout de suite (sinon le téléphone attendait en vain et affichait « même Wi-Fi ? ») -->
+  <script>if (/CrKey/.test(navigator.userAgent) && !/[?&]notv/.test(location.search)) location.replace('/cast.html' + location.search);</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#131019">
   <title>Boombox · Télé</title>

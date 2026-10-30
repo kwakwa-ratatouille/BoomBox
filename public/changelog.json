@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Chromecast et messages réseau",
+    "items": [
+      "Chromecast : la télé ouvre directement la bonne page de Boombox (avant, elle affichait une demi-seconde une page sans mise en forme puis la connexion échouait avec « même Wi-Fi ? »).",
+      "Téléphone : plus de « De nouveau en ligne » à répétition. Le message « Hors ligne » n’apparaît que si la coupure dure plus de 8 secondes."
+    ],
+    "date": "2026-10-30"
+  },
+  {
     "version": "2026.1030.1717",
     "title": "Lecteur gardé sur l’écran verrouillé",
     "items": [
