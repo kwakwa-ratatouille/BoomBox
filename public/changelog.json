@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Écoute privée",
+    "items": [
+      "Menu de ton profil (en haut à droite) → « Écoute privée » : pendant 6 h, ce que tu écoutes ne compte ni dans tes stats, ni dans ton récap, ni dans le classement, et tes amis et Discord ne le voient pas. Un petit cadenas sur ta photo le rappelle. Pour cet appareil seulement."
+    ],
+    "date": "2026-10-31"
+  },
+  {
     "version": "2026.1030.1721",
     "title": "Chromecast et messages réseau",
     "items": [

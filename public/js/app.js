@@ -1,7 +1,7 @@
 // Point d'entrée : profils, routeur, barre latérale, barre de lecture, panneau de droite, lecteur mobile.
 import { pixelBackdrop, PARTY_ACCENTS, accentPalette } from './pixel-bg.js';
 import { ACCENTS, html, raw, esc, icon, fmtTime, artistLinks, toast, promptText, contextMenu, debounce, isMobile, dominantColor, modal, plural, confirmBox, closeMenu } from './ui.js';
-import { removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
+import { privateMode, removeFromPlaylist, movePlaylist, moveRoot, rootEntries, movePlaylistToFolder, refreshPublicProfile, setting, saveSettings, state, api, on, emit, ls, setProfile, isLiked, toggleLike, createPlaylist, addToPlaylist, listProfiles, createProfile, deleteProfile, subscribeLibrary } from './state.js';
 import { cloud, parseInvite, getDoc } from './cloud.js';
 import { GOOGLE_LOGO } from './account.js';
 import * as Events from './events.js';
@@ -515,6 +515,12 @@ function setupSidebar() {
       isMobile() && { label: 'Importer une playlist', icon: 'import', action: () => (location.hash = '#/import') },
       { label: `Corbeille${state.library.trash?.length ? ` (${state.library.trash.length})` : ''}`, icon: 'trash', action: () => (location.hash = '#/trash') },
       { sep: true },
+      { label: privateMode.on() ? 'Écoute privée : activée ✓' : 'Écoute privée', hint: 'Ce que tu écoutes ne compte pas dans tes stats et ton récap, et tes amis ne le voient pas (6 h)', icon: 'moon', action: () => {
+        const on = !privateMode.on();
+        privateMode.set(on);
+        if (on) social.clearActivity?.();
+        toast(on ? '🔒 Écoute privée activée pour 6 h : rien ne compte dans tes stats, et tes amis ne voient pas ce que tu écoutes' : 'Écoute privée terminée', { timeout: 5000 });
+      } },
       { label: 'Paramètres', icon: 'settings', action: () => (location.hash = '#/settings') },
     ]);
   };
@@ -1579,6 +1585,7 @@ async function boot() {
   }, 15000);
   state.status = await api('/api/status').catch(() => state.status);
   Events.apply();
+  document.documentElement.classList.toggle('private-session', privateMode.on());
   setTimeout(quotaNotice, 1500); // dès le démarrage : la suite peut rester bloquée tant que Firebase refuse
   setInterval(() => Events.compute().id !== Events.current.id && (Events.apply(), location.hash === '#/' && window.dispatchEvent(new HashChangeEvent('hashchange'))), 3600e3);
   await cloud.signIn();
@@ -2187,7 +2194,7 @@ boot().catch((e) => {
   const send = () => {
     const v = sync.view();
     const t = v.track;
-    const on = setting('discordPresence', true);
+    const on = setting('discordPresence', true) && !privateMode.on(); // écoute privée : rien sur Discord
     const body = on && t && !v.paused ? {
       title: t.title,
       artist: (t.artists || []).map((a) => a.name).join(', '),

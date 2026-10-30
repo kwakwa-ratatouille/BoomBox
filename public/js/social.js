@@ -2,7 +2,7 @@
 // Chaque profil a un « code ami » et une fiche publique people/{code} : nom, photo, et — seulement si le partage
 // est activé dans les paramètres — le son en cours ou le dernier écouté. Les messages arrivent dans
 // people/{code}/inbox, lisible uniquement par les appareils du profil (voir firestore.rules).
-import { state, emit, on, updateProfile, cleanTrack, addToPlaylist, removeFromPlaylist, updatePlaylist, getStatsFull, publishProfile } from './state.js';
+import { privateMode, state, emit, on, updateProfile, cleanTrack, addToPlaylist, removeFromPlaylist, updatePlaylist, getStatsFull, publishProfile } from './state.js';
 import { cloud, db, doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, onSnapshot, query, where, orderBy, limit, writeBatch } from './cloud.js';
 import { player } from './player.js';
 import { toast } from './ui.js';
@@ -123,9 +123,15 @@ export const social = {
     await updateDoc(peopleRef(this.code), { top, stats }).catch(() => {});
   },
 
+  // Écoute privée activée : ce qui jouait disparaît tout de suite de l'activité vue par les amis
+  clearActivity() {
+    if (this.code && this.sharing) updateDoc(peopleRef(this.code), { activity: null }).catch(() => {});
+  },
+
   // Son en cours (ou dernier écouté) : écrit au changement de titre, à la lecture / pause, et au plus toutes les 10 s
   publishActivity(force = false) {
     if (!this.ready || !this.sharing || !this.code) return;
+    if (privateMode.on()) return; // écoute privée : les amis ne voient rien
     if (player.remoteSender) return; // on pilote un autre appareil : c'est lui qui publie
     const t = player.track;
     if (!t) return;

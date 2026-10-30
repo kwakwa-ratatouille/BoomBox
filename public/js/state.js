@@ -665,7 +665,23 @@ export async function getReports(n = 60) {
 
 // ---------- Historique & stats ----------
 // Renvoie de quoi noter ensuite le temps réellement écouté (setHeard), à la fin de l'écoute
+// Écoute privée (comme la « session privée » de Spotify) : rien n'est enregistré dans l'historique (donc ni stats, ni
+// récap, ni classement, ni recommandations), les amis et Discord ne voient pas ce qui joue. Pour cet appareil,
+// coupée toute seule au bout de 6 h.
+export const privateMode = {
+  on() {
+    const until = Number(localStorage.getItem('boombox.private') || 0);
+    return until > Date.now();
+  },
+  set(on) {
+    if (on) localStorage.setItem('boombox.private', String(Date.now() + 6 * 3600e3));
+    else localStorage.removeItem('boombox.private');
+    document.documentElement.classList.toggle('private-session', !!on);
+    emit('private', !!on);
+  },
+};
 export function addHistory(track) {
+  if (privateMode.on()) return;
   const h = { ...cleanTrack(track), playedAt: Date.now() };
   if (hist?.pid === state.profile.id) hist.list.unshift(h);
   const ref = addDoc(pcol('history'), h).catch(() => null);
