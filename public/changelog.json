@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1030.1528",
+    "title": "La meilleure version d’un son d’abord",
+    "items": [
+      "Son enregistré comme SoundCloud (souvent après un import) : Boombox cherche d’abord le même son sur YouTube Music (version officielle, meilleure qualité), et ne passe à SoundCloud qu’ensuite.",
+      "Recherche SoundCloud : les sons réservés aux abonnés Go+ (extraits de 30 s) ne sont plus proposés, sur PC comme sur téléphone."
+    ],
+    "date": "2026-10-30"
+  },
+  {
     "version": "2026.1030.1345",
     "title": "Sons japonais retrouvés, nouvelle recherche des introuvables",
     "items": [
