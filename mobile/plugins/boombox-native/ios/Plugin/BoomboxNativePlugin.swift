@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import Capacitor
 import AVFoundation
+import MediaPlayer
 
 // Module natif Boombox (iOS)
 // - Au démarrage : session audio « lecture » pour que la musique continue écran verrouillé / en arrière-plan
@@ -16,7 +17,8 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "takeVoiceCommand", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAudioMode", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setKeepAwake", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setAppIcon", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setAppIcon", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "nowPlayingPaused", returnType: CAPPluginReturnPromise)
     ]
 
     override public func load() {
@@ -73,6 +75,67 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     // mix = true : Boombox cohabite avec les autres sons ; false : lecture normale (commandes écran verrouillé)
+    // Son en pause : iOS retire vite le lecteur de l'écran verrouillé quand la page web ne joue plus. L'appli le
+    // remet ici (titre, artiste, pochette, position, à l'arrêt) ; les boutons lecture / suivant / précédent de
+    // l'écran verrouillé repassent par « mediaAction » (l'appli ignore les doublons avec ceux de la page)
+    private var npArtUrl: String? = nil
+    private var npArt: MPMediaItemArtwork? = nil
+    private var npCommands = false
+    @objc func nowPlayingPaused(_ call: CAPPluginCall) {
+        let title = call.getString("title") ?? ""
+        let artist = call.getString("artist") ?? ""
+        let duration = call.getDouble("duration") ?? 0
+        let position = call.getDouble("position") ?? 0
+        let artUrl = call.getString("artwork")
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let apply = {
+                var info: [String: Any] = [
+                    MPMediaItemPropertyTitle: title,
+                    MPMediaItemPropertyArtist: artist,
+                    MPMediaItemPropertyPlaybackDuration: duration,
+                    MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
+                    MPNowPlayingInfoPropertyPlaybackRate: 0.0
+                ]
+                if let a = self.npArt, self.npArtUrl == artUrl { info[MPMediaItemPropertyArtwork] = a }
+                MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+                if #available(iOS 13.0, *) { MPNowPlayingInfoCenter.default().playbackState = .paused }
+            }
+            apply()
+            self.setupCommands()
+            // Pochette téléchargée une fois par son
+            if let u = artUrl, u != self.npArtUrl, let url = URL(string: u) {
+                self.npArtUrl = u
+                self.npArt = nil
+                URLSession.shared.dataTask(with: url) { data, _, _ in
+                    guard let d = data, let img = UIImage(data: d) else { return }
+                    DispatchQueue.main.async {
+                        self.npArt = MPMediaItemArtwork(boundsSize: img.size) { _ in img }
+                        apply()
+                    }
+                }.resume()
+            }
+        }
+        call.resolve()
+    }
+    private func setupCommands() {
+        if npCommands { return }
+        npCommands = true
+        let cc = MPRemoteCommandCenter.shared()
+        let send = { [weak self] (a: String) -> MPRemoteCommandHandlerStatus in
+            self?.notifyListeners("mediaAction", data: ["action": a])
+            return .success
+        }
+        cc.playCommand.isEnabled = true
+        cc.playCommand.addTarget { _ in send("play") }
+        cc.pauseCommand.addTarget { _ in send("pause") }
+        cc.togglePlayPauseCommand.addTarget { _ in send("toggle") }
+        cc.nextTrackCommand.isEnabled = true
+        cc.nextTrackCommand.addTarget { _ in send("next") }
+        cc.previousTrackCommand.isEnabled = true
+        cc.previousTrackCommand.addTarget { _ in send("prev") }
+    }
+
     @objc func setAudioMode(_ call: CAPPluginCall) {
         let mix = call.getBool("mix") ?? false
         let session = AVAudioSession.sharedInstance()

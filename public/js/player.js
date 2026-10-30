@@ -1448,10 +1448,12 @@ export const player = {
         ms.setActionHandler(a, f);
       } catch {}
     };
-    set('play', () => ctl.play());
-    set('pause', () => ctl.pause('commande de l’écran verrouillé ou des écouteurs'));
-    set('previoustrack', () => ctl.prev());
-    set('nexttrack', () => ctl.next());
+    // Dernier bouton reçu de la page : le même bouton reçu juste après par le module iPhone est un doublon
+    const mark = (a) => (lastMediaAction = { at: Date.now() }, a);
+    set('play', () => (mark(), ctl.play()));
+    set('pause', () => (mark(), ctl.pause('commande de l’écran verrouillé ou des écouteurs')));
+    set('previoustrack', () => (mark(), ctl.prev()));
+    set('nexttrack', () => (mark(), ctl.next()));
     set('seekto', (d) => ctl.seek(d.seekTime));
     // Sans ça, l'iPhone (et certains Android) affichent « ±10 s » au lieu de précédent / suivant dans la notification
     set('seekbackward', null);
@@ -1517,6 +1519,32 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
     }
     kick(silentRisk);
   }, 300));
+})();
+
+let lastMediaAction = { at: 0 };
+// iPhone : son en pause, iOS retire vite le lecteur de l'écran verrouillé. Le module natif le remet (titre, pochette,
+// position) plusieurs fois pendant la pause, et relaie ses boutons (sauf doublons des boutons de la page).
+(function iosPausedNowPlaying() {
+  const P = isNative && platform === 'ios' && window.Capacitor?.Plugins?.BoomboxNative;
+  if (!P?.addListener) return;
+  let timers = [];
+  const push = () => {
+    const t = player.track;
+    if (!player.paused || !t || player.remoteSender) return;
+    P.nowPlayingPaused?.({ title: t.title || '', artist: artistNames(t), duration: player.shownDuration?.() || player.duration() || 0, position: player.time() || 0, artwork: t.thumb || null })?.catch?.(() => {});
+  };
+  bus.addEventListener('player:state', () => {
+    timers.forEach(clearTimeout);
+    timers = player.paused && player.track ? [800, 4000, 12000, 30000, 90000, 240000].map((ms) => setTimeout(push, ms)) : [];
+  });
+  P.addListener('mediaAction', (e) => {
+    if (Date.now() - lastMediaAction.at < 900) return; // déjà reçu par la page
+    const a = e?.action;
+    if (a === 'play' || (a === 'toggle' && player.paused)) ctl.play();
+    else if (a === 'pause' || a === 'toggle') ctl.pause('commande de l’écran verrouillé');
+    else if (a === 'next') ctl.next();
+    else if (a === 'prev') ctl.prev();
+  }).catch?.(() => {});
 })();
 
 // Casque ou enceinte Bluetooth déconnecté → pause (comme Spotify), au lieu de continuer dans le haut-parleur
