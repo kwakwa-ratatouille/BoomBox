@@ -2646,3 +2646,16 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 /* Écoute privée : petit point sur l'avatar, en haut à droite */
 .private-session #btn-profile { position: relative; }
 .private-session #btn-profile::after { content: '🔒'; position: absolute; right: -4px; bottom: -4px; font-size: 12px; background: var(--bg, #131019); border-radius: 50%; padding: 1px; }
+/* Ambiance lumineuse : plein écran, réglages qui apparaissent au toucher puis disparaissent */
+.amb { position: fixed; inset: 0; z-index: 99995; background: #000; cursor: none; }
+.amb.ui { cursor: default; }
+.amb canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.amb-ui { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .4s; display: flex; flex-direction: column; justify-content: space-between; padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
+.amb.ui .amb-ui { opacity: 1; pointer-events: auto; }
+.amb-top { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.amb-top .chip { background: rgba(0, 0, 0, .45); color: #fff; backdrop-filter: blur(8px); }
+.amb-top .chip.active { background: #fff; color: #000; }
+.amb-x { margin-left: auto; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .45); color: #fff; }
+.amb-bottom { display: flex; align-items: center; gap: 12px; background: rgba(0, 0, 0, .45); backdrop-filter: blur(8px); border-radius: 16px; padding: 10px 14px; color: #fff; max-width: 640px; width: 100%; margin: 0 auto; }
+.amb-level { flex: 0 0 40%; }
+.amb-now { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; opacity: .85; }

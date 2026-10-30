@@ -525,6 +525,8 @@ function setupSidebar() {
     ]);
   };
   $('#btn-jam-top').onclick = () => (location.hash = '#/jam');
+  // Ambiance lumineuse plein écran (lumière qui suit la musique)
+  $('#btn-ambient').onclick = () => import('./ambient.js').then((m) => m.openAmbient());
   // Amis : panneau d'activité à droite (ordinateur) ou page Amis (téléphone)
   $('#btn-friends').onclick = () => (isMobile() || innerWidth <= 900 ? (location.hash = '#/friends') : togglePanel('friends'));
 }

@@ -1,5 +1,14 @@
 [
   {
+    "version": "next",
+    "title": "Ambiance lumineuse",
+    "items": [
+      "Nouveau bouton ☀️ en haut : l’écran entier devient une lumière qui suit la musique, en plein écran. Couleurs prises de la pochette, pulsation calée sur le tempo du son.",
+      "4 ambiances : écran lumineux, kaléidoscope (de la pochette), aurore, pulsation. Intensité lumineuse réglable ; les réglages apparaissent au toucher puis s’effacent. L’écran reste allumé ; Échap ou ✕ pour quitter."
+    ],
+    "date": "2026-10-31"
+  },
+  {
     "version": "2026.1031.0009",
     "title": "Écoute privée",
     "items": [
