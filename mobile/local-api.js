@@ -583,7 +583,7 @@ export async function handle(path, { method = 'GET', body } = {}) {
   if (p === '/api/concerts') return concertsFor((Array.isArray(body?.names) ? body.names : []).map(String));
   if (p === '/api/sync') return syncPlaylist({ url: String(body?.url || ''), seen: Array.isArray(body?.seen) ? body.seen : null, have: Array.isArray(body?.have) ? body.have : [] }, cfg);
   if (p === '/api/import') return startImport(String(body?.input || ''), cfg, String(body?.name || ''));
-  if (p === '/api/match') return startMatch(body?.items || [], body?.kind === 'artist' ? 'artist' : 'track');
+  if (p === '/api/match') return startMatch(body?.items || [], body?.kind === 'artist' ? 'artist' : 'track', { retry: !!body?.retry });
   if ((m = p.match(/^\/api\/import\/([\w-]+)$/))) {
     const j = getJob(m[1]);
     if (!j) throw new Error('Tâche inconnue');

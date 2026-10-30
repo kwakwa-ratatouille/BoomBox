@@ -376,7 +376,7 @@ export async function syncPlaylist({ url, seen = null, have = [] }, cfg) {
 
 // Correspondance en masse (données Spotify) : titres { title, artist } ou artistes { name }.
 // results[i] est aligné sur items[i] (null si introuvable).
-export function startMatch(items, kind = 'track') {
+export function startMatch(items, kind = 'track', { retry = false } = {}) {
   const job = { id: uid(), status: 'running', total: items.length, done: 0, results: new Array(items.length).fill(null), error: null };
   jobs.set(job.id, job);
   const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
@@ -394,7 +394,7 @@ export function startMatch(items, kind = 'track') {
               // On n'accepte que si le nom correspond (évite de suivre le mauvais artiste)
               job.results[i] = found.find((a) => norm(a.name) === norm(it.name)) || null;
             } else {
-              job.results[i] = await matchTrack(it);
+              job.results[i] = await matchTrack(it, { retry });
             }
             break;
           } catch {

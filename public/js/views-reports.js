@@ -1,12 +1,24 @@
 // Rapports d'import et de mise à jour des playlists : ce qui a été ajouté, ce qui était déjà là, ce qui n'a pas
 // fonctionné et pourquoi. Page « Rapports d'import » + panneau « Synchronisation » d'une playlist.
 import { html, raw, icon, plural, modal, toast } from './ui.js';
-import { state, getReports } from './state.js';
+import { state, getReports, api, addToPlaylist, addReport } from './state.js';
+import { sameSong, isRemix } from './twins.js';
 import { canSync, syncPlaylistNow, setPlaylistSync, linkSource } from './playlist-sync.js';
 
 const when = (ts) => new Date(ts).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
+// Rapports affichés (pour le bouton « Rechercher à nouveau »), et un seul écouteur de clic pour toutes les pages
+const shown = new Map();
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-retry]');
+  const r = b && shown.get(b.dataset.retry);
+  if (!r) return;
+  e.preventDefault();
+  retryMissing(r, b).catch((er) => ((b.disabled = false), (b.textContent = 'Réessayer'), toast(er.message)));
+});
+
 function reportHtml(r, open = false) {
+  if (r.id) shown.set(r.id, r);
   const added = r.added || [];
   const missing = r.missing || [];
   const title = r.type === 'sync' ? 'Mise à jour' : 'Import';
@@ -17,7 +29,7 @@ function reportHtml(r, open = false) {
       <div class="rep-nums"><span class="rep-n good">${plural(added.length, 'ajouté')}</span>${r.alreadyThere != null ? html`<span class="rep-n">${r.alreadyThere} déjà là</span>` : ''}${missing.length ? html`<span class="rep-n bad">${missing.length} introuvable${missing.length > 1 ? 's' : ''}</span>` : html`<span class="rep-n good">${icon('check', 14)} tout est bon</span>`}</div></summary>
     <div class="rep-body">
       ${r.sourceCount != null ? html`<p class="muted">${r.sourceCount} titres dans la playlist d'origine${r.hereCount != null ? ` · ${r.hereCount} dans Boombox après l'opération` : ''}.${r.skipped ? ` ${r.skipped} titres restent à traiter : ils seront ajoutés à la prochaine mise à jour.` : ''}</p>` : ''}
-      ${missing.length ? html`<h4>N'ont pas fonctionné</h4><p class="muted" style="margin-top:-6px">Raison : aucun équivalent trouvé sur YouTube Music (titre absent, version locale, faute dans le nom…). Tu peux les chercher à la main et les ajouter avec « + Ajouter ».</p><ul class="rep-list bad">${missing.map((m) => html`<li>${m.replace(/ — introuvable sur YouTube$/, '')}</li>`)}</ul>` : ''}
+      ${missing.length ? html`<h4>N'ont pas fonctionné</h4><p class="muted" style="margin-top:-6px">Raison : aucun équivalent trouvé sur YouTube Music (titre absent, version locale, faute dans le nom…). Tu peux les chercher à la main et les ajouter avec « + Ajouter ».</p>${r.playlistId ? html`<button class="btn primary sm rep-retry" data-retry="${r.id || ''}" style="margin-bottom:10px">${icon('search', 16)} Rechercher à nouveau les ${missing.length} introuvables</button>` : ''}<ul class="rep-list bad">${missing.map((m) => html`<li>${m.replace(/ — introuvable sur YouTube$/, '')}</li>`)}</ul>` : ''}
       ${added.length ? html`<h4>Ajoutés</h4><ul class="rep-list">${added.slice(0, 400).map((m) => html`<li>${m}</li>`)}</ul>` : html`<p class="muted">Aucun nouveau titre : la playlist était déjà à jour.</p>`}
       ${r.playlistId ? html`<a class="outline-btn" href="#/playlist/${r.playlistId}">Ouvrir la playlist</a>` : ''}
     </div></details>`;
@@ -63,4 +75,41 @@ export async function openSyncPanel(p) {
       });
     },
   });
+}
+
+// « Rechercher à nouveau » : les sons introuvables d'un import repassent par la recherche actuelle de Boombox
+// (YouTube Music, titre seul si besoin, puis SoundCloud) ; ceux trouvés sont ajoutés à la playlist, avec un rapport.
+export async function retryMissing(r, btn) {
+  const items = (r.missing || []).map((m) => m.replace(/ — introuvable sur YouTube$/, '')).map((m) => {
+    const i = m.indexOf(' - ');
+    return i > 0 ? { artist: m.slice(0, i).trim(), title: m.slice(i + 3).trim(), label: m } : { artist: '', title: m.trim(), label: m };
+  });
+  if (!items.length || !r.playlistId) return;
+  const say = (t) => btn && (btn.textContent = t);
+  btn && (btn.disabled = true);
+  say('Recherche sur YouTube Music…');
+  const job = await api('/api/match', { method: 'POST', body: { items: items.map(({ artist, title }) => ({ artist, title })), kind: 'track', retry: true } });
+  let j;
+  do {
+    await new Promise((res) => setTimeout(res, 1000));
+    j = await api(`/api/import/${job.id}`);
+    say(`YouTube Music : ${j.done} / ${j.total}…`);
+  } while (j.status !== 'done');
+  const found = [];
+  const still = [];
+  items.forEach((it, i) => (j.results[i] ? found.push(j.results[i]) : still.push(it)));
+  // Plan B : SoundCloud (même titre, même artiste, pas un remix)
+  for (let k = 0; k < still.length; k++) {
+    const it = still[k];
+    say(`SoundCloud : ${k + 1} / ${still.length}…`);
+    const list = await api(`/api/soundcloud/search?q=${encodeURIComponent(`${it.artist} ${it.title}`.trim())}`).catch(() => []);
+    const want = { title: it.title, artists: it.artist ? [{ name: it.artist }] : [] };
+    const hit = (list || []).find((t) => (it.artist ? sameSong(t, want) : String(t.title).toLowerCase().includes(it.title.toLowerCase())) && !isRemix(t, it.title));
+    if (hit) (found.push(hit), (still[k] = null));
+  }
+  const missing = still.filter(Boolean).map((it) => it.label);
+  if (found.length) await addToPlaylist(r.playlistId, found, { quiet: true });
+  await addReport({ type: 'import', playlistId: r.playlistId, name: r.name, source: 'Nouvelle recherche', sourceCount: items.length, added: found.map((t) => `${(t.artists || []).map((a) => a.name).join(', ')} - ${t.title}`), missing: missing.map((m) => `${m} — introuvable sur YouTube`) }).catch(() => {});
+  toast(found.length ? `${plural(found.length, 'son retrouvé')} et ajouté${found.length > 1 ? 's' : ''} à « ${r.name} »${missing.length ? ` · ${missing.length} toujours introuvable${missing.length > 1 ? 's' : ''}` : ''}` : 'Toujours introuvables, même sur SoundCloud', { timeout: 7000 });
+  say(found.length ? `✓ ${found.length} ajouté${found.length > 1 ? 's' : ''}` : 'Toujours introuvables');
 }

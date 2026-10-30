@@ -394,7 +394,7 @@ app.post('/api/import', (req, res) => {
 });
 app.post('/api/match', (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items.slice(0, 5000) : [];
-  res.json(startMatch(items, req.body.kind === 'artist' ? 'artist' : 'track'));
+  res.json(startMatch(items, req.body.kind === 'artist' ? 'artist' : 'track', { retry: !!req.body.retry }));
 });
 // Pré-téléchargement des titres likés (lecture instantanée, moins de requêtes à YouTube)
 app.get('/api/predownload', (req, res) => res.json(predownloadStatus()));

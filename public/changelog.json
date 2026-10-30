@@ -1,5 +1,15 @@
 [
   {
+    "version": "next",
+    "title": "Sons japonais retrouvés, nouvelle recherche des introuvables",
+    "items": [
+      "Import : les titres en japonais, chinois ou coréen sont enfin reconnus (avant, leur titre devenait vide pour Boombox et ils finissaient « introuvables » ou confondus avec un autre son de l’artiste).",
+      "Les reprises et remix par un autre artiste ne sont plus pris à la place du vrai son.",
+      "Rapports d’import : bouton « Rechercher à nouveau les introuvables ». Boombox relance la recherche (YouTube Music, titre seul si besoin, puis SoundCloud) et ajoute à la playlist ceux qu’il retrouve, avec un nouveau rapport."
+    ],
+    "date": "2026-10-30"
+  },
+  {
     "version": "2026.1030.1336",
     "title": "Encore plus économe",
     "items": [

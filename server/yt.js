@@ -547,24 +547,57 @@ export async function ytLyrics(videoId) {
 }
 
 // --- Correspondance d'un titre provenant d'une autre plateforme ---
+// Texte comparable. Les lettres de toutes les langues sont gardées : avant, seul l'alphabet latin restait, et un titre
+// japonais, chinois ou coréen devenait vide (jamais retrouvé, ou confondu avec un autre son du même artiste)
 const clean = (s) =>
   (s || '')
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/\(.*?\)|\[.*?\]/g, ' ')
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/\(.*?\)|\[.*?\]|（.*?）|【.*?】|「|」|『|』/g, ' ')
     .replace(/feat\.?|ft\.?|remaster(ed)?|\d{4}/g, ' ')
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
 
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+// Ressemblance de 0 à 1 : mots en commun ; pour le japonais, chinois, coréen (pas d'espaces entre les mots) :
+// paires de caractères en commun
 function similarity(a, b) {
-  const A = new Set(clean(a).split(' ').filter(Boolean));
-  const B = new Set(clean(b).split(' ').filter(Boolean));
+  const ca = clean(a);
+  const cb = clean(b);
+  const A = new Set(ca.split(' ').filter(Boolean));
+  const B = new Set(cb.split(' ').filter(Boolean));
   if (!A.size || !B.size) return 0;
   let inter = 0;
   for (const w of A) if (B.has(w)) inter++;
-  return inter / Math.max(A.size, B.size);
+  const words = inter / Math.max(A.size, B.size);
+  if (!CJK.test(ca + cb)) return words;
+  const pairs = (t) => {
+    const x = t.replace(/\s+/g, '');
+    const out = new Map();
+    for (let i = 0; i < x.length - 1; i++) out.set(x.slice(i, i + 2), (out.get(x.slice(i, i + 2)) || 0) + 1);
+    if (x.length === 1) out.set(x, 1);
+    return out;
+  };
+  // Seulement les caractères japonais / chinois / coréens des deux côtés : la traduction ou la transcription en
+  // lettres latines ajoutée par YouTube (« 夕凪 - Evening calm ») ne fait plus baisser la ressemblance
+  const only = (t) => [...t].filter((ch) => CJK.test(ch)).join('');
+  const qa = only(ca);
+  const qb = only(cb);
+  if (!qa || !qb) return words;
+  const pa = pairs(qa);
+  const pb = pairs(qb);
+  let common = 0;
+  for (const [k, n] of pa) common += Math.min(n, pb.get(k) || 0);
+  // Part des caractères cherchés qu'on retrouve (le titre trouvé peut contenir en plus « Live at… »)
+  let need = 0;
+  for (const n of pa.values()) need += n;
+  return Math.max(words, need ? common / need : 0);
 }
+
+// Même artiste ? Écritures différentes acceptées si le titre (en japonais, chinois, coréen) correspond exactement :
+// « Yorushika » et « ヨルシカ » ne se ressemblent pas en lettres
+const sameArtist = (want, got, title, gotTitle) => !want || similarity(want, got) >= 0.3 || (CJK.test(clean(title)) && similarity(title, gotTitle) >= 0.95);
 
 // Cache disque des correspondances « titre + artiste → titre YouTube » : un ré-import ou une
 // recherche déjà faite est instantané.
@@ -615,11 +648,12 @@ export async function alternatives(id, meta = null) {
     .slice(0, 3);
 }
 
-export async function matchTrack(item) {
+// retry : nouvelle recherche même si le son avait été déclaré introuvable (bouton « Rechercher à nouveau »)
+export async function matchTrack(item, { retry = false } = {}) {
   const key = `${clean(item.title)}|${clean(item.artist)}`;
   // Certains résultats YouTube Music arrivent sans artiste (« Artiste inconnu ») : on met celui qu'on cherchait
   const withArtist = (t) => (t && !t.artists?.length && item.artist ? { ...t, artists: [{ name: item.artist, id: null }] } : t);
-  if (key in matchCache) return withArtist(matchCache[key]);
+  if (key in matchCache && !retry) return withArtist(matchCache[key]);
   const t = await matchTrackUncached(item);
   matchCache[key] = t;
   saveMatches();
@@ -641,6 +675,20 @@ async function matchTrackUncached({ title, artist, duration }) {
       best = c;
     }
   }
+  // Rien de sûr : 2e essai avec le titre seul (artiste écrit autrement, nom japonais, « feat. »…), artiste vérifié
+  if ((!best || bestScore < 0.8) && artist) {
+    const alt = (await search(title, 'song').catch(() => ({ items: [] }))).items.filter((i) => i.type === 'song');
+    for (const c of alt.slice(0, 8)) {
+      // Titre seul : on n'accepte que le bon artiste et un titre vraiment proche (sinon un autre son passait)
+      if (similarity(artist, c.artists.map((x) => x.name).join(' ')) < 0.6 || similarity(title, c.title) < 0.6) continue;
+      const score = similarity(title, c.title) * 3 + similarity(artist, c.artists.map((a) => a.name).join(' ')) * 2 - (duration && c.duration ? Math.min(Math.abs(duration - c.duration) / 30, 2) : 0);
+      if (score > bestScore) ((bestScore = score), (best = c));
+    }
+  }
+  // Artiste différent (reprise, remix par quelqu'un d'autre…) : refusé
+  if (best && !sameArtist(artist, best.artists.map((x) => x.name).join(' '), title, best.title)) return null;
+  // Titre trop différent : un autre son du même artiste (mieux vaut « introuvable » qu'un mauvais son)
+  if (best && similarity(title, best.title) < 0.3) return null;
   if (!best || bestScore < 0.8) return null;
   const { type, ...track } = best;
   return track;
