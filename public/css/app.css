@@ -2637,3 +2637,9 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .quota-note p { margin: 0 0 12px; line-height: 1.5; }
 .quota-note .quota-when { padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); margin-bottom: 0; }
 .modal-backdrop:has(.quota-note) { z-index: 99990; } /* au-dessus de l’accueil et du choix du profil */
+
+/* Sélection de plusieurs sons (Ctrl / Maj + clic) : lignes surlignées et barre d'actions en bas */
+.track.sel { background: rgba(var(--accent-rgb, 176, 124, 247), 0.22) !important; box-shadow: inset 3px 0 0 var(--accent); }
+.sel-bar { position: fixed; left: 50%; bottom: calc(var(--player-h, 90px) + 18px); transform: translateX(-50%); z-index: 250; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 18px; border-radius: 16px; background: rgba(36, 32, 46, 0.97); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55); animation: toastIn 0.25s cubic-bezier(0.2, 1.2, 0.4, 1); white-space: nowrap; }
+.sel-bar b { margin-right: 6px; }
+.sel-bar .btn { display: inline-flex; align-items: center; gap: 6px; }

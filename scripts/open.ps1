@@ -26,4 +26,6 @@ if (-not $app) {
   $app = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LocalAppData\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe", "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe") |
     Where-Object { Test-Path $_ } | Select-Object -First 1
 }
-if ($app) { Start-Process $app "--app=$Url" } else { Start-Process $Url }
+# Accélération matérielle forcée (même sur une carte graphique que Chrome met de côté par prudence) : défilement et
+# animations calés sur la fréquence de l'écran (144 Hz, 165 Hz…). Sans effet si le navigateur était déjà ouvert.
+if ($app) { Start-Process $app "--app=$Url", '--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--enable-zero-copy' } else { Start-Process $Url }

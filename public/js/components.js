@@ -285,6 +285,59 @@ export function refreshTrackMarks(force = false) {
   });
 }
 
+// ---------- Sélection de plusieurs sons (PC) ----------
+// Ctrl+clic : ajoute / retire un son de la sélection ; Maj+clic : toute la plage depuis le dernier son choisi.
+// Une barre en bas propose alors : ajouter à une playlist, à la file, aux likés. Clic droit sur un son sélectionné :
+// le menu vaut pour toute la sélection. Un clic normal ou Échap annule.
+const sel = { list: null, idx: new Set(), anchor: null, bar: null };
+function selPaint() {
+  document.querySelectorAll('.track.sel').forEach((r) => r.classList.remove('sel'));
+  if (!sel.idx.size) return sel.bar?.remove(), (sel.bar = null);
+  document.querySelectorAll(`.track[data-list="${sel.list}"]`).forEach((r) => sel.idx.has(Number(r.dataset.i)) && r.classList.add('sel'));
+  if (!sel.bar) {
+    sel.bar = document.createElement('div');
+    sel.bar.className = 'sel-bar';
+    document.body.appendChild(sel.bar);
+    sel.bar.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-sel]');
+      if (!b) return;
+      const tracks = selTracks();
+      const a = b.dataset.sel;
+      if (a === 'pl') {
+        const r = b.getBoundingClientRect();
+        openPlaylistPicker(tracks, { x: r.left, y: r.top - 340 });
+      } else if (a === 'queue') (ctl.addToQueue(tracks), selClear());
+      else if (a === 'like') likeMany(tracks).then((n) => toast(n ? `${plural(n, 'titre')} ajouté${n > 1 ? 's' : ''} aux Titres likés` : 'Déjà dans tes Titres likés'), selClear());
+      else selClear();
+    });
+  }
+  sel.bar.innerHTML = String(html`<b>${plural(sel.idx.size, 'son')} sélectionné${sel.idx.size > 1 ? 's' : ''}</b>
+    <button class="btn white sm" data-sel="pl">${icon('plus', 16)} Ajouter à une playlist</button><button class="btn ghost sm" data-sel="queue">${icon('addQueue', 16)} File d'attente</button><button class="btn ghost sm" data-sel="like">${icon('heart', 16)} Liker</button><button class="icon-btn" data-sel="x" title="Annuler la sélection (Échap)">${icon('close', 18)}</button>`);
+}
+const selTracks = () => [...sel.idx].sort((a, b) => a - b).map((i) => lists.get(sel.list)?.tracks[i]).filter(Boolean);
+function selClear() {
+  sel.idx.clear();
+  sel.anchor = null;
+  selPaint();
+}
+function selClick(info, e) {
+  const lid = info.row.dataset.list;
+  if (sel.list !== lid) (sel.list = lid), sel.idx.clear();
+  if (e.shiftKey && sel.anchor != null) {
+    const [a, b] = [Math.min(sel.anchor, info.i), Math.max(sel.anchor, info.i)];
+    for (let i = a; i <= b; i++) sel.idx.add(i);
+  } else {
+    sel.idx.has(info.i) ? sel.idx.delete(info.i) : sel.idx.add(info.i);
+    sel.anchor = info.i;
+  }
+  selPaint();
+}
+document.addEventListener('keydown', (e) => e.key === 'Escape' && sel.idx.size && selClear());
+// Maj+clic : pas de sélection de texte sur la page pendant qu'on choisit des sons
+document.addEventListener('mousedown', (e) => (e.shiftKey || e.ctrlKey || e.metaKey) && e.target.closest?.('.track') && e.preventDefault());
+bus.addEventListener?.('route', () => sel.idx.size && selClear());
+window.addEventListener('hashchange', () => sel.idx.size && selClear());
+
 function rowInfo(el) {
   const row = el.closest('.track');
   if (!row) return null;
@@ -752,7 +805,12 @@ export function setupDelegation() {
       }
     }
     // Un clic sur un titre le lance (comme YouTube Music) ; les liens artiste/album restent cliquables.
-    if (info && !e.target.closest('a')) return playRow(info);
+    if (info && !e.target.closest('a')) {
+      // PC : Ctrl (ou Cmd) / Maj + clic = sélection de plusieurs sons, sans lancer la lecture
+      if ((e.ctrlKey || e.metaKey || e.shiftKey) && matchMedia('(pointer: fine)').matches) return (e.preventDefault(), selClick(info, e));
+      if (sel.idx.size) selClear();
+      return playRow(info);
+    }
     const cardEl = e.target.closest('[data-href]');
     if (cardEl && !e.target.closest('a,button')) {
       if (cardEl.dataset.href) location.hash = cardEl.dataset.href;
@@ -779,6 +837,18 @@ export function setupDelegation() {
       return;
     }
     e.preventDefault();
+    // Clic droit sur un son de la sélection : actions pour tous les sons sélectionnés
+    if (sel.idx.size > 1 && sel.list === info.row.dataset.list && sel.idx.has(info.i)) {
+      const tracks = selTracks();
+      return contextMenu(e.clientX, e.clientY, [
+        { label: `Ajouter ${plural(tracks.length, 'son')} à une playlist…`, icon: 'plus', action: () => openPlaylistPicker(tracks, { x: e.clientX, y: e.clientY + 40 }) },
+        { label: "Ajouter à la file d'attente", icon: 'addQueue', action: () => (ctl.addToQueue(tracks), selClear()) },
+        { label: 'Ajouter aux Titres likés', icon: 'heart', action: () => likeMany(tracks).then(() => selClear()) },
+        ...(info.list.playlistId ? [{ label: 'Retirer de cette playlist', icon: 'trash', danger: true, action: async () => { for (const t of tracks) await removeFromPlaylist(info.list.playlistId, t).catch(() => {}); selClear(); } }] : []),
+        { sep: true },
+        { label: 'Annuler la sélection', icon: 'close', action: selClear },
+      ]);
+    }
     trackMenu(info.track, e.clientX, e.clientY, { playlistId: info.list.playlistId, index: info.i });
   });
 

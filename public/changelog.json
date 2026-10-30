@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1030.1531",
+    "title": "Sélection de plusieurs sons (PC)",
+    "items": [
+      "PC : Ctrl+clic pour choisir plusieurs sons, Maj+clic pour toute une plage. Une barre propose d’ajouter la sélection à une playlist, à la file d’attente ou aux likés. Clic droit sur un son sélectionné : menu pour toute la sélection (dont « Retirer de cette playlist »). Échap ou un clic normal annule.",
+      "PC : Boombox s’ouvre avec l’accélération matérielle forcée, pour un affichage calé sur la fréquence de ton écran (144 Hz, 165 Hz…)."
+    ],
+    "date": "2026-10-30"
+  },
+  {
     "version": "2026.1030.1528",
     "title": "La meilleure version d’un son d’abord",
     "items": [
