@@ -28,4 +28,10 @@ if (-not $app) {
 }
 # Accélération matérielle forcée (même sur une carte graphique que Chrome met de côté par prudence) : défilement et
 # animations calés sur la fréquence de l'écran (144 Hz, 165 Hz…). Sans effet si le navigateur était déjà ouvert.
-if ($app) { Start-Process $app "--app=$Url", '--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--enable-zero-copy' } else { Start-Process $Url }
+# Réglage « Accélération matérielle » des Paramètres (data\pc.json, écrit par le serveur) : coupée → --disable-gpu
+$gpu = @('--enable-gpu-rasterization', '--ignore-gpu-blocklist', '--enable-zero-copy')
+try {
+  $conf = Get-Content (Join-Path (Split-Path -Parent $PSScriptRoot) 'data\pc.json') -Raw -ErrorAction Stop | ConvertFrom-Json
+  if ($conf.hwAccel -eq $false) { $gpu = @('--disable-gpu') }
+} catch {}
+if ($app) { Start-Process $app (@("--app=$Url") + $gpu) } else { Start-Process $Url }

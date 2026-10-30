@@ -217,6 +217,23 @@ app.post('/api/bg/:act', (req, res) => {
   // stop : renvoie ce qui jouait (la fenêtre qui reprend la main repart de là)
   res.json(act === 'stop' ? { track: was.track, position: was.position, queue: was.queue, context: was.context, playing: was.playing } : bgOut());
 });
+// Réglages du PC lus par le lanceur (scripts\open.ps1) : accélération matérielle de la fenêtre Boombox
+const PC_CONF = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'pc.json');
+const pcConf = () => {
+  try {
+    return JSON.parse(fs.readFileSync(PC_CONF, 'utf8'));
+  } catch {
+    return {};
+  }
+};
+app.get('/api/pc-settings', (req, res) => res.json({ hwAccel: pcConf().hwAccel !== false }));
+app.post('/api/pc-settings', (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).end();
+  const c = { ...pcConf(), hwAccel: req.body?.hwAccel !== false };
+  fs.mkdirSync(path.dirname(PC_CONF), { recursive: true });
+  fs.writeFileSync(PC_CONF, JSON.stringify(c, null, 2));
+  res.json({ hwAccel: c.hwAccel });
+});
 app.post('/api/prefetch/:id', prefetchHandler);
 app.get('/api/audio-file/:id', audioFileHandler);
 

@@ -507,7 +507,8 @@ export async function settings(el) {
     <div class="settings-row"><div><b>Automix (enchaînements façon DJ)</b><p>Analyse le tempo et la tonalité de chaque titre : les transitions démarrent sur un temps fort, le tempo est calé, les basses sont échangées et les volumes égalisés. En lecture aléatoire, le titre suivant est choisi pour bien s'enchaîner. ${st.ytdlp ? '' : 'Nécessite la lecture audio directe (yt-dlp).'}</p></div><label class="switch"><input type="checkbox" id="s-automix" ${setting('automix', false) ? 'checked' : ''} ${st.ytdlp ? '' : 'disabled'}><span></span></label></div>
     <div class="settings-row"><div><b>Normaliser le volume</b><p>Tous les sons sont joués au même niveau sonore : fini les titres beaucoup plus forts ou plus faibles que les autres. ${isNative ? 'Sur téléphone, les sons trop forts sont baissés (sans effet sur iPhone, qui ne laisse pas une appli régler le volume).' : ''}</p></div><label class="switch"><input type="checkbox" id="s-normalize" ${setting('normalize', true) ? 'checked' : ''} ${st.ytdlp || isNative ? '' : 'disabled'}><span></span></label></div>
     ${isNative ? '' : html`<div class="settings-row"><div><b>Lancer Boombox au démarrage de Windows</b><p>Le serveur démarre tout seul avec le PC : ton téléphone peut lire et télécommander dès que le PC est allumé, et l'appli s'ouvre instantanément.</p><label class="row-flex" style="font-size:13px;gap:8px;margin-top:6px"><input type="checkbox" id="s-autostart-win"> Ouvrir aussi la fenêtre Boombox</label></div><label class="switch"><input type="checkbox" id="s-autostart"><span></span></label></div>`}
-    ${!isNative && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? html`<div class="settings-row" id="s-dldir"><div style="min-width:0"><b>Dossier des téléchargements</b><p class="ellipsis">…</p></div><button class="btn ghost">Changer</button></div>` : ''}
+    ${!isNative && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? html`<div class="settings-row" id="s-hw"><div><b>Accélération matérielle</b><p>La carte graphique dessine Boombox : défilement et animations à la fréquence de ton écran (144 Hz, 165 Hz…). Coupe-la si l'affichage clignote ou bugue. Prend effet à la prochaine ouverture de Boombox (navigateur fermé).</p></div><label class="switch"><input type="checkbox" id="s-hwaccel" checked><span></span></label></div>
+    <div class="settings-row" id="s-dldir"><div style="min-width:0"><b>Dossier des téléchargements</b><p class="ellipsis">…</p></div><button class="btn ghost">Changer</button></div>` : ''}
     ${isNative ? '' : html`<div class="settings-row"><div><b>Pré-télécharger mes titres likés</b><p>En arrière-plan, quand rien ne joue : tes likes démarrent instantanément et Boombox sollicite beaucoup moins YouTube. Utilise jusqu'à 4 Go sur ce PC.</p><p class="muted" id="s-pre-status" style="font-size:12px"></p></div><label class="switch"><input type="checkbox" id="s-predownload" ${setting('predownload', true) ? 'checked' : ''}><span></span></label></div>`}
     <div class="settings-row"><div><b>Notifications</b><p>Nouvelles sorties des artistes que tu suis (au plus une toutes les 6 heures) et rappels de tes concerts favoris (★), la veille et le jour même.</p></div><label class="switch"><input type="checkbox" id="s-alerts" ${setting('releaseAlerts', true) && (isNative || (typeof Notification !== 'undefined' && Notification.permission === 'granted')) ? 'checked' : ''}><span></span></label></div>
     <div class="settings-row"><div><b>Titres masqués</b><p>${plural(setting('banned', []).length, 'titre')} que tu as choisi de ne plus entendre (menu ⋯ → « Ne plus proposer »).</p></div>${setting('banned', []).length ? html`<button class="btn ghost" id="s-unban">Tout réautoriser</button>` : ''}</div>
@@ -635,6 +636,14 @@ export async function settings(el) {
   // Téléphone : chemin du dossier où sont gardés les sons
   const audioDir = el.querySelector('#s-audiodir');
   if (audioDir) offline.media.audioFolder?.().then((d) => (audioDir.textContent = d)).catch(() => (audioDir.textContent = 'inconnu (mets l’appli à jour)'));
+  // Accélération matérielle de la fenêtre Boombox (PC) : lue par le lanceur au prochain démarrage
+  const hw = el.querySelector('#s-hwaccel');
+  if (hw) {
+    api('/api/pc-settings').then((r) => (hw.checked = r.hwAccel !== false)).catch(() => el.querySelector('#s-hw')?.remove());
+    hw.onchange = () => api('/api/pc-settings', { method: 'POST', body: { hwAccel: hw.checked } })
+      .then(() => toast(hw.checked ? 'Accélération matérielle activée : ferme et rouvre Boombox' : 'Accélération matérielle coupée : ferme et rouvre Boombox', { timeout: 5000 }))
+      .catch((e) => toast(e.message));
+  }
   // Dossier des sons téléchargés (Boombox ouvert sur le PC lui-même)
   const dlRow = el.querySelector('#s-dldir');
   if (dlRow) {

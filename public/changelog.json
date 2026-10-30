@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1030.1536",
+    "title": "Accélération matérielle au choix",
+    "items": [
+      "PC : Paramètres → « Accélération matérielle » pour la couper si l’affichage clignote ou bugue (activée par défaut). Prend effet en rouvrant Boombox, navigateur fermé."
+    ],
+    "date": "2026-10-30"
+  },
+  {
     "version": "2026.1030.1531",
     "title": "Sélection de plusieurs sons (PC)",
     "items": [
