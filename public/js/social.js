@@ -153,7 +153,25 @@ export const social = {
     const space = (state.profiles || []).filter((p) => p.id !== state.profile?.id && p.socialCode).map((p) => p.socialCode);
     return [...new Set([...space, ...mine])].filter((c) => c && c !== this.code);
   },
+  // Économie Firebase : appli en arrière-plan depuis 1 min sans son, on arrête de suivre l'activité des amis (chaque
+  // son changé par un ami comptait comme une lecture) ; tout se remet à jour dès qu'on revient
+  _bgPause() {
+    if (this._bgSet) return;
+    this._bgSet = true;
+    let t = 0;
+    document.addEventListener('visibilitychange', () => {
+      clearTimeout(t);
+      if (!document.hidden) return this.refreshFriends();
+      t = setTimeout(() => {
+        if (!document.hidden || (player.track && !player.paused)) return;
+        for (const off of this._friendUnsubs.values()) off();
+        this._friendUnsubs.clear();
+      }, 60e3);
+    });
+  },
   refreshFriends() {
+    this._bgPause();
+    if (document.hidden && this._bgSet && !this._friendUnsubs.size && (!player.track || player.paused)) return;
     const codes = new Set(this._codes());
     for (const [c, off] of this._friendUnsubs) if (!codes.has(c)) (off(), this._friendUnsubs.delete(c));
     for (const c of codes) {

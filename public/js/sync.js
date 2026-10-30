@@ -34,8 +34,11 @@ export const sync = {
     await setDoc(this.devRef(), { name: device.name, kind: device.kind, profileId: profile.id, profileName: profile.name, lan, lastSeen: Date.now(), online: true }, { merge: true }).catch(() => {});
     this.connected = true;
 
-    this._unsubs.push(
-      onSnapshot(query(cloud.col('devices'), where('profileId', '==', profile.id)), (snap) => {
+    // Suivi des autres appareils. Économie Firebase : coupé quand l'appli est en arrière-plan sans son (chaque
+    // signal de vie d'un autre appareil comptait comme une lecture), repris dès qu'on revient
+    this._watchDevices = () => {
+      if (this._devOff) return;
+      this._devOff = onSnapshot(query(cloud.col('devices'), where('profileId', '==', profile.id)), (snap) => {
         this._allDevices = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         for (const d of this._allDevices) {
           if (d.id === device.id || !d.state) continue;
@@ -55,7 +58,11 @@ export const sync = {
         }
         this._refreshDevices();
         if (this.target) this._remoteEmit();
-      }),
+      }, (e) => console.warn('devices', e?.message));
+    };
+    this._watchDevices();
+    this._unsubs.push(() => (this._devOff?.(), (this._devOff = null)));
+    this._unsubs.push(
       // Commandes reçues d'un autre appareil (télécommande)
       onSnapshot(collection(db, 'spaces', cloud.spaceId, 'devices', device.id, 'commands'), (snap) => {
         for (const ch of snap.docChanges()) {
@@ -81,7 +88,13 @@ export const sync = {
     setInterval(beat, BEAT_MS);
     bus.addEventListener('player:time', () => Date.now() - lastBeat > BEAT_MS && beat());
     window.addEventListener('pagehide', () => updateDoc(this.devRef(), { online: false }).catch(() => {}));
+    let idleT = 0;
     document.addEventListener('visibilitychange', () => {
+      clearTimeout(idleT);
+      if (document.hidden) {
+        // 1 min en arrière-plan sans son et sans piloter un autre appareil : on arrête de suivre les autres
+        idleT = setTimeout(() => document.hidden && (!player.track || player.paused) && !this.target && (this._devOff?.(), (this._devOff = null)), 60e3);
+      } else this._watchDevices();
       if (document.visibilityState === 'visible') {
         updateDoc(this.devRef(), { lastSeen: Date.now(), online: true }).catch(() => {});
         this._refreshDevices(); // retour sur l'appli : un appareil éteint entre-temps n'est plus affiché ni piloté

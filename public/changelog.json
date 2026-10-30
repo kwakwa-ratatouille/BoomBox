@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Encore plus économe",
+    "items": [
+      "Appli en arrière-plan depuis une minute, sans musique : elle arrête de suivre en direct les autres appareils et l’activité des amis (ça consommait la limite gratuite pour rien). Tout se remet à jour dès que tu reviens. Le téléphone peut toujours être piloté depuis le PC."
+    ],
+    "date": "2026-10-30"
+  },
+  {
     "version": "2026.1030.1005",
     "title": "Boombox plus économe",
     "items": [
