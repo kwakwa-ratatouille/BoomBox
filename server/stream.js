@@ -12,6 +12,10 @@ import { Readable } from 'node:stream';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Node qui fait tourner ce serveur (celui fourni par l'installateur Windows n'est pas dans le PATH)
 const JS_RUNTIME = `node:${process.execPath}`;
+// Windows : yt-dlp lance lui-même Node (déchiffrage YouTube). Lancé « sans console » (windowsHide), ce Node-là ouvrait
+// SA PROPRE fenêtre noire une fraction de seconde (gênant en jeu plein écran). Quand le serveur a déjà une console
+// (cachée, lancé par l'icône près de l'horloge), yt-dlp la partage : plus aucune fenêtre. Sinon, on cache comme avant.
+export const HIDE = process.platform !== 'win32' || !process.stdout.isTTY;
 
 function findYtDlp() {
   const local = path.join(ROOT, 'bin', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
@@ -50,7 +54,7 @@ function resolveUrl(id, low = false) {
       ytDlpPath,
       // --js-runtimes : yt-dlp utilise ce même Node pour déchiffrer les liens YouTube
       ['--js-runtimes', JS_RUNTIME, '-f', low ? 'worstaudio[ext=m4a]/bestaudio[ext=m4a]/bestaudio' : 'bestaudio[ext=m4a]/bestaudio', '-g', '--no-playlist', '--no-warnings', `https://www.youtube.com/watch?v=${id}`],
-      { timeout: 30e3, windowsHide: true },
+      { timeout: 30e3, windowsHide: HIDE },
       (err, stdout) => {
         pending.delete(key);
         const url = stdout?.trim().split('\n')[0];
@@ -94,13 +98,18 @@ export function download(id, { noAlt = false } = {}) {
   if (fs.existsSync(file)) return Promise.resolve(file);
   if (downloads.has(id)) return downloads.get(id);
   if (!noAlt && isScId(id)) {
-    const p = rawDownload(id).catch(async (err) => {
-      const y = await ytForSc(id);
-      if (!y) throw err;
-      fs.copyFileSync(await download(y, { noAlt: true }), file);
-      console.log(`[lecture] ${id} refusé par SoundCloud : version YouTube ${y} utilisée`);
-      return file;
-    });
+    // Hiérarchie : 1. le même son sur YouTube Music (version officielle, meilleure qualité) ; 2. SoundCloud
+    const p = (async () => {
+      const y = await ytForSc(id).catch(() => null);
+      if (y) {
+        const f = await download(y, { noAlt: true }).catch(() => null);
+        if (f) {
+          fs.copyFileSync(f, file);
+          return file;
+        }
+      }
+      return rawDownload(id);
+    })();
     downloads.set(id, p);
     p.finally(() => downloads.delete(id)).catch(() => {});
     return p;
@@ -132,7 +141,7 @@ function rawDownload(id) {
     // Téléchargé sous un nom temporaire, renommé seulement une fois complet
     const tmp = file + '.dl';
     fs.rmSync(tmp, { force: true });
-    execFile(ytDlpPath, ['--js-runtimes', JS_RUNTIME, '-f', 'bestaudio[ext=m4a]/bestaudio', '-o', tmp, '--no-part', '--no-playlist', '--no-warnings', '--quiet', isScId(id) ? scUrl(id) : `https://www.youtube.com/watch?v=${id}`], { timeout: 150e3, windowsHide: true }, (err) => {
+    execFile(ytDlpPath, ['--js-runtimes', JS_RUNTIME, '-f', 'bestaudio[ext=m4a]/bestaudio', '-o', tmp, '--no-part', '--no-playlist', '--no-warnings', '--quiet', isScId(id) ? scUrl(id) : `https://www.youtube.com/watch?v=${id}`], { timeout: 150e3, windowsHide: HIDE }, (err) => {
       downloads.delete(id);
       if (err || !fs.existsSync(tmp) || !fs.statSync(tmp).size) {
         fs.rmSync(tmp, { force: true });

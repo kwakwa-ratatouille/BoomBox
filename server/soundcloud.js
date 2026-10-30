@@ -29,7 +29,7 @@ const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-
 const BAD = /\b(remix|nightcore|cover|slowed|sped up|speed up|reverb|instrumental|karaoke|8d|mashup|edit|live)\b/;
 
 function ytdlp(bin, args) {
-  return new Promise((resolve, reject) => execFile(bin, args, { timeout: 45e3, windowsHide: true, maxBuffer: 8 << 20 }, (err, out) => (err ? reject(err) : resolve(out))));
+  return new Promise((resolve, reject) => execFile(bin, args, { timeout: 45e3, windowsHide: process.platform !== 'win32' || !process.stdout.isTTY, maxBuffer: 8 << 20 }, (err, out) => (err ? reject(err) : resolve(out))));
 }
 
 // Le son officiel : publié par l'artiste (nom du compte = artiste), même titre, pas un remix
@@ -75,10 +75,20 @@ export async function scResolve(url) {
 // Recherche SoundCloud (onglet « SoundCloud » de la recherche) : sons publics, sans les remix en premier
 export async function scSearch(q, n = 15) {
   if (!BIN) return [];
-  const [out, album] = await Promise.all([
-    ytdlp(BIN, ['--flat-playlist', '--dump-json', '--no-warnings', `scsearch${n}:${String(q).slice(0, 100)}`]).catch(() => ''),
+  // API SoundCloud d'abord : elle indique les sons réservés aux abonnés Go+ (extraits de 30 s), qu'on écarte
+  const [api, album] = await Promise.all([
+    scApi(`https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(String(q).slice(0, 100))}&limit=${n}`).catch(() => null),
     scAlbumTracks(String(q).slice(0, 100), scApi).catch(() => []),
   ]);
+  if (api?.collection) {
+    const seenA = new Set(album.map((t) => t.id));
+    return [...album, ...api.collection.filter((t) => t.streamable !== false && t.policy !== 'SNIP' && t.policy !== 'BLOCK' && !seenA.has(scId(t.id))).map((t) => ({
+      id: scId(t.id), title: t.title, artists: [{ name: t.user?.username || 'SoundCloud' }], album: null,
+      duration: Math.round((t.full_duration || t.duration || 0) / 1000), thumb: (t.artwork_url || t.user?.avatar_url || '').replace('-large', '-t500x500') || null, soundcloud: true,
+    }))];
+  }
+  // Secours : recherche par yt-dlp
+  const out = await ytdlp(BIN, ['--flat-playlist', '--dump-json', '--no-warnings', `scsearch${n}:${String(q).slice(0, 100)}`]).catch(() => '');
   const found = out.split('\n').filter((l) => l.startsWith('{')).map((l) => JSON.parse(l)).map((h) => {
     const thumb = (h.thumbnails || []).slice().sort((a, b) => (b.width || 0) - (a.width || 0))[0]?.url || null;
     return { id: scId(h.id), title: h.title, artists: [{ name: h.uploader || 'SoundCloud' }], album: null, duration: Math.round(h.duration || 0), thumb, soundcloud: true };
