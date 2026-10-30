@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Boombox plus économe",
+    "items": [
+      "Moins d’échanges avec la base en ligne (pour rester dans la limite gratuite) : les appareils donnent de leurs nouvelles toutes les minutes et seulement quand ils servent, l’activité « en écoute » pour les amis s’écrit moins souvent, et ton classement n’est republié que s’il a changé."
+    ],
+    "date": "2026-10-30"
+  },
+  {
     "version": "2026.1029.2257",
     "title": "Tous les albums sur la page d’un artiste",
     "items": [

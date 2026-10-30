@@ -7,7 +7,9 @@ import { toast } from './ui.js';
 import { isNative, localApi } from './native.js';
 import { cloud, db, doc, collection, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, arrayUnion, arrayRemove, runTransaction, deleteField } from './cloud.js';
 
-const ONLINE_MS = 75e3;
+// Économie Firebase : signal de vie toutes les 60 s (au lieu de 25), et seulement appli à l'écran ou son qui joue
+const BEAT_MS = 60e3;
+const ONLINE_MS = 150e3;
 
 export const sync = {
   connected: false,
@@ -71,12 +73,13 @@ export const sync = {
     // son joue, le signal part aussi au rythme de la lecture (le lecteur, lui, tourne toujours)
     let lastBeat = 0;
     const beat = () => {
+      if (document.hidden && (!player.track || player.paused)) return; // rien à dire : appli en arrière-plan, sans son
       lastBeat = Date.now();
       updateDoc(this.devRef(), { lastSeen: Date.now(), online: true, ...(player.track && !player.paused ? { state: player.snapshot() } : {}) }).catch(() => {});
       this._refreshDevices();
     };
-    setInterval(beat, 25e3);
-    bus.addEventListener('player:time', () => Date.now() - lastBeat > 25e3 && beat());
+    setInterval(beat, BEAT_MS);
+    bus.addEventListener('player:time', () => Date.now() - lastBeat > BEAT_MS && beat());
     window.addEventListener('pagehide', () => updateDoc(this.devRef(), { online: false }).catch(() => {}));
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
@@ -119,7 +122,7 @@ export const sync = {
     // Seulement un appareil vraiment allumé : signal de vie de moins d'1 min et état de lecture récent (avant : un PC
     // éteint pendant qu'il jouait restait « en lecture » et le téléphone s'y rattachait au réveil)
     const seen = (id) => this._allDevices.find((x) => x.id === id)?.lastSeen || 0;
-    const other = this.devices.find((d) => d.id !== state.device.id && d.playing && now - seen(d.id) < 60e3 && now - (this.remote[d.id]?.ts || 0) < 2 * 60e3);
+    const other = this.devices.find((d) => d.id !== state.device.id && d.playing && now - seen(d.id) < ONLINE_MS && now - (this.remote[d.id]?.ts || 0) < 3 * 60e3);
     if (other) this.control(other.id, { auto: true });
   },
   // Suivi automatique (comme Spotify Connect) : un son lancé ici part sur l'appareil qui joue déjà (le téléphone

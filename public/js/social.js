@@ -116,6 +116,10 @@ export const social = {
       const r = await getStatsFull(0, { since, until: Date.now() }, 1).catch(() => null);
       stats[k] = r ? { minutes: r.minutes || 0, plays: r.plays || 0, artists: r.uniqueArtists || 0, tracks: r.uniqueTracks || 0 } : null;
     }
+    // Rien de changé depuis la dernière fois : on n'écrit pas (économie Firebase ; avant : toutes les heures quoi qu'il arrive)
+    const sig = JSON.stringify({ t: top.tracks.map((x) => x.id + x.count), a: top.artists.map((x) => x.name + x.count), m: top.minutes, s: Object.keys(ranges).map((k) => stats[k] && stats[k].minutes) });
+    if (sig === this._topSig) return;
+    this._topSig = sig;
     await updateDoc(peopleRef(this.code), { top, stats }).catch(() => {});
   },
 
@@ -130,7 +134,7 @@ export const social = {
     if (!force && last.id === t.id && last.playing === playing) return;
     // Lecture / pause en rafale sur le même son : on n'écrit pas plus d'une fois toutes les 10 s,
     // mais le dernier état part quand même à la fin du délai (sinon une pause resterait « en écoute »)
-    const wait = 10e3 - (Date.now() - last.at);
+    const wait = 45e3 - (Date.now() - last.at); // lecture / pause sur le même son : au plus une écriture toutes les 45 s
     if (!force && last.id === t.id && wait > 0) {
       clearTimeout(this._pubTimer);
       this._pubTimer = setTimeout(() => this.publishActivity(), wait + 50);
