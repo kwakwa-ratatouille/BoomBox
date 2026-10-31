@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1031.0906",
+    "title": "Ambiance lumineuse vraiment en rythme",
+    "items": [
+      "PC : l’ambiance lumineuse écoute le vrai son (les basses, image par image) : chaque coup de grosse caisse fait un flash, sans retard, quel que soit le tempo.",
+      "Téléphone (ou son joué sur un autre appareil) : la lumière suit le tempo analysé du son ; tant qu’il n’est pas connu, elle respire doucement au lieu de battre à un faux rythme."
+    ],
+    "date": "2026-10-31"
+  },
+  {
     "version": "2026.1031.0850",
     "title": "Écoute privée : fin propre",
     "items": [

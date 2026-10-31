@@ -101,6 +101,44 @@ export function openAmbient() {
   ov._resize = size;
   const t0 = performance.now();
   let smooth = 0;
+  // PC : la lumière écoute le vrai son (énergie des basses, image par image) au lieu de deviner le rythme. Un coup
+  // de grosse caisse = un flash, quel que soit le tempo. Téléphone, ou son joué sur un autre appareil : tempo analysé.
+  let ana = null;
+  let bins = null;
+  let avg = 0;
+  let lastHit = 0;
+  const live = () => {
+    const e = player.engines?.audio;
+    if (player.remoteSender || player.engine?.name !== 'audio' || !e || window.Capacitor?.isNativePlatform?.()) return null;
+    if (!e.graph) e.enableGraph?.();
+    if (!e.graph) return null;
+    if (!ana) {
+      ana = e.graph.ctx.createAnalyser();
+      ana.fftSize = 1024;
+      ana.smoothingTimeConstant = 0.2;
+      e.graph.nodes.forEach((n) => n.gain.connect(ana));
+      bins = new Uint8Array(ana.frequencyBinCount);
+    }
+    return ana;
+  };
+  const liveHit = (a) => {
+    a.getByteFrequencyData(bins);
+    // Basses (≈ 40–160 Hz) : là où tombent grosse caisse et 808
+    const hz = a.context.sampleRate / a.fftSize;
+    let sum = 0;
+    let n = 0;
+    for (let i = Math.max(1, Math.floor(40 / hz)); i <= Math.ceil(160 / hz); i++) (sum += bins[i]), n++;
+    const e = sum / n / 255;
+    const t = performance.now();
+    const rise = e - avg;
+    avg += (e - avg) * 0.08; // niveau moyen des basses du moment (s'adapte aux passages calmes et forts)
+    // Coup net au-dessus de la moyenne, pas plus de 6 par seconde
+    if (rise > 0.07 && e > 0.25 && t - lastHit > 160) {
+      lastHit = t;
+      return Math.min(1, 0.55 + rise * 3);
+    }
+    return 0;
+  };
   const frame = () => {
     if (!ov) return;
     const now = (performance.now() - t0) / 1000;
@@ -111,8 +149,16 @@ export function openAmbient() {
     // Pulsation : 1 sur le temps, puis redescend ; plus forte sur le premier temps de chaque mesure. À l'arrêt : calme
     const ph = ((pos - (an?.firstBeat || 0)) / beat) % 1;
     const barStart = Math.floor((pos - (an?.firstBeat || 0)) / beat) % 4 === 0;
-    const hit = v.paused ? 0 : Math.pow(1 - (ph < 0 ? ph + 1 : ph), 3) * (barStart ? 1 : 0.65);
-    smooth += (hit - smooth) * 0.35;
+    const a = v.paused ? null : live();
+    if (a) {
+      // Vrai son : flash immédiat au coup, puis redescente douce (aucun retard à la montée)
+      const h = liveHit(a);
+      smooth = h ? Math.max(smooth, h) : smooth * 0.88;
+    } else {
+      // Tempo analysé ; tempo inconnu (analyse pas prête) : simple respiration lente plutôt qu'un faux rythme
+      const hit = v.paused ? 0 : an?.beat ? Math.pow(1 - (ph < 0 ? ph + 1 : ph), 3) * (barStart ? 1 : 0.65) : 0.25 + 0.2 * Math.sin(now * 1.6);
+      smooth = hit > smooth ? hit : smooth + (hit - smooth) * 0.25; // montée immédiate, descente douce
+    }
     const k = intensity;
     const shift = (now * 6) % 360; // les couleurs tournent doucement
     const P = pal.map(([h, s, l]) => [(h + shift) % 360, s, l]);
