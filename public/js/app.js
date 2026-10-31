@@ -1588,6 +1588,8 @@ async function boot() {
   state.status = await api('/api/status').catch(() => state.status);
   Events.apply();
   document.documentElement.classList.toggle('private-session', privateMode.on());
+  // Écoute privée finie (6 h) pendant que l'appli est ouverte : le cadenas disparaît aussi
+  setInterval(() => document.documentElement.classList.toggle('private-session', privateMode.on()), 60e3);
   setTimeout(quotaNotice, 1500); // dès le démarrage : la suite peut rester bloquée tant que Firebase refuse
   setInterval(() => Events.compute().id !== Events.current.id && (Events.apply(), location.hash === '#/' && window.dispatchEvent(new HashChangeEvent('hashchange'))), 3600e3);
   await cloud.signIn();
