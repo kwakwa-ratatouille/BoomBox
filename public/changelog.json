@@ -1,5 +1,13 @@
 [
   {
+    "version": "next",
+    "title": "Pulsation façon NCS",
+    "items": [
+      "Ambiance lumineuse « Pulsation » : le logo Boombox dans un rond au centre, entouré de barres qui dansent avec la musique (le vrai son sur PC) et de particules qui filent sur les basses. Animations plus fluides, identiques sur les écrans 60 et 120 Hz."
+    ],
+    "date": "2026-11-03"
+  },
+  {
     "version": "2026.1031.0906",
     "title": "Ambiance lumineuse vraiment en rythme",
     "items": [

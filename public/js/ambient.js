@@ -101,6 +101,13 @@ export function openAmbient() {
   ov._resize = size;
   const t0 = performance.now();
   let smooth = 0;
+  let spec = null;
+  let parts = null;
+  let lastT = performance.now();
+  let dt = 1 / 60;
+  // Logo Boombox (habillé pendant un événement) pour le rond de la pulsation
+  let logo = null;
+  import('./events.js').then((E) => loadImg(E.eventLogo())).then((im) => (logo = im)).catch(() => loadImg('/assets/logo-symbol.png?v=2').then((im) => (logo = im)));
   // PC : la lumière écoute le vrai son (énergie des basses, image par image) au lieu de deviner le rythme. Un coup
   // de grosse caisse = un flash, quel que soit le tempo. Téléphone, ou son joué sur un autre appareil : tempo analysé.
   let ana = null;
@@ -141,7 +148,10 @@ export function openAmbient() {
   };
   const frame = () => {
     if (!ov) return;
-    const now = (performance.now() - t0) / 1000;
+    const tn = performance.now();
+    dt = Math.min(0.1, (tn - lastT) / 1000);
+    lastT = tn;
+    const now = (tn - t0) / 1000;
     const v = view();
     const an = automix.get(v.track?.id);
     const beat = an?.beat || 0.5;
@@ -153,7 +163,7 @@ export function openAmbient() {
     if (a) {
       // Vrai son : flash immédiat au coup, puis redescente douce (aucun retard à la montée)
       const h = liveHit(a);
-      smooth = h ? Math.max(smooth, h) : smooth * 0.88;
+      smooth = h ? Math.max(smooth, h) : smooth * Math.pow(0.88, dt * 60); // redescente identique quel que soit l'écran (60 ou 120 Hz)
     } else {
       // Tempo analysé ; tempo inconnu (analyse pas prête) : simple respiration lente plutôt qu'un faux rythme
       const hit = v.paused ? 0 : an?.beat ? Math.pow(1 - (ph < 0 ? ph + 1 : ph), 3) * (barStart ? 1 : 0.65) : 0.25 + 0.2 * Math.sin(now * 1.6);
@@ -188,21 +198,89 @@ export function openAmbient() {
         g.fill();
       }
     } else if (mode === 'pulse') {
-      g.fillStyle = col(P[1], 0.25);
+      // Façon NCS : le logo dans un rond au centre, entouré de barres qui dansent avec le son (vrai spectre sur PC,
+      // spectre imité au rythme ailleurs), particules qui filent vers l'extérieur sur les coups
+      const cx = W / 2;
+      const cy = H / 2;
+      const m = Math.min(W, H);
+      const bass = smooth;
+      const grd = g.createRadialGradient(cx, cy, 0, cx, cy, Math.hypot(W, H) / 2);
+      grd.addColorStop(0, col(P[0], 0.35 + 0.25 * bass));
+      grd.addColorStop(1, '#030206');
+      g.fillStyle = grd;
       g.fillRect(0, 0, W, H);
-      const R = Math.hypot(W, H) / 2;
-      for (let i = 0; i < 6; i++) {
-        const r = ((now * 0.25 + i / 6) % 1) * R;
-        g.strokeStyle = col(P[i % 3], 1.1, 0.35 + 0.5 * smooth * (1 - r / R));
-        g.lineWidth = 20 + 40 * smooth;
-        g.beginPath();
-        g.arc(W / 2, H / 2, r, 0, Math.PI * 2);
-        g.stroke();
+      // Spectre : 64 bandes (moitié gauche, recopiée en miroir à droite), lissées dans le temps
+      const N = 64;
+      spec ||= new Float32Array(N);
+      if (a && bins) {
+        for (let i = 0; i < N; i++) {
+          // Échelle logarithmique : plus de barres pour les basses et les médiums
+          const lo = Math.floor(Math.pow(bins.length * 0.7, i / N));
+          const hi = Math.max(lo + 1, Math.floor(Math.pow(bins.length * 0.7, (i + 1) / N)));
+          let s = 0;
+          for (let j = lo; j < hi; j++) s += bins[j];
+          const val = s / (hi - lo) / 255;
+          spec[i] += (val - spec[i]) * (val > spec[i] ? 0.6 : 0.12);
+        }
+      } else {
+        for (let i = 0; i < N; i++) {
+          const low = 1 - i / N;
+          const val = v.paused ? 0.05 : 0.18 + 0.5 * bass * low + 0.18 * (0.5 + 0.5 * Math.sin(now * (2 + i * 0.37) + i * 1.7)) * (0.4 + 0.6 * Math.sin(now * 0.7 + i * 0.21) ** 2);
+          spec[i] += (val - spec[i]) * (val > spec[i] ? 0.5 : 0.1);
+        }
       }
-      g.fillStyle = col(P[0], 1.1, 0.5 + 0.5 * smooth);
+      const r0 = m * (0.17 + 0.025 * bass);
+      const maxLen = m * 0.22;
+      g.save();
+      g.translate(cx, cy);
+      g.rotate(now * 0.05);
+      g.lineCap = 'round';
+      g.shadowBlur = 18 * (0.5 + bass);
+      g.shadowColor = col(P[0], 1.2);
+      for (let side = 0; side < 2; side++) {
+        for (let i = 0; i < N; i++) {
+          const ang = -Math.PI / 2 + (side ? 1 : -1) * (Math.PI * (i + 0.5)) / N;
+          const len = 4 + spec[i] * maxLen;
+          g.strokeStyle = col(P[i % 3], 1.15);
+          g.lineWidth = Math.max(2, (m / N) * 0.9);
+          g.beginPath();
+          g.moveTo(Math.cos(ang) * (r0 + 6), Math.sin(ang) * (r0 + 6));
+          g.lineTo(Math.cos(ang) * (r0 + 6 + len), Math.sin(ang) * (r0 + 6 + len));
+          g.stroke();
+        }
+      }
+      g.restore();
+      // Particules : naissent sur le cercle, filent vers l'extérieur, plus vite sur les coups
+      parts ||= [];
+      if (!v.paused && parts.length < 140) for (let i = 0; i < 1 + Math.round(bass * 4); i++) parts.push({ a: Math.random() * Math.PI * 2, d: r0, s: 0.4 + Math.random(), c: Math.floor(Math.random() * 3) });
+      g.shadowBlur = 0;
+      for (const p of parts) {
+        p.d += (2 + bass * 14) * p.s * dt * 60;
+        const alpha = Math.max(0, 1 - (p.d - r0) / (m * 0.75));
+        g.fillStyle = col(P[p.c], 1.3, alpha * 0.8);
+        g.fillRect(cx + Math.cos(p.a) * p.d - 1.5, cy + Math.sin(p.a) * p.d - 1.5, 3, 3);
+      }
+      parts = parts.filter((p) => p.d - r0 < m * 0.75);
+      // Rond central avec le logo (logo habillé pendant un événement)
+      g.save();
+      g.shadowBlur = 30 + 40 * bass;
+      g.shadowColor = col(P[0], 1.2);
+      g.fillStyle = '#0d0a14';
       g.beginPath();
-      g.arc(W / 2, H / 2, Math.min(W, H) * (0.12 + 0.08 * smooth), 0, Math.PI * 2);
+      g.arc(cx, cy, r0, 0, Math.PI * 2);
       g.fill();
+      g.restore();
+      g.strokeStyle = col(P[0], 1.25);
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(cx, cy, r0, 0, Math.PI * 2);
+      g.stroke();
+      if (logo) {
+        const s = r0 * 1.25 * (1 + 0.06 * bass);
+        g.imageSmoothingEnabled = false;
+        g.drawImage(logo, cx - s / 2, cy - s / 2, s, s);
+        g.imageSmoothingEnabled = true;
+      }
     } else {
       // Kaléidoscope : un quartier de la pochette, retourné en miroir 12 fois autour du centre
       g.fillStyle = col(P[1], 0.3);
