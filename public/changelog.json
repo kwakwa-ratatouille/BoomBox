@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1105.1256",
+    "title": "Une vitesse pour chaque son",
+    "items": [
+      "Nouvelle option dans les Paramètres, désactivée par défaut : « Retenir la vitesse de chaque son ». Le son reprend la vitesse que tu lui as choisie, et les autres restent à vitesse normale."
+    ],
+    "date": "2026-11-05"
+  },
+  {
     "version": "2026.1105.1252",
     "title": "Paroles sans horaires parasites",
     "items": [

@@ -1,6 +1,6 @@
 // Lecteur : moteurs de lecture (YouTube intégré ou audio direct via yt-dlp), file d'attente,
 // aléatoire, répétition, lecture automatique, minuteur de sommeil, contrôles système.
-import { state, emit, bus, api, ls, setting, addHistory, setHeard } from './state.js';
+import { state, emit, bus, api, ls, setting, saveSettings, addHistory, setHeard } from './state.js';
 import { toast, artistNames } from './ui.js';
 import { automix } from './automix.js';
 import { isNative, platform, localApi } from './native.js';
@@ -11,7 +11,7 @@ const noOverlap = isNative && platform === 'ios';
 // iPhone : sortie audio rallumée avant de jouer. Après une interruption (appel, vidéo, autre appli) qui ne s'est pas
 // terminée par « reprends », iOS la laisse éteinte : le son « joue » (le temps avance) mais on n'entend rien.
 const wakeAudio = () => (isNative && platform === 'ios' ? Promise.resolve(window.Capacitor?.Plugins?.BoomboxNative?.setAudioMode?.({ mix: false })).catch(() => {}) : null);
-import { playId } from './twins.js';
+import { playId, canonId } from './twins.js';
 
 // Source audio d'un titre : serveur du PC (flux yt-dlp) ou, dans l'appli, fichier téléchargé sur le téléphone
 // Connexion faible : son plus léger (~50 kb/s au lieu de ~130) plutôt qu'une lecture qui bloque.
@@ -805,6 +805,7 @@ export const player = {
     this._maybeRestoreQuality();
     if (!track) return;
     this.track = track;
+    this._applySongRate(track, !!(crossfade || mix));
     if (!crossfade && !mix) this._presetNorm(track.id);
     this._played.add(track.id);
     this._xfading = false;
@@ -1016,8 +1017,24 @@ export const player = {
     this._persist();
   },
 
+  // Option « Retenir la vitesse de chaque son » : la vitesse choisie est gardée pour ce son seulement
+  _applySongRate(track, fading = false) {
+    if (!setting('speedPerSong', false) || this.remoteSender) return;
+    const r = setting('speedBySong', {})[canonId(track.id)] || 1;
+    if (r === this.rate) return;
+    this.rate = r;
+    // Pendant un fondu ou un mix, le son qui part garde sa vitesse : le son entrant prend la sienne
+    if (fading) this.engines.audio.userRate = r;
+    else Object.values(this.engines).forEach((e) => e.setRate(r));
+  },
   setRate(r) {
     this.rate = r;
+    if (setting('speedPerSong', false) && this.track) {
+      const speeds = { ...setting('speedBySong', {}) };
+      if (r === 1) delete speeds[canonId(this.track.id)];
+      else speeds[canonId(this.track.id)] = r;
+      Promise.resolve(saveSettings({ speedBySong: speeds })).catch(() => {});
+    }
     Object.values(this.engines).forEach((e) => e.setRate(r));
     toast(r === 1 ? 'Vitesse normale' : `Vitesse ×${String(r).replace('.', ',')}`);
     emit('player:state');
