@@ -318,6 +318,7 @@ export const sync = {
             const el = player.engine?.a;
             if (player.engine?.name === 'audio' && el && el.paused && el.readyState === 0) {
               player.engine._setLevel?.(el, 1);
+              player._wantPause = false;
               player.engine.load(id, pos + (Date.now() - t0) / 1000, true, true);
             }
           }, 8000);

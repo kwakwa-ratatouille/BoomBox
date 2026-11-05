@@ -1,6 +1,17 @@
 [
   {
-    "version": "next",
+    "version": "2026.1105.0853",
+    "title": "Pause plus fiable, volume mieux réparti",
+    "items": [
+      "Pause : le son ne repart plus tout seul si tu appuies pendant qu’il charge, pendant un fondu ou pendant une interruption.",
+      "Android sans réseau : l’appli s’ouvre au bout de quelques secondes avec ce qui est sur le téléphone.",
+      "Paramètres → Niveau de la normalisation : choisis un son plus fort ou plus calme, pour ton profil seulement.",
+      "PC : la barre de volume est mieux répartie, le son baisse régulièrement sur toute sa longueur."
+    ],
+    "date": "2026-11-05"
+  },
+  {
+    "version": "2026.1103.1934",
     "title": "Pulsation façon NCS",
     "items": [
       "Ambiance lumineuse « Pulsation » : le logo Boombox dans un rond au centre, entouré de barres qui dansent avec la musique (le vrai son sur PC) et de particules qui filent sur les basses. Animations plus fluides, identiques sur les écrans 60 et 120 Hz."

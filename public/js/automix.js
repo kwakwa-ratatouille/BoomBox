@@ -4,7 +4,7 @@
 //    (tonalités compatibles selon la roue de Camelot, tempo proche, énergie qui ne s'effondre pas).
 // 3. La transition démarre sur un temps fort, le tempo du titre entrant est ajusté (±8 %),
 //    les basses sont échangées à mi-parcours et les volumes sont égalisés.
-import { api } from './state.js';
+import { api, setting } from './state.js';
 import { isNative, localApi } from './native.js';
 
 const mem = new Map(); // id -> analyse
@@ -212,5 +212,7 @@ export const automix = {
 // calmes un peu remontés (limité, pour ne pas faire saturer).
 function normGain(x) {
   const level = x.lufs != null ? x.lufs : x.rmsDb + 3;
-  return Math.max(0.25, Math.min(1.6, Math.pow(10, (-14 - level) / 20)));
+  // Niveau choisi dans les Paramètres, pour ce profil seulement (par défaut -14) ; la limite haute suit ce réglage
+  const target = Number(setting('normalizeTarget', -14)) || -14;
+  return Math.max(0.25, Math.min(Math.min(2, 1.6 * Math.pow(10, (target + 14) / 20)), Math.pow(10, (target - level) / 20)));
 }

@@ -55,7 +55,7 @@ export const state = {
   profiles: [],
   device: { id: makeDeviceId(), name: ls.get('boombox.deviceName', defaultDeviceName()), kind: isPhone ? 'mobile' : 'desktop' },
   status: { ytdlp: false, lan: [] },
-  library: { liked: [], playlists: [], follows: [], settings: {} },
+  library: { liked: [], playlists: [], trash: [], follows: [], folders: [], settings: {} },
   likedIds: new Set(),
   newReleases: 0,
   libVersion: 0, // incrémenté à chaque changement de la bibliothèque

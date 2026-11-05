@@ -290,6 +290,8 @@ class AudioEngine {
   async load(id, start = 0, autoplay = true, fresh = false) {
     this._endFade();
     const gen = ++this.gen;
+    this.want = autoplay; // pause demandée pendant le chargement : le son ne démarrera pas une fois prêt
+    this.loading = gen;
     this.pending = null;
     this.preloaded = null;
     const el = this.a;
@@ -300,10 +302,11 @@ class AudioEngine {
     await this._setSrc(el, id, start, fresh).catch((e) => gen === this.gen && this.h.onError(String(e?.message || 'audio').slice(0, 80)));
     // Un autre titre a été lancé pendant la préparation : surtout ne pas relancer le lecteur (il jouait encore l'ancien son)
     if (el !== this.a || gen !== this.gen) return;
+    this.loading = 0;
     el.playbackRate = 1;
     this._setLevel(this.a, 1);
     this._hp(this.a, 10);
-    if (autoplay) await this.play(true);
+    if (this.want) await this.play(true);
   }
   // Prépare le titre suivant sur le lecteur libre (pour un démarrage instantané au bon temps)
   preload(id, start = 0) {
@@ -444,13 +447,15 @@ class AudioEngine {
     }
   }
   async play(fromLoad = false) {
+    this.want = true;
+    if (this.loading === this.gen) return; // le son est encore en préparation : il démarrera tout seul (sinon l'ancien repartait)
     this.graph?.ctx.resume();
     const el = this.a;
     const gen = this.gen;
     // iPhone : entre deux sons (le suivant se télécharge), plus rien ne joue et iOS éteint la sortie audio de l'appli
     // en arrière-plan ; le son suivant « jouait » alors en silence (le temps et l'écran verrouillé avançaient)
     await wakeAudio();
-    if (gen !== this.gen || el !== this.a) return;
+    if (gen !== this.gen || el !== this.a || !this.want) return; // pause appuyée entre-temps
     const p = el.play();
     if (!fromLoad) return p.catch(() => {});
     return p.catch(async (e) => {
@@ -459,18 +464,20 @@ class AudioEngine {
       if (isNative) {
         for (const wait of [400, 1200, 3000]) {
           await new Promise((r) => setTimeout(r, wait));
-          if (gen !== this.gen || el !== this.a) return;
+          if (gen !== this.gen || el !== this.a || !this.want) return;
           try {
             await wakeAudio();
+            if (!this.want) return;
             await el.play();
             return;
           } catch {}
         }
       }
-      if (gen === this.gen) this.h.onPaused(`démarrage du son refusé (${e?.name || 'erreur'})`);
+      if (gen === this.gen && this.want) this.h.onPaused(`démarrage du son refusé (${e?.name || 'erreur'})`);
     });
   }
-  pause() { this._endFade(); this.a.pause(); }
+  // Les deux lecteurs : un reste de fondu ou de mix ne doit jamais continuer à jouer après une pause
+  pause() { this.want = false; this._endFade(); this.els.forEach((el) => el.pause()); }
   stop() { this._endFade(); this.gen++; this.a.pause(); this.a.removeAttribute('src'); this.a.load(); }
   seek(s) { this._endFade(); this.a.currentTime = s; }
   setVolume(v) { this.base = v; this.els.forEach((_, i) => this._apply(i)); }
@@ -518,6 +525,8 @@ export const player = {
     const handlers = {
       onEnded: () => this._onEnded(),
       onPlaying: () => {
+        // Pause demandée et le son démarre quand même (téléchargement ou nouvel essai arrivé après) : la pause gagne
+        if (this._wantPause && !this._drunkHold) return void this.engine.pause();
         // iPhone : Boombox prend la main sur le son seulement quand une lecture démarre vraiment
         if (isNative && !this._audioOwned) {
           this._audioOwned = true;
@@ -545,7 +554,7 @@ export const player = {
       },
       onPaused: (why = 'iOS a mis le son en pause') => {
         if (this._drunkHold) return; // mode bourré (iPhone) : le lecteur normal est mis en silence exprès
-        const wanted = Date.now() - (this._userPauseAt || 0) < 2000;
+        const wanted = this._wantPause || Date.now() - (this._userPauseAt || 0) < 2000;
         // Arrêt tout au bout du son, sans signal de fin : c'est la fin du son, on passe au suivant (avant : pause, puis
         // le son se rejouait en boucle quand on relançait)
         if (!wanted && this._nearEnd()) return void this._onEnded();
@@ -818,6 +827,7 @@ export const player = {
       if (this.engine.graph) this.engine.setNorm(this._gainFor(track.id));
     }
     this.paused = !autoplay;
+    this._wantPause = !autoplay;
     this._updateMediaSession();
     emit('player:track');
     emit('player:state');
@@ -878,6 +888,7 @@ export const player = {
     if (!this.track) return;
     if (this.engine.name === 'audio' && this.engine.a?.ended && this.repeat !== 'one') return this.next(true);
     if (this.engine.name === 'audio' && this._normSetFor !== this.track.id) this._presetNorm(); // relance de l'appli, reprise en cours de son
+    this._wantPause = false;
     this.engine.play(); // (moteur audio : la sortie audio de l'iPhone est rallumée avant de jouer)
     this.paused = false;
     emit('player:state');
@@ -885,6 +896,7 @@ export const player = {
   pause(from = 'app') {
     this._userPauseAt = Date.now(); // pause voulue (bouton, casque, commande) : jamais relancée toute seule
     this._pauseFrom = from;
+    this._wantPause = true;
     if (from !== 'app') logPause(from);
     this.engine.pause();
     this.paused = true;
@@ -976,8 +988,10 @@ export const player = {
     emit('player:state');
   },
   _applyVolume() {
-    // Courbe légèrement exponentielle : plus naturelle à l'oreille
-    const v = this.muted ? 0 : Math.pow(this.volume, 2.4); // courbe « logarithmique » : la moitié de la barre ≈ moitié du ressenti (avant : le son montait trop vite)
+    // PC : chaque cran de la barre change le son d'autant de décibels (45 dB sur toute la barre, 100 % inchangé) ; tout en bas, descente jusqu'au silence
+    const x = this.volume;
+    const curve = isNative ? Math.pow(x, 2.4) : x <= 0 ? 0 : Math.pow(10, (-45 * (1 - x)) / 20) * Math.min(1, x / 0.05);
+    const v = this.muted ? 0 : curve;
     Object.values(this.engines).forEach((e) => e.setVolume(v));
   },
 
@@ -1264,7 +1278,7 @@ export const player = {
       const at = this.engine.time() || 0;
       this.buffering = true;
       emit('player:state');
-      this.engine.load(t.id, at > 1 ? at : 0, true, true);
+      this.engine.load(t.id, at > 1 ? at : 0, !this._wantPause, true);
       return;
     }
     // Hors connexion, son pas téléchargé : on le dit clairement et on passe au suivant (sans compter un échec)
@@ -1334,6 +1348,8 @@ export const player = {
       emit('player:state');
       toast('Appuie sur lecture pour démarrer');
     }
+    // Filet de sécurité : pause demandée et un lecteur joue encore → on le coupe
+    if (this._wantPause && !this._drunkHold && this.engine?.name === 'audio' && this.engine.els.some((el) => !el.paused)) this.engine.pause();
     if (!this.paused) emit('player:time');
     const t = this.time();
     if (this.engine?.name === 'audio' && !this.paused && this.track) {
@@ -1506,8 +1522,9 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
       return;
     }
     const short = Date.now() - (player._interruptedAt || 0) < 90e3;
+    const pausedSince = player._wantPause && (player._userPauseAt || 0) > (player._interruptedAt || 0); // pause appuyée pendant l'interruption
     player._interruptedAt = 0;
-    if (wasPlaying && (resume || short)) setTimeout(() => (player.paused ? player.play() : kick(true)), 400);
+    if (wasPlaying && !pausedSince && (resume || short)) setTimeout(() => (player.paused ? player.play() : kick(true)), 400);
     wasPlaying = false;
   });
   P.addListener('audioActive', () => setTimeout(() => {

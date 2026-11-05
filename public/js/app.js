@@ -1605,7 +1605,9 @@ async function boot() {
   const profile = await pickProfile();
   setProfile(profile);
   renderAvatar();
-  await subscribeLibrary();
+  // Téléphone sans réseau (ou réseau qui ne répond pas) : l'appli s'ouvre au bout de 6 s au plus, la bibliothèque arrive dès que prête
+  const libraryReady = subscribeLibrary();
+  await (isNative ? Promise.race([libraryReady, new Promise((r) => setTimeout(r, 6000))]) : libraryReady);
   $('#app').classList.remove('hidden');
   setTimeout(() => import('./account.js').then((m) => m.offerGoogle()).catch(() => {}), 5000);
   on('profile', renderAvatar);
@@ -1620,8 +1622,9 @@ async function boot() {
   refreshPublicProfile();
   // PC : les titres likés sont pré-téléchargés en arrière-plan (lecture instantanée, moins de requêtes à YouTube)
   if (!isNative && setting('predownload', true)) setTimeout(() => api('/api/predownload', { method: 'POST', body: { ids: state.library.liked.map((t) => t.id) } }).catch(() => {}), 60e3);
-  import('./spotify-sync.js').then((m) => m.startSpotifySync()).catch(() => {}); // likes et playlists aussi sur Spotify (si connecté)
-  startPlaylistSync(); // playlists importées liées à leur source (Spotify…) : nouveaux titres ajoutés tout seuls
+  // Jamais avant le chargement de la bibliothèque : une liste encore vide ne doit pas être prise pour la vraie
+  libraryReady.then(() => import('./spotify-sync.js')).then((m) => m.startSpotifySync()).catch(() => {}); // likes et playlists aussi sur Spotify (si connecté)
+  libraryReady.then(() => startPlaylistSync()); // playlists importées liées à leur source (Spotify…) : nouveaux titres ajoutés tout seuls
   // En décembre, comme Spotify : on annonce une fois que le Wrapped de l'année est prêt
   {
     const y = new Date().getFullYear();
