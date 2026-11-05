@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1105.1252",
+    "title": "Paroles sans horaires parasites",
+    "items": [
+      "Paroles : les horaires du type [00:13.44] ne s’affichent plus, et les refrains répétés apparaissent à chaque passage, au bon moment."
+    ],
+    "date": "2026-11-05"
+  },
+  {
     "version": "2026.1105.0853",
     "title": "Pause plus fiable, volume mieux réparti",
     "items": [

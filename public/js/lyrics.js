@@ -31,9 +31,15 @@ function parse(data) {
   if (data.synced) {
     const lines = [];
     for (const l of data.synced.split('\n')) {
-      const m = l.match(/^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/);
-      if (m) lines.push({ t: Number(m[1]) * 60 + Number(m[2]), text: m[3].trim() || '♪' });
+      // Ligne répétée dans le son : elle peut porter plusieurs horaires ([00:13.44][00:58.00]Paroles), une entrée par horaire
+      const m = l.trim().match(/^((?:\[\d+:\d+(?:[.:]\d+)?\]\s*)+)(.*)$/);
+      if (!m) continue;
+      const text = m[2].trim() || '♪';
+      for (const [, min, sec, frac] of m[1].matchAll(/\[(\d+):(\d+)(?:[.:](\d+))?\]/g)) {
+        lines.push({ t: Number(min) * 60 + Number(`${sec}.${frac || 0}`), text });
+      }
     }
+    lines.sort((a, b) => a.t - b.t);
     if (lines.length) return { synced: true, lines, source: data.source };
   }
   if (data.plain) return { synced: false, lines: data.plain.split('\n').map((text) => ({ text: text || ' ' })), source: data.source };
