@@ -1544,7 +1544,27 @@ export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Ma
     if (wasPlaying && !pausedSince && (resume || short)) setTimeout(() => (player.paused ? player.play() : kick(true)), 400);
     wasPlaying = false;
   });
+  // Après une vidéo filmée, l'iPhone peut rester en mode « appel » (son étouffé) : au retour dans Boombox, s'il y est
+  // encore, la session audio est rouverte. Jamais quand une autre appli est devant : elle est peut-être en train de filmer.
+  let routeFixAt = 0;
+  const fixAudioRoute = async () => {
+    if (platform !== 'ios' || Date.now() - routeFixAt < 30e3 || player._interruptedAt) return;
+    const info = await Promise.resolve(P.audioRouteInfo?.()).catch(() => null);
+    if (!info?.active || !info.sampleRate || info.sampleRate >= 32000 || player._interruptedAt) return;
+    routeFixAt = Date.now();
+    const el = player.engine?.name === 'audio' ? player.engine.a : null;
+    const wasOn = el && !el.paused;
+    if (wasOn) {
+      player.engine.silentPause = el;
+      el.pause();
+    }
+    const after = await Promise.resolve(P.refreshAudioRoute?.()).catch(() => null);
+    if (wasOn && !player.paused && el === player.engine.a) el.play().catch(() => {});
+    import('./errors.js').then((m) => m.reportError(`Son en mode appel : ${info.sampleRate} Hz → ${after?.sampleRate || '?'} Hz (${info.outputs} / micro ${info.inputs || 'aucun'})`, 'audio-route')).catch(() => {});
+  };
+  bus.addEventListener('player:state', () => !player.paused && fixAudioRoute());
   P.addListener('audioActive', () => setTimeout(() => {
+    fixAudioRoute();
     // Pause imposée par iOS il y a moins de 10 min (et pas par toi depuis) : on relance
     const sys = player._systemPauseAt || 0;
     if (player.paused && player.track && Date.now() - sys < 600e3 && sys > (player._userPauseAt || 0)) {

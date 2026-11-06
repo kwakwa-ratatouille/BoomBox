@@ -16,6 +16,8 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setVoicePlaylists", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "takeVoiceCommand", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAudioMode", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "audioRouteInfo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "refreshAudioRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setKeepAwake", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAppIcon", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "nowPlayingPaused", returnType: CAPPluginReturnPromise)
@@ -134,6 +136,33 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         cc.nextTrackCommand.addTarget { _ in send("next") }
         cc.previousTrackCommand.isEnabled = true
         cc.previousTrackCommand.addTarget { _ in send("prev") }
+    }
+
+    // État de la sortie audio : une fréquence basse (8 à 24 kHz) veut dire que l'iPhone est resté en mode « appel »
+    private func routeInfo() -> [String: Any] {
+        let session = AVAudioSession.sharedInstance()
+        return [
+            "sampleRate": session.sampleRate,
+            "outputs": session.currentRoute.outputs.map { $0.portType.rawValue }.joined(separator: ","),
+            "inputs": session.currentRoute.inputs.map { $0.portType.rawValue }.joined(separator: ","),
+        ]
+    }
+
+    @objc func audioRouteInfo(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            var info = self.routeInfo()
+            info["active"] = UIApplication.shared.applicationState == .active
+            call.resolve(info)
+        }
+    }
+
+    // Session audio coupée puis rouverte en lecture seule : l'iPhone peut alors quitter le mode « appel » gardé après une vidéo
+    @objc func refreshAudioRoute(_ call: CAPPluginCall) {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setActive(false, options: [.notifyOthersOnDeactivation])
+        try? session.setCategory(.playback, mode: .default, options: [])
+        try? session.setActive(true)
+        call.resolve(routeInfo())
     }
 
     @objc func setAudioMode(_ call: CAPPluginCall) {
