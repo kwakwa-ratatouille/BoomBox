@@ -30,7 +30,9 @@ async function audioSrc(id, fresh = false, stream = false) {
     return media.localAudioSrc(src, { stream: stream && !fresh, low });
   }
   id = src;
-  const q = [fresh && `fresh=${Date.now()}`, low && 'q=low'].filter(Boolean).join('&');
+  // Titre et artiste : pour trouver le même son ailleurs si YouTube refuse la connexion
+  const about = meta?.title && `t=${encodeURIComponent(meta.title)}&a=${encodeURIComponent(artistNames(meta))}&d=${Math.round(meta.duration || 0)}`;
+  const q = [fresh && `fresh=${Date.now()}`, low && 'q=low', about].filter(Boolean).join('&');
   return `/api/stream/${id}${q ? `?${q}` : ''}`;
 }
 
@@ -1286,6 +1288,12 @@ export const player = {
       this.engine.load(t.id, 0, true);
       return;
     }
+    // PC : YouTube a refusé cette connexion et aucune autre version n'existe : réessayer ferait juste attendre
+    if (!isNative && this.engine.name === 'audio' && this._retryTried !== t.id && (await api(`/api/stream-blocked/${playId(t.id)}`).catch(() => null))?.blocked) {
+      this._retryTried = t.id;
+      code = 'YouTube refuse cette connexion pour le moment';
+    }
+    if (this.track?.id !== t.id) return;
     // Flux audio coupé ou refusé (lien YouTube expiré, coupure réseau) : un nouvel essai avec un lien neuf,
     // repris au même endroit, avant d'abandonner le titre
     if (this.engine.name === 'audio' && this._retryTried !== t.id) {

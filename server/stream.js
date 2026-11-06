@@ -1,6 +1,6 @@
 import { isLocalId, localPath } from './localfiles.js';
-import { isScId, scUrl, setScBin, scResolve } from './soundcloud.js';
-import { alternatives, search } from './yt.js';
+import { isScId, scUrl, setScBin, scResolve, scFind } from './soundcloud.js';
+import { alternatives, search, videoMeta } from './yt.js';
 // Lecture audio directe via yt-dlp (optionnel). Permet la lecture écran éteint sur téléphone
 // et les contrôles sur l'écran de verrouillage. Sans yt-dlp, l'app utilise le lecteur YouTube intégré.
 import { execFile, execFileSync, spawn } from 'node:child_process';
@@ -77,6 +77,21 @@ let lastStream = 0; // dernière lecture : le pré-téléchargement se met en pa
 const downloads = new Map();
 // Vidéo bloquée sans compte (« Sign in to confirm your age », réservée aux membres, indisponible ici…)
 const NEEDS_ACCOUNT = /confirm your age|age-restricted|inappropriate for some users|Sign in to confirm|members-only|not available in your country|Video unavailable/i;
+// Contrôle anti-robot de YouTube : il vise la connexion (souvent mobile ou partagée), pas ce son. Insister ne sert à rien.
+const BOT_CHECK = /not a bot|Sign in to confirm you/i;
+const blockedSongs = new Map(); // id -> date du refus : le lecteur le demande pour ne pas réessayer
+export const streamBlocked = (id) => Date.now() - (blockedSongs.get(id) || 0) < 60e3;
+// Même son pris sur SoundCloud, rangé sous l'id d'origine
+async function soundcloudCopy(id, meta = {}) {
+  const fallback = meta.title ? meta : await videoMeta(id).catch(() => null);
+  const found = fallback?.title && (await scFind(ytDlpPath, fallback.title, fallback.artist || '', fallback.duration || 0));
+  if (!found?.id) throw new Error('aucune version SoundCloud');
+  const f = await download(found.id, { noAlt: true });
+  const file = path.join(AUDIO_DIR, `${id}.m4a`);
+  fs.copyFileSync(f, file);
+  console.log(`[lecture] ${id} refusé par YouTube (anti-robot) : version SoundCloud ${found.id}`);
+  return file;
+}
 // « Retélécharger ce son » : le fichier gardé est oublié, la prochaine écoute le reprend chez YouTube
 export function forget(id) {
   if (!/^[\w-]{1,64}$/.test(id)) return false;
@@ -213,6 +228,7 @@ export async function streamHandler(req, res) {
   if (low && req.query.fresh) urlCache.delete(`${id}|low`);
   // Dernier recours : téléchargement complet par yt-dlp puis lecture depuis le disque
   const fromDisk = async () => res.sendFile(await download(id), { headers: { 'content-type': 'audio/mp4' } });
+  const meta = { title: req.query.t, artist: req.query.a, duration: Number(req.query.d) || 0 };
   try {
     let url, upstream;
     const headers = {};
@@ -226,6 +242,14 @@ export async function streamHandler(req, res) {
         upstream = await fetch(url, { headers });
       }
     } catch (e) {
+      if (BOT_CHECK.test(String(e?.message || e))) {
+        // Pas de téléchargement YouTube : il serait refusé pareil, après plusieurs secondes d'attente en plus
+        // Attente limitée : la copie continue en arrière-plan et servira à la prochaine écoute
+        const copy = await Promise.race([soundcloudCopy(id, meta).catch(() => null), new Promise((r) => setTimeout(() => r(null), 8000))]);
+        if (copy) return res.sendFile(copy, { headers: { 'content-type': 'audio/mp4' } });
+        blockedSongs.set(id, Date.now());
+        return res.status(502).json({ error: 'YouTube refuse cette connexion' });
+      }
       console.warn(`[lecture] ${id} : lien audio indisponible (${e.message?.split('\n')[0]}), téléchargement complet`);
       return await fromDisk();
     }

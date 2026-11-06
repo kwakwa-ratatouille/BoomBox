@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1106.1407",
+    "title": "Moins d’attente quand YouTube bloque",
+    "items": [
+      "PC : quand YouTube refuse la connexion, Boombox prend directement le même son sur SoundCloud s’il existe. Sinon, il le dit et passe au suivant au lieu de faire attendre."
+    ],
+    "date": "2026-11-06"
+  },
+  {
     "version": "2026.1106.1337",
     "title": "Son après une vidéo en voiture",
     "items": [

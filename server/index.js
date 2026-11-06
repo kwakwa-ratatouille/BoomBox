@@ -11,7 +11,7 @@ import * as yt from './yt.js';
 import { startImport, getJob, spotifyApiToken, startMatch, syncPlaylist } from './importers.js';
 import { concertsFor, spotifyLatest, norm, searchSpotifyUsers, spotifyUserProfile } from './spotify-stats.js';
 import { autostartStatus, setAutostart } from './autostart.js';
-import { streamHandler, prefetchHandler, audioFileHandler, ytDlpPath, predownload, predownloadStatus, download, clipHandler, forget } from './stream.js';
+import { streamBlocked, streamHandler, prefetchHandler, audioFileHandler, ytDlpPath, predownload, predownloadStatus, download, clipHandler, forget } from './stream.js';
 import * as local from './localfiles.js';
 import { execFile } from 'node:child_process';
 import { askAi, pickModel, resolveAiResult } from './ai.js';
@@ -85,6 +85,7 @@ app.get('/api/album/:id',wrap(async (req, res) => res.json(await yt.album(req.pa
 app.get('/api/ytplaylist/:id', wrap(async (req, res) => res.json(await yt.ytPlaylist(req.params.id, 300))));
 app.get('/api/radio/:id', wrap(async (req, res) => res.json(await yt.radio(req.params.id))));
 app.get('/api/stream/:id', streamHandler);
+app.get('/api/stream-blocked/:id', (req, res) => res.json({ blocked: streamBlocked(req.params.id) }));
 app.get('/api/clip/:id', clipHandler);
 // Connexion Spotify (PC) : la page de retour dépose le code ici, l'appli vient le chercher (une seule fois)
 const spotifyCodes = new Map();

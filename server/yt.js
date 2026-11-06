@@ -617,6 +617,11 @@ function saveMatches() {
 
 // Son bloqué par YouTube (vidéo « +18 » qui exige un compte, etc.) : la même chanson mise en ligne ailleurs
 // (chaîne de l'artiste, « Audio officiel »…), même titre et même durée à 4 s près. Renvoie jusqu'à 3 ids à essayer.
+export async function videoMeta(id) {
+  const info = await (await getYt()).getBasicInfo(id);
+  return { title: info?.basic_info?.title, artist: (info?.basic_info?.author || '').replace(/\s*-\s*Topic$/i, ''), duration: info?.basic_info?.duration || 0 };
+}
+
 export async function alternatives(id, meta = null) {
   let title = meta?.title;
   let artist = meta?.artist;
