@@ -59,7 +59,13 @@ export function openAmbient() {
   ov.addEventListener('pointermove', wake);
   ov.addEventListener('pointerdown', wake);
   wake();
-  const onKey = (e) => e.key === 'Escape' && closeAmbient();
+  const onKey = (e) => {
+    if (e.key === 'Escape') return closeAmbient();
+    // 1 à 4 : changer d'ambiance ; espace : lecture / pause
+    const k = MODES[Number(e.key) - 1];
+    if (k) ((mode = k[0]), ls.set('boombox.ambientMode', mode), paintChips(), wake());
+    if (e.key === ' ') (e.preventDefault(), import('./player.js').then((p) => p.ctl.toggle()));
+  };
   document.addEventListener('keydown', onKey);
   ov._onKey = onKey;
   ov.requestFullscreen?.().catch(() => {});
@@ -69,6 +75,8 @@ export function openAmbient() {
   let trackId = null;
   let pal = [[270, 0.8, 0.6], [200, 0.8, 0.55], [320, 0.8, 0.6]];
   let art = null;
+  let artBlur = null;
+  let artSwapAt = 0;
   const view = () => (player.remoteSender ? sync.view() : { track: player.track, position: player.time(), paused: player.paused });
   const loadTrack = async (t) => {
     trackId = t?.id || null;
@@ -80,7 +88,26 @@ export function openAmbient() {
     const [h, s, l] = hsl(c || '#b07cf7');
     const sat = Math.max(0.55, s);
     pal = [[h, sat, Math.max(0.5, l)], [(h + 40) % 360, sat, 0.55], [(h + 320) % 360, sat, 0.6]];
-    art = await loadImg(t.thumb).catch(() => null);
+    // Pochette en grand (les miniatures de YouTube Music sont en 120 px : floues au centre de l'écran)
+    const big = String(t.thumb || '').replace(/=w\d+-h\d+/, '=w720-h720').replace(/=s\d+/, '=s720');
+    const im = (await loadImg(big)) || (await loadImg(t.thumb)); // loadImg rend null en cas d'échec
+    if (trackId !== t.id) return;
+    // Carré pris au centre (les miniatures YouTube ont des bandes noires en haut et en bas)
+    if (im) {
+      const side = Math.min(im.width, im.height) * (/ytimg.com/.test(big) ? 0.75 : 1);
+      const sq = document.createElement('canvas');
+      sq.width = sq.height = Math.round(side);
+      sq.getContext('2d').drawImage(im, (im.width - side) / 2, (im.height - side) / 2, side, side, 0, 0, side, side);
+      art = sq;
+    } else art = null;
+    // Fond : la pochette réduite à 32 px puis agrandie = flou naturel, sans filtre coûteux à chaque image
+    if (im) {
+      const c2 = document.createElement('canvas');
+      c2.width = c2.height = 32;
+      c2.getContext('2d').drawImage(art, 0, 0, 32, 32);
+      artBlur = c2;
+    }
+    artSwapAt = performance.now();
   };
   loadTrack(view().track);
   const onTrack = () => view().track?.id !== trackId && loadTrack(view().track);
@@ -105,9 +132,9 @@ export function openAmbient() {
   let parts = null;
   let lastT = performance.now();
   let dt = 1 / 60;
-  // Logo Boombox (habillé pendant un événement) pour le rond de la pulsation
-  let logo = null;
-  import('./events.js').then((E) => loadImg(E.eventLogo())).then((im) => (logo = im)).catch(() => loadImg('/assets/logo-symbol.png?v=2').then((im) => (logo = im)));
+  let bassLevel = 0; // énergie des basses en continu (0-1), en plus des coups
+  let rings = []; // ondes qui partent de la pochette sur les gros coups
+  let spin = 0; // rotation de la pochette, façon vinyle (s'arrête en pause)
   // PC : la lumière écoute le vrai son (énergie des basses, image par image) au lieu de deviner le rythme. Un coup
   // de grosse caisse = un flash, quel que soit le tempo. Téléphone, ou son joué sur un autre appareil : tempo analysé.
   let ana = null;
@@ -122,7 +149,7 @@ export function openAmbient() {
     if (!ana) {
       ana = e.graph.ctx.createAnalyser();
       ana.fftSize = 1024;
-      ana.smoothingTimeConstant = 0.2;
+      ana.smoothingTimeConstant = 0; // aucun lissage dans l'analyse : le coup est vu dans l'image même où il sonne
       e.graph.nodes.forEach((n) => n.gain.connect(ana));
       bins = new Uint8Array(ana.frequencyBinCount);
     }
@@ -137,12 +164,15 @@ export function openAmbient() {
     for (let i = Math.max(1, Math.floor(40 / hz)); i <= Math.ceil(160 / hz); i++) (sum += bins[i]), n++;
     const e = sum / n / 255;
     const t = performance.now();
-    const rise = e - avg;
-    avg += (e - avg) * 0.08; // niveau moyen des basses du moment (s'adapte aux passages calmes et forts)
-    // Coup net au-dessus de la moyenne, pas plus de 6 par seconde
-    if (rise > 0.07 && e > 0.25 && t - lastHit > 160) {
+    // Montée des basses depuis l'image d'avant (une grosse caisse = un saut brusque), comparée à ses montées habituelles :
+    // marche aussi bien sur un son calme que sur un son très compressé
+    const flux = Math.max(0, e - (liveHit.prev ?? e));
+    liveHit.prev = e;
+    avg += (flux - avg) * 0.05;
+    bassLevel = Math.max(0, Math.min(1, (e - 0.3) / 0.6));
+    if (flux > Math.max(0.025, avg * 2.4) && e > 0.2 && t - lastHit > 140) {
       lastHit = t;
-      return Math.min(1, 0.55 + rise * 3);
+      return Math.min(1, 0.6 + flux * 4);
     }
     return 0;
   };
@@ -163,8 +193,14 @@ export function openAmbient() {
     if (a) {
       // Vrai son : flash immédiat au coup, puis redescente douce (aucun retard à la montée)
       const h = liveHit(a);
-      smooth = h ? Math.max(smooth, h) : smooth * Math.pow(0.88, dt * 60); // redescente identique quel que soit l'écran (60 ou 120 Hz)
+      if (h > 0.8) rings.push({ r: 0, a: h });
+      // Redescente identique quel que soit l'écran (60 ou 120 Hz) ; jamais sous le niveau des basses du moment
+      smooth = Math.max(h ? Math.max(smooth, h) : smooth * Math.pow(0.86, dt * 60), bassLevel * 0.45);
     } else {
+      // Tempo analysé : une onde au premier temps de chaque mesure
+      const beatN = an?.beat ? Math.floor((pos - (an.firstBeat || 0)) / beat) : -1;
+      if (!v.paused && beatN !== frame.lastBeat && beatN >= 0 && beatN % 4 === 0) rings.push({ r: 0, a: 1 });
+      frame.lastBeat = beatN;
       // Tempo analysé ; tempo inconnu (analyse pas prête) : simple respiration lente plutôt qu'un faux rythme
       const hit = v.paused ? 0 : an?.beat ? Math.pow(1 - (ph < 0 ? ph + 1 : ph), 3) * (barStart ? 1 : 0.65) : 0.25 + 0.2 * Math.sin(now * 1.6);
       smooth = hit > smooth ? hit : smooth + (hit - smooth) * 0.25; // montée immédiate, descente douce
@@ -198,89 +234,143 @@ export function openAmbient() {
         g.fill();
       }
     } else if (mode === 'pulse') {
-      // Façon NCS : le logo dans un rond au centre, entouré de barres qui dansent avec le son (vrai spectre sur PC,
-      // spectre imité au rythme ailleurs), particules qui filent vers l'extérieur sur les coups
+      // La pochette du son au centre, qui tourne comme un vinyle et bat avec la musique ; autour, un spectre en miroir
+      // (vrai son sur PC, imité au rythme ailleurs), des ondes sur les gros coups et des particules
       const cx = W / 2;
       const cy = H / 2;
       const m = Math.min(W, H);
       const bass = smooth;
-      const grd = g.createRadialGradient(cx, cy, 0, cx, cy, Math.hypot(W, H) / 2);
-      grd.addColorStop(0, col(P[0], 0.35 + 0.25 * bass));
-      grd.addColorStop(1, '#030206');
-      g.fillStyle = grd;
+      // Fond : la pochette floutée en plein écran, qui respire un peu, assombrie au bord
+      g.fillStyle = '#05030a';
       g.fillRect(0, 0, W, H);
-      // Spectre : 64 bandes (moitié gauche, recopiée en miroir à droite), lissées dans le temps
-      const N = 64;
+      if (artBlur) {
+        const fade = Math.min(1, (tn - artSwapAt) / 600); // fondu au changement de son
+        const S = Math.max(W, H) * (1.25 + 0.05 * bass);
+        g.globalAlpha = 0.4 * fade;
+        g.imageSmoothingEnabled = true;
+        g.drawImage(artBlur, cx - S / 2, cy - S / 2, S, S);
+        g.globalAlpha = 1;
+      }
+      const vig = g.createRadialGradient(cx, cy, m * 0.2, cx, cy, Math.hypot(W, H) / 2);
+      vig.addColorStop(0, col(P[0], 0.5, 0.15 + 0.25 * bass));
+      vig.addColorStop(1, 'rgba(3,2,6,0.92)');
+      g.fillStyle = vig;
+      g.fillRect(0, 0, W, H);
+      // Spectre : 48 bandes (miroir gauche / droite), réaction franche à la montée, retombée douce
+      const N = 48;
       spec ||= new Float32Array(N);
+      const up = 1 - Math.pow(0.15, dt * 60);
+      const down = 1 - Math.pow(0.82, dt * 60);
       if (a && bins) {
         for (let i = 0; i < N; i++) {
           // Échelle logarithmique : plus de barres pour les basses et les médiums
-          const lo = Math.floor(Math.pow(bins.length * 0.7, i / N));
-          const hi = Math.max(lo + 1, Math.floor(Math.pow(bins.length * 0.7, (i + 1) / N)));
+          const lo = Math.max(1, Math.floor(Math.pow(bins.length * 0.6, i / N)));
+          const hi = Math.max(lo + 1, Math.floor(Math.pow(bins.length * 0.6, (i + 1) / N)));
           let s = 0;
           for (let j = lo; j < hi; j++) s += bins[j];
-          const val = s / (hi - lo) / 255;
-          spec[i] += (val - spec[i]) * (val > spec[i] ? 0.6 : 0.12);
+          // Les aigus sont naturellement plus faibles : un peu remontés pour que tout le cercle bouge
+          const val = Math.min(1, Math.pow(s / (hi - lo) / 255, 1.6) * (1 + i / N));
+          spec[i] += (val - spec[i]) * (val > spec[i] ? up : down);
         }
       } else {
         for (let i = 0; i < N; i++) {
           const low = 1 - i / N;
-          const val = v.paused ? 0.05 : 0.18 + 0.5 * bass * low + 0.18 * (0.5 + 0.5 * Math.sin(now * (2 + i * 0.37) + i * 1.7)) * (0.4 + 0.6 * Math.sin(now * 0.7 + i * 0.21) ** 2);
-          spec[i] += (val - spec[i]) * (val > spec[i] ? 0.5 : 0.1);
+          const val = v.paused ? 0.04 : 0.12 + 0.6 * bass * low + 0.2 * (0.5 + 0.5 * Math.sin(now * (2 + i * 0.37) + i * 1.7)) * (0.4 + 0.6 * Math.sin(now * 0.7 + i * 0.21) ** 2);
+          spec[i] += (val - spec[i]) * (val > spec[i] ? up : down);
         }
       }
-      const r0 = m * (0.17 + 0.025 * bass);
-      const maxLen = m * 0.22;
+      const r0 = m * (0.19 + 0.03 * bass);
+      const maxLen = m * 0.2;
+      // Barres : deux passes groupées (halo large et doux, puis barre nette) au lieu d'une ombre par barre (trop lent)
       g.save();
       g.translate(cx, cy);
-      g.rotate(now * 0.05);
+      g.rotate(now * 0.04);
       g.lineCap = 'round';
-      g.shadowBlur = 18 * (0.5 + bass);
-      g.shadowColor = col(P[0], 1.2);
-      for (let side = 0; side < 2; side++) {
-        for (let i = 0; i < N; i++) {
-          const ang = -Math.PI / 2 + (side ? 1 : -1) * (Math.PI * (i + 0.5)) / N;
-          const len = 4 + spec[i] * maxLen;
-          g.strokeStyle = col(P[i % 3], 1.15);
-          g.lineWidth = Math.max(2, (m / N) * 0.9);
+      g.globalCompositeOperation = 'lighter';
+      const bw = Math.max(3, ((Math.PI * r0) / N) * 0.6);
+      for (const [wMul, alpha] of [[3.2, 0.18], [1, 0.95]]) {
+        for (let c = 0; c < 3; c++) {
+          g.strokeStyle = col(P[c], 1.15, alpha);
+          g.lineWidth = bw * wMul;
           g.beginPath();
-          g.moveTo(Math.cos(ang) * (r0 + 6), Math.sin(ang) * (r0 + 6));
-          g.lineTo(Math.cos(ang) * (r0 + 6 + len), Math.sin(ang) * (r0 + 6 + len));
+          for (let side = 0; side < 2; side++) {
+            for (let i = c; i < N; i += 3) {
+              const ang = -Math.PI / 2 + (side ? 1 : -1) * (Math.PI * (i + 0.5)) / N;
+              const len = 3 + spec[i] * maxLen;
+              const ca = Math.cos(ang);
+              const sa = Math.sin(ang);
+              g.moveTo(ca * (r0 + 10), sa * (r0 + 10));
+              g.lineTo(ca * (r0 + 10 + len), sa * (r0 + 10 + len));
+            }
+          }
           g.stroke();
         }
       }
       g.restore();
+      // Ondes : un anneau part de la pochette sur chaque gros coup et s'efface en s'éloignant
+      g.globalCompositeOperation = 'lighter';
+      for (const o of rings) {
+        o.r += m * 0.9 * dt;
+        const al = o.a * Math.max(0, 1 - o.r / (m * 0.6));
+        g.strokeStyle = col(P[0], 1.3, al * 0.6);
+        g.lineWidth = 2 + 6 * al;
+        g.beginPath();
+        g.arc(cx, cy, r0 + o.r, 0, Math.PI * 2);
+        g.stroke();
+      }
+      rings = rings.filter((o) => o.r < m * 0.6).slice(-8);
       // Particules : naissent sur le cercle, filent vers l'extérieur, plus vite sur les coups
       parts ||= [];
-      if (!v.paused && parts.length < 140) for (let i = 0; i < 1 + Math.round(bass * 4); i++) parts.push({ a: Math.random() * Math.PI * 2, d: r0, s: 0.4 + Math.random(), c: Math.floor(Math.random() * 3) });
-      g.shadowBlur = 0;
+      if (!v.paused && parts.length < 160) for (let i = 0; i < 1 + Math.round(bass * 5); i++) parts.push({ a: Math.random() * Math.PI * 2, d: r0, s: 0.4 + Math.random(), c: Math.floor(Math.random() * 3), z: 1 + Math.random() * 2 });
       for (const p of parts) {
-        p.d += (2 + bass * 14) * p.s * dt * 60;
-        const alpha = Math.max(0, 1 - (p.d - r0) / (m * 0.75));
-        g.fillStyle = col(P[p.c], 1.3, alpha * 0.8);
-        g.fillRect(cx + Math.cos(p.a) * p.d - 1.5, cy + Math.sin(p.a) * p.d - 1.5, 3, 3);
+        p.d += (1.5 + bass * 16) * p.s * dt * 60;
+        const alpha = Math.max(0, 1 - (p.d - r0) / (m * 0.8));
+        g.fillStyle = col(P[p.c], 1.4, alpha * 0.85);
+        g.fillRect(cx + Math.cos(p.a) * p.d - p.z, cy + Math.sin(p.a) * p.d - p.z, p.z * 2, p.z * 2);
       }
-      parts = parts.filter((p) => p.d - r0 < m * 0.75);
-      // Rond central avec le logo (logo habillé pendant un événement)
+      parts = parts.filter((p) => p.d - r0 < m * 0.8);
+      g.globalCompositeOperation = 'source-over';
+      // Pochette : ronde, tourne lentement pendant la lecture (comme un vinyle) et grossit sur les coups
+      if (!v.paused) spin += dt * 0.35;
+      const R = r0 * (1 + 0.05 * bass);
       g.save();
-      g.shadowBlur = 30 + 40 * bass;
-      g.shadowColor = col(P[0], 1.2);
+      g.shadowBlur = (30 + 50 * bass) * (W / innerWidth);
+      g.shadowColor = col(P[0], 1.2, 0.9);
       g.fillStyle = '#0d0a14';
       g.beginPath();
-      g.arc(cx, cy, r0, 0, Math.PI * 2);
+      g.arc(cx, cy, R, 0, Math.PI * 2);
       g.fill();
       g.restore();
-      g.strokeStyle = col(P[0], 1.25);
-      g.lineWidth = 4;
+      g.save();
       g.beginPath();
-      g.arc(cx, cy, r0, 0, Math.PI * 2);
-      g.stroke();
-      if (logo) {
-        const s = r0 * 1.25 * (1 + 0.06 * bass);
-        g.imageSmoothingEnabled = false;
-        g.drawImage(logo, cx - s / 2, cy - s / 2, s, s);
-        g.imageSmoothingEnabled = true;
+      g.arc(cx, cy, R, 0, Math.PI * 2);
+      g.clip();
+      g.translate(cx, cy);
+      g.rotate(spin);
+      if (art) {
+        g.globalAlpha = Math.min(1, (tn - artSwapAt) / 400);
+        g.drawImage(art, -R, -R, R * 2, R * 2);
+        // Gros coup : léger flash blanc sur la pochette
+        g.globalAlpha = 1;
+        g.fillStyle = `rgba(255,255,255,${Math.max(0, bass - 0.6) * 0.35})`;
+        g.fillRect(-R, -R, R * 2, R * 2);
+      } else {
+        g.fillStyle = col(P[0], 0.7);
+        g.fillRect(-R, -R, R * 2, R * 2);
       }
+      g.restore();
+      // Reflet de vinyle (fixe pendant que la pochette tourne) et contour lumineux
+      const sh = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      sh.addColorStop(0, 'rgba(255,255,255,0.18)');
+      sh.addColorStop(0.45, 'rgba(255,255,255,0)');
+      sh.addColorStop(1, 'rgba(0,0,0,0.25)');
+      g.fillStyle = sh;
+      g.beginPath();
+      g.arc(cx, cy, R, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = col(P[0], 1.35, 0.9);
+      g.lineWidth = Math.max(3, m * 0.006);
+      g.stroke();
     } else {
       // Kaléidoscope : un quartier de la pochette, retourné en miroir 12 fois autour du centre
       g.fillStyle = col(P[1], 0.3);

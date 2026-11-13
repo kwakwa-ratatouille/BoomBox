@@ -1,5 +1,15 @@
 [
   {
+    "version": "2026.1113.1044",
+    "title": "Pulsation : la pochette au centre",
+    "items": [
+      "Ambiance « Pulsation » : la pochette du son tourne au centre comme un vinyle et bat avec la musique, sur un fond flouté de la pochette, avec des ondes sur les gros coups.",
+      "Sur PC, la lumière réagit plus vite au son : les coups de basse sont repérés dans l’image même où ils sonnent, et l’animation est plus légère.",
+      "Touches 1 à 4 pour changer d’ambiance, espace pour lecture / pause."
+    ],
+    "date": "2026-11-13"
+  },
+  {
     "version": "2026.1106.1407",
     "title": "Moins d’attente quand YouTube bloque",
     "items": [
