@@ -1,6 +1,6 @@
 // Composants réutilisables : pochettes, listes de titres, cartes, menus contextuels des titres.
 import { html, raw, esc, icon, fmtTime, fmtAgo, artistLinks, contextMenu, toast, promptText, isMobile, plural, modal } from './ui.js';
-import { state, api, bus, isLiked, toggleLike, likeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting, toggleFollow, isFollowing, replaceInPlaylist } from './state.js';
+import { state, api, bus, isLiked, toggleLike, likeMany, unlikeMany, createPlaylist, addToPlaylist, removeFromPlaylist, movePlaylistItem, toggleBan, setting, toggleFollow, isFollowing, replaceInPlaylist } from './state.js';
 import { player, ctl, startAt } from './player.js';
 import { sync } from './sync.js';
 import * as twinsMod from './twins.js';
@@ -308,11 +308,12 @@ function selPaint() {
         openPlaylistPicker(tracks, { x: r.left, y: r.top - 340 });
       } else if (a === 'queue') (ctl.addToQueue(tracks), selClear());
       else if (a === 'like') likeMany(tracks).then((n) => toast(n ? `${plural(n, 'titre')} ajouté${n > 1 ? 's' : ''} aux Titres likés` : 'Déjà dans tes Titres likés'), selClear());
+      else if (a === 'unlike') unlikeMany(tracks).then((n) => toast(n ? `${plural(n, 'titre')} retiré${n > 1 ? 's' : ''} des Titres likés` : 'Aucun de ces titres n’est liké'), selClear());
       else selClear();
     });
   }
   sel.bar.innerHTML = String(html`<b>${plural(sel.idx.size, 'son')} sélectionné${sel.idx.size > 1 ? 's' : ''}</b>
-    <button class="btn white sm" data-sel="pl">${icon('plus', 16)} Ajouter à une playlist</button><button class="btn ghost sm" data-sel="queue">${icon('addQueue', 16)} File d'attente</button><button class="btn ghost sm" data-sel="like">${icon('heart', 16)} Liker</button><button class="icon-btn" data-sel="x" title="Annuler la sélection (Échap)">${icon('close', 18)}</button>`);
+    <button class="btn white sm" data-sel="pl">${icon('plus', 16)} Ajouter à une playlist</button><button class="btn ghost sm" data-sel="queue">${icon('addQueue', 16)} File d'attente</button><button class="btn ghost sm" data-sel="like">${icon('heart', 16)} Liker</button>${selTracks().some((t) => isLiked(t.id)) ? html`<button class="btn ghost sm" data-sel="unlike">${icon('heartFill', 16)} Retirer des likes</button>` : ''}<button class="icon-btn" data-sel="x" title="Annuler la sélection (Échap)">${icon('close', 18)}</button>`);
 }
 const selTracks = () => [...sel.idx].sort((a, b) => a - b).map((i) => lists.get(sel.list)?.tracks[i]).filter(Boolean);
 function selClear() {
@@ -844,6 +845,7 @@ export function setupDelegation() {
         { label: `Ajouter ${plural(tracks.length, 'son')} à une playlist…`, icon: 'plus', action: () => openPlaylistPicker(tracks, { x: e.clientX, y: e.clientY + 40 }) },
         { label: "Ajouter à la file d'attente", icon: 'addQueue', action: () => (ctl.addToQueue(tracks), selClear()) },
         { label: 'Ajouter aux Titres likés', icon: 'heart', action: () => likeMany(tracks).then(() => selClear()) },
+        ...(tracks.some((t) => isLiked(t.id)) ? [{ label: 'Retirer des Titres likés', icon: 'heartFill', danger: true, action: () => unlikeMany(tracks).then((n) => (toast(`${plural(n, 'titre')} retiré${n > 1 ? 's' : ''} des Titres likés`), selClear())) }] : []),
         ...(info.list.playlistId ? [{ label: 'Retirer de cette playlist', icon: 'trash', danger: true, action: async () => { for (const t of tracks) await removeFromPlaylist(info.list.playlistId, t).catch(() => {}); selClear(); } }] : []),
         { sep: true },
         { label: 'Annuler la sélection', icon: 'close', action: selClear },

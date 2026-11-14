@@ -328,6 +328,14 @@ export async function likeMany(tracks) {
   return fresh.length;
 }
 
+// Retire plusieurs titres des Titres likés d'un coup (toutes leurs versions : même son sous un autre id)
+export async function unlikeMany(tracks) {
+  const cs = new Set(tracks.filter((t) => t?.id).flatMap((t) => [t.id, canonId(t.id)]));
+  const gone = state.library.liked.filter((x) => cs.has(x.id) || cs.has(canonId(x.id)));
+  await batched(gone.map((t) => (b) => b.set(pref('liked', t.id), { id: t.id, ...tomb() })));
+  return new Set(gone.map((t) => canonId(t.id))).size;
+}
+
 // Like tous les titres de toutes les playlists (sans doublons, date d'ajout d'origine conservée)
 export async function likeAllPlaylistTracks() {
   const seen = new Set();
