@@ -285,13 +285,6 @@ public class BoomboxNativePlugin extends Plugin {
         notifyListeners("hwVolume", o);
     }
 
-    // Android Auto : bibliothèque affichée dans la voiture (Titres likés + playlists), envoyée par l'appli en JSON
-    @PluginMethod
-    public void setAutoLibrary(PluginCall call) {
-        BoomboxAutoService.saveLibrary(getContext().getApplicationContext(), call.getString("json", "{}"));
-        call.resolve();
-    }
-
     @PluginMethod
     public void mediaUpdate(PluginCall call) {
         askNotifPermission();
