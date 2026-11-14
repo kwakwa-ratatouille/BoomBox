@@ -1920,14 +1920,32 @@ async function handleLaunchLink() {
 async function checkExpiry() {
   const info = await nativeInfo();
   if (!info?.expiration) return;
-  scheduleExpiryReminders(Date.parse(info.expiration));
-  const days = Math.floor((Date.parse(info.expiration) - Date.now()) / 86400e3);
-  if (days > 2) return;
+  // La date lue dans l'appli est celle de l'installation : « Actualiser » dans SideStore pose une nouvelle signature
+  // à côté sans la réécrire, et l'appli affichait « expire dans 1 jour » pour toujours. On garde donc aussi la date
+  // d'actualisation que tu confirmes (« C'est fait »), et la plus tardive des deux compte.
+  const embedded = Date.parse(info.expiration);
+  const exp = Math.max(embedded, Number(ls.get('boombox.renewedExp', 0)) || 0);
+  // L'appli s'ouvre encore après la date : elle a forcément été actualisée entre-temps (date réelle inconnue) →
+  // pas d'alerte fausse
+  if (Date.now() > exp) return;
+  scheduleExpiryReminders(exp);
+  const left = exp - Date.now();
+  if (left > 2 * 86400e3) return;
+  const h = Math.floor(left / 3600e3);
+  const when = h < 24 ? `dans ${Math.max(1, h)} h` : `dans ${Math.floor(h / 24)} jour${h >= 48 ? 's' : ''}`;
   const b = document.createElement('div');
   b.className = 'expiry-banner';
-  b.innerHTML = `<span>${days <= 0 ? 'Boombox expire aujourd’hui' : `Boombox expire dans ${days} jour${days > 1 ? 's' : ''}`}</span><button>Renouveler</button><button aria-label="Fermer" style="background:none;color:#000;padding:0 4px">✕</button>`;
-  b.querySelector('button').onclick = () => (location.href = 'sidestore://');
-  b.querySelectorAll('button')[1].onclick = () => b.remove();
+  b.innerHTML = `<span>Boombox expire ${when}</span><button>Renouveler</button><button>C’est fait</button><button aria-label="Fermer" style="background:none;color:#000;padding:0 4px">✕</button>`;
+  const [renew, done, close] = b.querySelectorAll('button');
+  renew.onclick = () => (location.href = 'sidestore://');
+  // Actualisé dans SideStore : 7 jours à partir de maintenant
+  done.onclick = () => {
+    const next = Date.now() + 7 * 86400e3;
+    ls.set('boombox.renewedExp', next);
+    scheduleExpiryReminders(next);
+    b.remove();
+  };
+  close.onclick = () => b.remove();
   document.body.appendChild(b);
 }
 

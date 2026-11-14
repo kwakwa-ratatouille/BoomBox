@@ -201,7 +201,7 @@ public class BoomboxNativePlugin extends Plugin {
     private void ensureSession() {
         if (session != null) return;
         Context ctx = getContext().getApplicationContext();
-        session = new MediaSession(ctx, "Boombox");
+        session = BoomboxAutoService.session(ctx); // la même que celle d'Android Auto
         // Rappels sur le fil principal : mediaUpdate tourne sur un fil à part (sans « Looper »), où Android refusait
         // de créer le lecteur système → aucune notification de lecture sur Android
         session.setCallback(new MediaSession.Callback() {
@@ -209,6 +209,13 @@ public class BoomboxNativePlugin extends Plugin {
             @Override public void onPause() { emit("pause"); }
             @Override public void onSkipToNext() { emit("next"); }
             @Override public void onSkipToPrevious() { emit("prev"); }
+            // Android Auto : son choisi sur l'écran de la voiture (« play:<liste>:<n° du son> »)
+            @Override public void onPlayFromMediaId(String mediaId, android.os.Bundle extras) {
+                JSObject o = new JSObject();
+                o.put("action", "playFromId");
+                o.put("id", mediaId);
+                notifyListeners("mediaAction", o);
+            }
             @Override public void onSeekTo(long pos) {
                 JSObject o = new JSObject();
                 o.put("action", "seek");
@@ -246,6 +253,45 @@ public class BoomboxNativePlugin extends Plugin {
         }
     }
 
+    // Téléphone qui pilote le PC : les boutons de volume règlent le volume du PC (comme une enceinte Cast) au lieu
+    // de celui du téléphone. La session de lecture passe en « lecture à distance » le temps du pilotage.
+    @PluginMethod
+    public void setRemoteVolume(PluginCall call) {
+        boolean on = call.getBoolean("on", false);
+        double vol = call.getDouble("volume", 0.8);
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            ensureSession();
+            if (on) {
+                session.setPlaybackToRemote(new android.media.VolumeProvider(android.media.VolumeProvider.VOLUME_CONTROL_ABSOLUTE, 100, (int) Math.round(vol * 100)) {
+                    @Override public void onAdjustVolume(int direction) {
+                        if (direction == 0) return;
+                        setCurrentVolume(Math.max(0, Math.min(100, getCurrentVolume() + direction * 6)));
+                        sendVolume(getCurrentVolume());
+                    }
+                    @Override public void onSetVolumeTo(int volume) {
+                        setCurrentVolume(Math.max(0, Math.min(100, volume)));
+                        sendVolume(getCurrentVolume());
+                    }
+                });
+                session.setActive(true);
+            } else session.setPlaybackToLocal(new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA).setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC).build());
+            call.resolve();
+        });
+    }
+
+    private void sendVolume(int v) {
+        JSObject o = new JSObject();
+        o.put("volume", v / 100.0);
+        notifyListeners("hwVolume", o);
+    }
+
+    // Android Auto : bibliothèque affichée dans la voiture (Titres likés + playlists), envoyée par l'appli en JSON
+    @PluginMethod
+    public void setAutoLibrary(PluginCall call) {
+        BoomboxAutoService.saveLibrary(getContext().getApplicationContext(), call.getString("json", "{}"));
+        call.resolve();
+    }
+
     @PluginMethod
     public void mediaUpdate(PluginCall call) {
         askNotifPermission();
@@ -274,7 +320,7 @@ public class BoomboxNativePlugin extends Plugin {
                 if (art != null) md.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art);
                 session.setMetadata(md.build());
                 session.setPlaybackState(new PlaybackState.Builder()
-                    .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_SEEK_TO)
+                    .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_SKIP_TO_NEXT | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_SEEK_TO | PlaybackState.ACTION_PLAY_FROM_MEDIA_ID)
                     .setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, (long) (pos * 1000), playing ? 1f : 0f)
                     .build());
                 Intent open = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
@@ -525,6 +571,17 @@ public class BoomboxNativePlugin extends Plugin {
         if (sharedText != null) r.put("text", sharedText);
         sharedText = null;
         call.resolve(r);
+    }
+
+    // Android Auto : playlists et Titres likés que la voiture peut parcourir
+    @PluginMethod
+    public void setAutoLibrary(PluginCall call) {
+        BoomboxAutoService.saveLibrary(getContext(), call.getString("json", "{}"));
+        try {
+            ensureSession(); // la voiture peut piloter la lecture avant le premier son
+        } catch (Exception ignored) {
+        }
+        call.resolve();
     }
 
     // Dernier plantage enregistré (puis effacé)

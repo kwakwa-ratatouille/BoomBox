@@ -249,8 +249,14 @@ async function fetchTo(path, url, headers = {}) {
 }
 
 // YouTube bride un lien téléchargé d'un seul coup à la vitesse de lecture (un son de 3 min prenait ~3 min, même
-// en Wi-Fi) : on le télécharge en morceaux de 1 Mo (paramètre range=), 4 à la fois, puis on les recolle.
+// en Wi-Fi) : on le télécharge en morceaux de 1 Mo (paramètre range=), 6 à la fois, puis on les recolle.
 const CHUNK = 1024 * 1024;
+// Sons passés avant d'avoir fini de charger : leur téléchargement s'arrête au prochain morceau, pour laisser
+// toute la connexion au son qu'on veut écouter (avant, chaque son passé continuait et ralentissait le suivant)
+const dropped = new Set();
+const checkDrop = (path) => {
+  if (dropped.has(path)) throw new Error('abandonné (son passé)');
+};
 async function fetchChunked(path, url, headers, size) {
   // YouTube refuse désormais un lien téléchargé d'un seul coup (403) : taille inconnue → morceaux l'un après
   // l'autre jusqu'au dernier, plus court (lien du PC ou de SoundCloud : fichier entier, comme avant)
@@ -259,8 +265,9 @@ async function fetchChunked(path, url, headers, size) {
   const parts = [];
   for (let a = 0; a < size; a += CHUNK) parts.push([a, Math.min(size, a + CHUNK) - 1]);
   const queue = parts.map((p, i) => i);
-  await Promise.all(Array.from({ length: 4 }, async () => {
+  await Promise.all(Array.from({ length: 6 }, async () => {
     for (let i; (i = queue.shift()) !== undefined; ) {
+      checkDrop(path);
       const [a, b] = parts[i];
       await Filesystem.downloadFile({ url: `${url}&range=${a}-${b}`, path: `${path}.p${i}`, directory: Directory.Data, recursive: true, headers });
     }
@@ -284,6 +291,7 @@ async function fetchChunked(path, url, headers, size) {
 async function fetchSequential(path, url, headers) {
   let n = 0;
   for (;; n++) {
+    checkDrop(path);
     const part = `${path}.p${n}`;
     await Filesystem.downloadFile({ url: `${url}&range=${n * CHUNK}-${(n + 1) * CHUNK - 1}`, path: part, directory: Directory.Data, recursive: true, headers });
     const { size } = await Filesystem.stat({ path: part, directory: Directory.Data });
@@ -361,6 +369,12 @@ async function ytTwin(id, meta) {
 const failTrails = new Map();
 export const failTrail = (id) => (failTrails.get(id) || []).join(' / ');
 
+// Son passé pendant son chargement : on arrête de le télécharger (sauf téléchargement voulu pour le hors ligne)
+const keepWanted = new Set();
+export function dropDownload(id) {
+  if (downloads.has(id) && !keepWanted.has(id)) dropped.add(`audio/${id}.m4a`);
+}
+
 export function downloadAudio(id, { keep = false } = {}) {
   if (audioIndex[id]) {
     audioIndex[id].used = Date.now();
@@ -368,6 +382,8 @@ export function downloadAudio(id, { keep = false } = {}) {
     saveIndex();
     return Promise.resolve(audioIndex[id]);
   }
+  dropped.delete(`audio/${id}.m4a`);
+  if (keep) keepWanted.add(id);
   if (downloads.has(id)) return downloads.get(id);
   const p = (async () => {
     const path = `audio/${id}.m4a`;
@@ -391,6 +407,7 @@ export function downloadAudio(id, { keep = false } = {}) {
       if (ytdlp && localStorage.getItem('boombox.ytClient') === 'ytdlp') st = await viaY();
       const tried = [];
       while (!st && tried.length < (ytdlp ? 2 : 5)) {
+        checkDrop(path);
         const rr = await remoteAudio(vid, tried).catch((e) => fail(e));
         if (!rr) break;
         tried.push(rr.client);
@@ -423,6 +440,7 @@ export function downloadAudio(id, { keep = false } = {}) {
     }
     // 2. Directement chez YouTube (yt-dlp sur Android, changement de client si l'un est refusé)
     if (!stat) stat = await ytChain(id);
+    checkDrop(path);
     // 3 bis. Cette version est bloquée chez YouTube (« +18 », compte exigé…) : une autre mise en ligne du même son
     if (!stat) {
       const m = trackMeta.get(id);
@@ -436,6 +454,7 @@ export function downloadAudio(id, { keep = false } = {}) {
         }
       }
     }
+    checkDrop(path);
     // 4. YouTube refuse (fréquent sans PC, surtout sur iPhone) : le même son sur SoundCloud
     if (!stat && trackMeta.has(id)) {
       const twin = await scTwin(trackMeta.get(id), id).catch(() => null);
@@ -451,7 +470,7 @@ export function downloadAudio(id, { keep = false } = {}) {
     saveIndex();
     pruneCache();
     return audioIndex[id];
-  })().finally(() => downloads.delete(id));
+  })().finally(() => (downloads.delete(id), dropped.delete(`audio/${id}.m4a`), keepWanted.delete(id)));
   downloads.set(id, p);
   return p;
 }
@@ -655,4 +674,4 @@ export async function audioFolder() {
   return decodeURIComponent(String(uri).replace(/^file:\/\//, ''));
 }
 
-export const media = { relayHref, audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
+export const media = { dropDownload, relayHref, audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };

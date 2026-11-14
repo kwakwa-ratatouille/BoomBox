@@ -547,8 +547,10 @@ export const player = {
         const nextId = this._nextTrack()?.id;
         if (this.engine.name === 'audio' && nextId && nextId !== this._prefetched) {
           this._prefetched = nextId;
-          if (isNative) setTimeout(() => this.track?.id && this._prefetchPhone(), 20e3);
-          else fetch(`/api/prefetch/${playId(nextId)}`, { method: 'POST' }).catch(() => {});
+          // Téléphone : préparés 4 s après le début (avant : 20 s, un son passé vite tombait sur un suivant pas prêt).
+          // PC : les 3 suivants (passer plusieurs sons d'affilée ne fait plus attendre à chaque fois)
+          if (isNative) setTimeout(() => this.track?.id && this._prefetchPhone(), 4000);
+          else for (const t of this.upcoming(3)) if (t?.id && !t.local) fetch(`/api/prefetch/${playId(t.id)}`, { method: 'POST' }).catch(() => {});
         }
         this.paused = false;
         this.buffering = false;
@@ -806,6 +808,13 @@ export const player = {
   _load(track, { autoplay = true, start = 0, crossfade = 0, mix = null } = {}) {
     this._maybeRestoreQuality();
     if (!track) return;
+    // Téléphone : son passé avant d'avoir fini de charger → son téléchargement s'arrête (sauf s'il revient bientôt
+    // dans la file), pour que le nouveau son ait toute la connexion
+    const prev = this.track;
+    if (isNative && prev && prev.id !== track.id && this.buffering) {
+      const keep = new Set(this.upcoming(5).map((t) => playId(t.id)));
+      if (!keep.has(playId(prev.id))) localApi().then((a) => a.media.dropDownload?.(playId(prev.id))).catch(() => {});
+    }
     this.track = track;
     this._applySongRate(track, !!(crossfade || mix));
     if (!crossfade && !mix) this._presetNorm(track.id);
@@ -1457,9 +1466,20 @@ export const player = {
         if (e.action === 'next') ctl.next();
         else if (e.action === 'prev') ctl.prev();
         else if (e.action === 'play') ctl.play();
-        else if (e.action === 'pause') ctl.pause('commande de la notification');
+        else if (e.action === 'pause') sysPause('commande de la notification');
         else if (e.action === 'seek') ctl.seek(e.time);
+        // Android Auto : son choisi sur l'écran de la voiture (« play:<id de la liste>:<n° du son> »)
+        else if (e.action === 'playFromId') {
+          const m = /^play:(.+):(\d+)$/.exec(e.id || '');
+          const l = m && autoLists().find((x) => x.id === m[1]);
+          if (l?.tracks.length) ctl.playList(l.tracks, Math.min(Number(m[2]), l.tracks.length - 1), { type: l.id === 'liked' ? 'liked' : 'playlist', id: l.id, name: l.name });
+        }
       });
+      // Android Auto : la bibliothèque est envoyée à la voiture, puis à chaque changement (au plus toutes les 5 s)
+      let lt = null;
+      const sendLib = () => P.setAutoLibrary?.({ json: JSON.stringify({ lists: autoLists().map((l) => ({ id: l.id, name: l.name, count: l.tracks.length, cover: l.cover, tracks: l.tracks.map((t) => ({ title: t.title || '', artist: artistNames(t), thumb: t.thumb || '' })) })) }) })?.catch?.(() => {});
+      bus.addEventListener('library', () => (clearTimeout(lt), (lt = setTimeout(sendLib, 5000))));
+      sendLib();
       // Lecture / pause : la notification suit (au plus une mise à jour par 300 ms)
       let tm = null;
       bus.addEventListener('player:state', () => (clearTimeout(tm), (tm = setTimeout(() => this._androidMedia(), 300))));
@@ -1492,7 +1512,7 @@ export const player = {
     // Dernier bouton reçu de la page : le même bouton reçu juste après par le module iPhone est un doublon
     const mark = (a) => (lastMediaAction = { at: Date.now() }, a);
     set('play', () => (mark(), ctl.play()));
-    set('pause', () => (mark(), ctl.pause('commande de l’écran verrouillé ou des écouteurs')));
+    set('pause', () => (mark(), sysPause('commande de l’écran verrouillé ou des écouteurs')));
     set('previoustrack', () => (mark(), ctl.prev()));
     set('nexttrack', () => (mark(), ctl.next()));
     set('seekto', (d) => ctl.seek(d.seekTime));
@@ -1512,6 +1532,17 @@ for (const a of ACTIONS) {
     return player[a](...args);
   };
 }
+
+// Pause venue du système du téléphone (écran verrouillé, notification, écouteurs, interruption iOS). Quand le
+// téléphone pilote le PC, ces commandes concernent le lecteur du téléphone (à l'arrêt), pas le PC : iOS en envoie
+// tout seul (interruption, autre appli qui joue) et le PC se mettait en pause sans raison.
+const sysPause = (why) => (player.remoteSender ? undefined : ctl.pause(why));
+
+// Android Auto : listes proposées dans la voiture (Titres likés d'abord, puis les playlists, 300 sons max chacune)
+const autoLists = () => [
+  { id: 'liked', name: 'Titres likés', tracks: state.library.liked || [], cover: '' },
+  ...(state.library.playlists || []).map((p) => ({ id: p.id, name: p.name, tracks: p.tracks || [], cover: /^https?:/.test(p.cover || '') ? p.cover : p.tracks?.[0]?.thumb || '' })),
+].filter((l) => l.tracks.length).map((l) => ({ ...l, tracks: l.tracks.slice(0, 300) }));
 
 // Premier son quand on lance une liste entière : au hasard si l'aléatoire est activé (pas toujours le premier)
 export const startAt = (list) => (player.shuffle && list?.length ? Math.floor(Math.random() * list.length) : 0);
@@ -1603,7 +1634,7 @@ let lastMediaAction = { at: 0 };
     if (Date.now() - lastMediaAction.at < 900) return; // déjà reçu par la page
     const a = e?.action;
     if (a === 'play' || (a === 'toggle' && player.paused)) ctl.play();
-    else if (a === 'pause' || a === 'toggle') ctl.pause('commande de l’écran verrouillé');
+    else if (a === 'pause' || a === 'toggle') sysPause('commande de l’écran verrouillé');
     else if (a === 'next') ctl.next();
     else if (a === 'prev') ctl.prev();
   }).catch?.(() => {});

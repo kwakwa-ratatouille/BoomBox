@@ -71,6 +71,9 @@ export const sync = {
           if (!c.args && c.argsJson) try { c.args = JSON.parse(c.argsJson); } catch {}
           deleteDoc(ch.doc.ref).catch(() => {});
           if (c.cid && this._seenCmd.has(c.cid)) continue; // déjà reçue par le canal direct
+          // Notée comme reçue : sinon la même commande arrivée ensuite par le canal direct était jouée une 2e fois
+          // (un « lecture / pause » exécuté deux fois = la musique se remettait en pause toute seule)
+          if (c.cid) this._seenCmd.add(c.cid);
           if (Date.now() - (c.at || 0) < 60e3) this._command(c);
         }
       }),
@@ -98,6 +101,8 @@ export const sync = {
       if (document.visibilityState === 'visible') {
         updateDoc(this.devRef(), { lastSeen: Date.now(), online: true }).catch(() => {});
         this._refreshDevices(); // retour sur l'appli : un appareil éteint entre-temps n'est plus affiché ni piloté
+        // Retour sur l'appli en pilotant un autre appareil : on lui redemande son état (rien reçu pendant la veille)
+        if (this.target) this.sendCommand(this.target, '__hello');
       }
     });
 
@@ -182,6 +187,9 @@ export const sync = {
     const o = now - st.ts - trip;
     const k = this._skew[id];
     // Nouvel échantillon plus petit (meilleur), ou ancien trop vieux : on le prend
+    // Écart de plus de 30 s : ce n'est pas un écart d'horloge mais un vieil état (gardé par Firebase, reçu au réveil
+    // du téléphone). Avant, il était pris pour l'écart d'horloge et la barre de temps restait fausse.
+    if (Math.abs(o) > 30e3) return { ...st, ts: st.ts + (k?.o || 0) };
     if (!k || o < k.o || now - k.at > 10 * 60e3) this._skew[id] = { o, at: now };
     return { ...st, ts: st.ts + this._skew[id].o };
   },
@@ -273,8 +281,16 @@ export const sync = {
       player.remoteSender = null;
     } else {
       this.target = deviceId;
-      player.remoteSender = (action, args) => (this._autoRoute(action) ? player[action](...args) : this.sendCommand(deviceId, action, args));
+      player.remoteSender = (action, args) => {
+        if (this._autoRoute(action)) return player[action](...args);
+        // « Lecture / pause » envoyé comme un ordre précis (ce que montre l'écran) : un « bascule » reçu en double, ou
+        // basé sur un état pas encore à jour, mettait le PC en pause alors qu'on voulait qu'il joue
+        if (action === 'toggle') action = this.remote[deviceId]?.paused === false ? 'pause' : 'play';
+        return this.sendCommand(deviceId, action, args);
+      };
       if (!player.paused && !keepPlaying) player.pause();
+      // État tout frais demandé à l'appareil piloté (celui gardé ici pouvait dater : « en pause » alors qu'il jouait)
+      this.sendCommand(deviceId, '__hello');
     }
     this._shownRemote = undefined; // appareil (ou retour ici) : tout est redessiné
     emit('sync');
@@ -327,6 +343,9 @@ export const sync = {
       }
       return;
     }
+    // Rien ne joue ici (son en pause ou aucun son) : on ne remplace pas ce qu'il y a sur l'autre appareil, on s'y
+    // rattache (son, avancée, pause de l'autre appareil). Avant, un son en pause du téléphone écrasait celui du PC.
+    if (!player.track || player.paused) return this.control(deviceId);
     if (player.track) {
       const snap = { ...player.snapshot(), list: player.list.slice(0, 300), order: player.order.slice(0, 300), pos: player.pos, userQueue: player.userQueue, sentAt: Date.now() };
       this.sendCommand(deviceId, '__transfer', [snap]);
@@ -670,3 +689,37 @@ on('player:time', () => {
   lastTimeCheck = Date.now();
   sync.publish();
 });
+
+// Téléphone qui pilote un autre appareil (le PC) : les boutons de volume du téléphone règlent le volume de cet
+// appareil. iPhone : le volume du téléphone devient celui du PC (iOS ne laisse pas intercepter les boutons) ;
+// Android : les boutons agissent directement sur le PC, comme pour une enceinte Cast.
+(() => {
+  const NP = window.Capacitor?.Plugins?.BoomboxNative;
+  if (!isNative || !NP) return;
+  let active = false;
+  let pending = null;
+  let timer = 0;
+  const send = (v) => {
+    pending = Math.min(1, Math.max(0, v));
+    if (timer) return;
+    // Au plus un envoi toutes les 120 ms (le bouton maintenu envoie des dizaines de changements)
+    timer = setTimeout(() => {
+      const pending0 = pending;
+      timer = 0;
+      if (active && pending != null) import("./player.js").then((m) => m.ctl.setVolume(pending0));
+      pending = null;
+    }, 120);
+  };
+  const refresh = () => {
+    const on = !!sync.target;
+    if (on === active) return;
+    active = on;
+    Promise.resolve(NP.setRemoteVolume?.({ on, volume: sync.view().volume ?? 0.8 })).catch(() => {}); // ancienne version de l'appli : rien
+  };
+  bus.addEventListener('sync', refresh);
+  Promise.resolve(NP.addListener?.('hwVolume', (e) => {
+    if (!active) return;
+    if (typeof e?.volume === 'number') send(e.volume);
+    else if (e?.step) send((pending ?? sync.view().volume ?? 0.8) + e.step * 0.06);
+  })).catch(() => {});
+})();

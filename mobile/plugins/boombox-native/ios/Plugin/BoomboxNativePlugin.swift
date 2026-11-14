@@ -20,8 +20,64 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "refreshAudioRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setKeepAwake", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAppIcon", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "nowPlayingPaused", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "nowPlayingPaused", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setRemoteVolume", returnType: CAPPluginReturnPromise)
     ]
+
+    // Téléphone qui pilote le PC : les boutons de volume de l'iPhone règlent le volume du PC.
+    // iOS ne laisse pas intercepter les boutons : un réglage de volume système invisible est posé dans la page, et le
+    // volume du téléphone est remis au milieu après chaque appui. Chaque appui (+ ou −) devient un cran envoyé au PC,
+    // même si le téléphone était déjà à fond ou à zéro, et l'indicateur de volume d'iOS ne s'affiche pas.
+    private var volumeObs: NSKeyValueObservation?
+    private var volumeView: MPVolumeView?
+    private var volumeResetting = false
+    private let volumeMid: Float = 0.5
+    private func volumeSlider() -> UISlider? { volumeView?.subviews.compactMap { $0 as? UISlider }.first }
+    @objc func setRemoteVolume(_ call: CAPPluginCall) {
+        let on = call.getBool("on") ?? false
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return call.resolve() }
+            self.volumeObs?.invalidate()
+            self.volumeObs = nil
+            self.volumeView?.removeFromSuperview()
+            self.volumeView = nil
+            guard on else { return call.resolve() }
+            let session = AVAudioSession.sharedInstance()
+            try? session.setActive(true)
+            let vv = MPVolumeView(frame: CGRect(x: -2000, y: -2000, width: 10, height: 10))
+            vv.alpha = 0.01
+            self.bridge?.webView?.addSubview(vv)
+            self.volumeView = vv
+            // Volume du téléphone mis au milieu : il reste de la marge pour monter comme pour descendre
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self = self, let sl = self.volumeSlider() else { return }
+                // Déjà au milieu : pas de changement, donc rien à ignorer (sinon le prochain appui serait perdu)
+                if abs(AVAudioSession.sharedInstance().outputVolume - self.volumeMid) < 0.01 { return }
+                self.volumeResetting = true
+                sl.value = self.volumeMid
+                // Sécurité : si iOS n'a pas signalé la remise au milieu, les appuis suivants comptent quand même
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.volumeResetting = false }
+            }
+            self.volumeObs = session.observe(\.outputVolume, options: [.new]) { [weak self] s, _ in
+                DispatchQueue.main.async {
+                    guard let self = self, self.volumeView != nil else { return }
+                    let v = s.outputVolume
+                    if self.volumeResetting {
+                        // Changement provoqué par la remise au milieu : ignoré
+                        if abs(v - self.volumeMid) < 0.01 { self.volumeResetting = false }
+                        return
+                    }
+                    let d = v - self.volumeMid
+                    if abs(d) < 0.01 { return }
+                    self.notifyListeners("hwVolume", data: ["step": d > 0 ? 1 : -1])
+                    self.volumeResetting = true
+                    self.volumeSlider()?.value = self.volumeMid
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in self?.volumeResetting = false }
+                }
+            }
+            call.resolve()
+        }
+    }
 
     override public func load() {
         let session = AVAudioSession.sharedInstance()

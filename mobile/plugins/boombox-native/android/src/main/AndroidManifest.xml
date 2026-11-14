@@ -10,5 +10,10 @@
     <application android:extractNativeLibs="true">
         <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME" android:value="app.boombox.nativeplugin.CastOptionsProvider" />
         <service android:name="app.boombox.nativeplugin.PlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+        <!-- Android Auto : Boombox dans l'écran de la voiture (bibliothèque + commandes) -->
+        <service android:name="app.boombox.nativeplugin.BoomboxAutoService" android:exported="true">
+            <intent-filter><action android:name="android.media.browse.MediaBrowserService" /></intent-filter>
+        </service>
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
     </application>
 </manifest>

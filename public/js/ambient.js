@@ -129,12 +129,15 @@ export function openAmbient() {
   const t0 = performance.now();
   let smooth = 0;
   let spec = null;
-  let parts = null;
   let lastT = performance.now();
   let dt = 1 / 60;
   let bassLevel = 0; // énergie des basses en continu (0-1), en plus des coups
-  let rings = []; // ondes qui partent de la pochette sur les gros coups
-  let spin = 0; // rotation de la pochette, façon vinyle (s'arrête en pause)
+  let rings = []; // anneaux, un par temps
+  let onsets = []; // instants des derniers coups de basse (tempo appris à l'écoute)
+  let learned = null; // { period, origin } appris à l'écoute
+  let beatEnv = 0; // 1 pile sur le temps, retombe vite
+  let beatInBar = -1; // 0-3 : temps dans la mesure
+  let specPeak = 0.2; // niveau récent du spectre (normalisation)
   // PC : la lumière écoute le vrai son (énergie des basses, image par image) au lieu de deviner le rythme. Un coup
   // de grosse caisse = un flash, quel que soit le tempo. Téléphone, ou son joué sur un autre appareil : tempo analysé.
   let ana = null;
@@ -184,27 +187,40 @@ export function openAmbient() {
     const now = (tn - t0) / 1000;
     const v = view();
     const an = automix.get(v.track?.id);
-    const beat = an?.beat || 0.5;
     const pos = v.position || 0;
-    // Pulsation : 1 sur le temps, puis redescend ; plus forte sur le premier temps de chaque mesure. À l'arrêt : calme
-    const ph = ((pos - (an?.firstBeat || 0)) / beat) % 1;
-    const barStart = Math.floor((pos - (an?.firstBeat || 0)) / beat) % 4 === 0;
     const a = v.paused ? null : live();
-    if (a) {
-      // Vrai son : flash immédiat au coup, puis redescente douce (aucun retard à la montée)
-      const h = liveHit(a);
-      if (h > 0.8) rings.push({ r: 0, a: h });
-      // Redescente identique quel que soit l'écran (60 ou 120 Hz) ; jamais sous le niveau des basses du moment
-      smooth = Math.max(h ? Math.max(smooth, h) : smooth * Math.pow(0.86, dt * 60), bassLevel * 0.45);
-    } else {
-      // Tempo analysé : une onde au premier temps de chaque mesure
-      const beatN = an?.beat ? Math.floor((pos - (an.firstBeat || 0)) / beat) : -1;
-      if (!v.paused && beatN !== frame.lastBeat && beatN >= 0 && beatN % 4 === 0) rings.push({ r: 0, a: 1 });
-      frame.lastBeat = beatN;
-      // Tempo analysé ; tempo inconnu (analyse pas prête) : simple respiration lente plutôt qu'un faux rythme
-      const hit = v.paused ? 0 : an?.beat ? Math.pow(1 - (ph < 0 ? ph + 1 : ph), 3) * (barStart ? 1 : 0.65) : 0.25 + 0.2 * Math.sin(now * 1.6);
-      smooth = hit > smooth ? hit : smooth + (hit - smooth) * 0.25; // montée immédiate, descente douce
+    const hit = a ? liveHit(a) : 0;
+    // Tempo appris à l'écoute (PC, analyse automix pas encore prête) : écart médian entre les coups de basse
+    if (hit) {
+      onsets.push(pos);
+      onsets = onsets.filter((t) => pos - t < 8 && t <= pos);
+      const gaps = [];
+      for (let i = 1; i < onsets.length; i++) {
+        let d = onsets[i] - onsets[i - 1];
+        while (d > 0 && d < 0.3) d *= 2;
+        while (d > 1) d /= 2;
+        if (d >= 0.3) gaps.push(d);
+      }
+      if (gaps.length >= 4) learned = { period: gaps.sort((x, y) => x - y)[gaps.length >> 1], origin: pos };
     }
+    // Métronome : grille de temps fixe (analyse automix : tempo + premier temps ; sinon tempo appris).
+    // Chaque temps = un coup net qui retombe vite ; le premier temps de la mesure tape plus fort.
+    const grid = an?.beat ? { period: an.beat, origin: an.firstBeat || 0 } : learned;
+    let ph = 0;
+    let beatN = -1;
+    if (grid) {
+      const x = (pos - grid.origin) / grid.period;
+      beatN = Math.floor(x);
+      ph = x - beatN;
+    }
+    const down = ((beatN % 4) + 4) % 4 === 0;
+    if (!v.paused && grid && beatN !== frame.lastBeat) rings.push({ r: 0, a: down ? 1 : 0.5 });
+    frame.lastBeat = beatN;
+    // Volume du moment (PC) : un passage calme bat moins fort qu'un refrain, mais bat toujours en rythme
+    const ampK = a ? 0.6 + 0.4 * Math.min(1, bassLevel * 1.4) : 1;
+    beatEnv = grid ? Math.exp(-ph * grid.period * 7) : 0;
+    smooth = v.paused ? smooth * Math.pow(0.9, dt * 60) : grid ? beatEnv * (down ? 1 : 0.7) * ampK : a ? Math.max(hit, smooth * Math.pow(0.86, dt * 60)) : 0.25 + 0.15 * Math.sin(now * 1.6);
+    beatInBar = grid && !v.paused ? ((beatN % 4) + 4) % 4 : -1;
     const k = intensity;
     const shift = (now * 6) % 360; // les couleurs tournent doucement
     const P = pal.map(([h, s, l]) => [(h + shift) % 360, s, l]);
@@ -234,143 +250,142 @@ export function openAmbient() {
         g.fill();
       }
     } else if (mode === 'pulse') {
-      // La pochette du son au centre, qui tourne comme un vinyle et bat avec la musique ; autour, un spectre en miroir
-      // (vrai son sur PC, imité au rythme ailleurs), des ondes sur les gros coups et des particules
+      // Pochette au centre qui bat comme un métronome, onde lumineuse autour (vrai spectre sur PC), un anneau par
+      // temps, et 4 points qui marquent le temps dans la mesure
       const cx = W / 2;
       const cy = H / 2;
       const m = Math.min(W, H);
-      const bass = smooth;
-      // Fond : la pochette floutée en plein écran, qui respire un peu, assombrie au bord
-      g.fillStyle = '#05030a';
+      const p = smooth;
+      g.fillStyle = '#07060b';
       g.fillRect(0, 0, W, H);
       if (artBlur) {
-        const fade = Math.min(1, (tn - artSwapAt) / 600); // fondu au changement de son
-        const S = Math.max(W, H) * (1.25 + 0.05 * bass);
-        g.globalAlpha = 0.4 * fade;
+        const fade = Math.min(1, (tn - artSwapAt) / 600);
+        const B = Math.max(W, H) * 1.3;
+        g.globalAlpha = (0.28 + 0.5 * p) * fade;
         g.imageSmoothingEnabled = true;
-        g.drawImage(artBlur, cx - S / 2, cy - S / 2, S, S);
+        g.drawImage(artBlur, cx - B / 2, cy - B / 2, B, B);
         g.globalAlpha = 1;
       }
-      const vig = g.createRadialGradient(cx, cy, m * 0.2, cx, cy, Math.hypot(W, H) / 2);
-      vig.addColorStop(0, col(P[0], 0.5, 0.15 + 0.25 * bass));
-      vig.addColorStop(1, 'rgba(3,2,6,0.92)');
+      const vig = g.createRadialGradient(cx, cy, m * 0.15, cx, cy, Math.hypot(W, H) / 2);
+      vig.addColorStop(0, col(P[0], 0.8, 0.1 + 0.45 * p));
+      vig.addColorStop(1, 'rgba(4,3,8,0.94)');
       g.fillStyle = vig;
       g.fillRect(0, 0, W, H);
-      // Spectre : 48 bandes (miroir gauche / droite), réaction franche à la montée, retombée douce
-      const N = 48;
+      // Spectre : 40 bandes, rapporté au niveau récent (ne dépend pas du volume), lissé
+      const N = 40;
       spec ||= new Float32Array(N);
-      const up = 1 - Math.pow(0.15, dt * 60);
-      const down = 1 - Math.pow(0.82, dt * 60);
       if (a && bins) {
+        let mx = 0;
+        const raw = [];
         for (let i = 0; i < N; i++) {
-          // Échelle logarithmique : plus de barres pour les basses et les médiums
-          const lo = Math.max(1, Math.floor(Math.pow(bins.length * 0.6, i / N)));
-          const hi = Math.max(lo + 1, Math.floor(Math.pow(bins.length * 0.6, (i + 1) / N)));
-          let s = 0;
-          for (let j = lo; j < hi; j++) s += bins[j];
-          // Les aigus sont naturellement plus faibles : un peu remontés pour que tout le cercle bouge
-          const val = Math.min(1, Math.pow(s / (hi - lo) / 255, 1.6) * (1 + i / N));
-          spec[i] += (val - spec[i]) * (val > spec[i] ? up : down);
+          const lo = Math.max(1, Math.floor(Math.pow(bins.length * 0.55, i / N)));
+          const hi = Math.max(lo + 1, Math.floor(Math.pow(bins.length * 0.55, (i + 1) / N)));
+          let s2 = 0;
+          for (let j = lo; j < hi; j++) s2 += bins[j];
+          raw[i] = (s2 / (hi - lo) / 255) * (1 + (0.6 * i) / N);
+          mx = Math.max(mx, raw[i]);
+        }
+        specPeak = Math.max(specPeak * Math.pow(0.997, dt * 60), mx, 0.05);
+        for (let i = 0; i < N; i++) {
+          const val = Math.pow(raw[i] / specPeak, 2.2);
+          spec[i] += (val - spec[i]) * (val > spec[i] ? 0.6 : 0.12);
         }
       } else {
         for (let i = 0; i < N; i++) {
-          const low = 1 - i / N;
-          const val = v.paused ? 0.04 : 0.12 + 0.6 * bass * low + 0.2 * (0.5 + 0.5 * Math.sin(now * (2 + i * 0.37) + i * 1.7)) * (0.4 + 0.6 * Math.sin(now * 0.7 + i * 0.21) ** 2);
-          spec[i] += (val - spec[i]) * (val > spec[i] ? up : down);
+          const val = v.paused ? 0.03 : (0.1 + 0.55 * p * (1 - i / N)) * (0.75 + 0.25 * Math.sin(now * 1.3 + i * 0.9));
+          spec[i] += (val - spec[i]) * 0.25;
         }
       }
-      const r0 = m * (0.19 + 0.03 * bass);
-      const maxLen = m * 0.2;
-      // Barres : deux passes groupées (halo large et doux, puis barre nette) au lieu d'une ombre par barre (trop lent)
-      g.save();
-      g.translate(cx, cy);
-      g.rotate(now * 0.04);
-      g.lineCap = 'round';
+      const S = m * 0.34 * (1 + 0.14 * p); // côté de la pochette : bondit à chaque temps
+      const base = S * 0.62;
+      const amp = m * 0.11 * (1 + 0.7 * p);
+      // Onde : courbe fermée, symétrique gauche / droite, deux couches
       g.globalCompositeOperation = 'lighter';
-      const bw = Math.max(3, ((Math.PI * r0) / N) * 0.6);
-      for (const [wMul, alpha] of [[3.2, 0.18], [1, 0.95]]) {
-        for (let c = 0; c < 3; c++) {
-          g.strokeStyle = col(P[c], 1.15, alpha);
-          g.lineWidth = bw * wMul;
-          g.beginPath();
-          for (let side = 0; side < 2; side++) {
-            for (let i = c; i < N; i += 3) {
-              const ang = -Math.PI / 2 + (side ? 1 : -1) * (Math.PI * (i + 0.5)) / N;
-              const len = 3 + spec[i] * maxLen;
-              const ca = Math.cos(ang);
-              const sa = Math.sin(ang);
-              g.moveTo(ca * (r0 + 10), sa * (r0 + 10));
-              g.lineTo(ca * (r0 + 10 + len), sa * (r0 + 10 + len));
-            }
-          }
-          g.stroke();
-        }
-      }
-      g.restore();
-      // Ondes : un anneau part de la pochette sur chaque gros coup et s'efface en s'éloignant
-      g.globalCompositeOperation = 'lighter';
-      for (const o of rings) {
-        o.r += m * 0.9 * dt;
-        const al = o.a * Math.max(0, 1 - o.r / (m * 0.6));
-        g.strokeStyle = col(P[0], 1.3, al * 0.6);
-        g.lineWidth = 2 + 6 * al;
+      for (const [layer, c, k2] of [[0, P[1], 0.6], [1, P[0], 1]]) {
         g.beginPath();
-        g.arc(cx, cy, r0 + o.r, 0, Math.PI * 2);
+        const pts = 2 * N;
+        for (let i = 0; i <= pts; i++) {
+          const idx = i < N ? i : pts - i;
+          const v2 = spec[Math.min(N - 1, idx)] * k2 + (layer ? 0 : 0.04);
+          const ang = -Math.PI / 2 + (i / pts) * Math.PI * 2;
+          const r = base + 6 + v2 * amp;
+          const X = cx + Math.cos(ang) * r;
+          const Y = cy + Math.sin(ang) * r;
+          if (i) g.lineTo(X, Y);
+          else g.moveTo(X, Y);
+        }
+        g.closePath();
+        const grd = g.createRadialGradient(cx, cy, base, cx, cy, base + amp);
+        // Seule la bande de l'onde s'éclaire (le disque sous la pochette reste sombre)
+        grd.addColorStop(0, col(c, 1.1, 0));
+        grd.addColorStop(0.1, col(c, 1.1, 0.45));
+        grd.addColorStop(1, col(c, 1.1, 0.04));
+        g.fillStyle = grd;
+        g.fill();
+        g.strokeStyle = col(c, 1.3, 0.85);
+        g.lineWidth = Math.max(1.5, m * 0.0025);
         g.stroke();
       }
-      rings = rings.filter((o) => o.r < m * 0.6).slice(-8);
-      // Particules : naissent sur le cercle, filent vers l'extérieur, plus vite sur les coups
-      parts ||= [];
-      if (!v.paused && parts.length < 160) for (let i = 0; i < 1 + Math.round(bass * 5); i++) parts.push({ a: Math.random() * Math.PI * 2, d: r0, s: 0.4 + Math.random(), c: Math.floor(Math.random() * 3), z: 1 + Math.random() * 2 });
-      for (const p of parts) {
-        p.d += (1.5 + bass * 16) * p.s * dt * 60;
-        const alpha = Math.max(0, 1 - (p.d - r0) / (m * 0.8));
-        g.fillStyle = col(P[p.c], 1.4, alpha * 0.85);
-        g.fillRect(cx + Math.cos(p.a) * p.d - p.z, cy + Math.sin(p.a) * p.d - p.z, p.z * 2, p.z * 2);
+      // Anneaux : un par temps (plus marqué sur le premier temps)
+      for (const o of rings) {
+        o.r += m * 0.7 * dt;
+        const al = o.a * Math.max(0, 1 - o.r / (m * 0.45));
+        g.strokeStyle = col(P[0], 1.4, al * 0.9);
+        g.lineWidth = 2 + 12 * al;
+        g.beginPath();
+        g.arc(cx, cy, base + 6 + o.r, 0, Math.PI * 2);
+        g.stroke();
       }
-      parts = parts.filter((p) => p.d - r0 < m * 0.8);
+      rings = rings.filter((o) => o.r < m * 0.45).slice(-6);
       g.globalCompositeOperation = 'source-over';
-      // Pochette : ronde, tourne lentement pendant la lecture (comme un vinyle) et grossit sur les coups
-      if (!v.paused) spin += dt * 0.35;
-      const R = r0 * (1 + 0.05 * bass);
+      // Pochette : carré arrondi, à l'endroit, qui grossit à chaque temps
+      const rad = S * 0.08;
+      const box = () => {
+        g.beginPath();
+        if (g.roundRect) g.roundRect(cx - S / 2, cy - S / 2, S, S, rad);
+        else g.rect(cx - S / 2, cy - S / 2, S, S);
+      };
       g.save();
-      g.shadowBlur = (30 + 50 * bass) * (W / innerWidth);
-      g.shadowColor = col(P[0], 1.2, 0.9);
+      g.shadowBlur = (40 + 70 * p) * (W / innerWidth);
+      g.shadowColor = col(P[0], 1.2, 0.85);
       g.fillStyle = '#0d0a14';
-      g.beginPath();
-      g.arc(cx, cy, R, 0, Math.PI * 2);
+      box();
       g.fill();
       g.restore();
       g.save();
-      g.beginPath();
-      g.arc(cx, cy, R, 0, Math.PI * 2);
+      box();
       g.clip();
-      g.translate(cx, cy);
-      g.rotate(spin);
       if (art) {
         g.globalAlpha = Math.min(1, (tn - artSwapAt) / 400);
-        g.drawImage(art, -R, -R, R * 2, R * 2);
-        // Gros coup : léger flash blanc sur la pochette
+        g.drawImage(art, cx - S / 2, cy - S / 2, S, S);
         g.globalAlpha = 1;
-        g.fillStyle = `rgba(255,255,255,${Math.max(0, bass - 0.6) * 0.35})`;
-        g.fillRect(-R, -R, R * 2, R * 2);
+        g.fillStyle = `rgba(255,255,255,${0.32 * beatEnv * (beatInBar === 0 ? 1 : 0.55)})`;
+        g.fillRect(cx - S / 2, cy - S / 2, S, S);
       } else {
         g.fillStyle = col(P[0], 0.7);
-        g.fillRect(-R, -R, R * 2, R * 2);
+        g.fillRect(cx - S / 2, cy - S / 2, S, S);
       }
       g.restore();
-      // Reflet de vinyle (fixe pendant que la pochette tourne) et contour lumineux
-      const sh = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-      sh.addColorStop(0, 'rgba(255,255,255,0.18)');
-      sh.addColorStop(0.45, 'rgba(255,255,255,0)');
-      sh.addColorStop(1, 'rgba(0,0,0,0.25)');
-      g.fillStyle = sh;
-      g.beginPath();
-      g.arc(cx, cy, R, 0, Math.PI * 2);
-      g.fill();
-      g.strokeStyle = col(P[0], 1.35, 0.9);
-      g.lineWidth = Math.max(3, m * 0.006);
-      g.stroke();
+      // Flash de tout l'écran à chaque temps (plus fort sur le premier temps de la mesure)
+      if (beatInBar >= 0) {
+        g.globalCompositeOperation = 'lighter';
+        g.fillStyle = col(P[0], 1, 0.22 * beatEnv * (beatInBar === 0 ? 1 : 0.45));
+        g.fillRect(0, 0, W, H);
+        g.globalCompositeOperation = 'source-over';
+      }
+      // Métronome : 4 points sous la pochette, celui du temps en cours s'allume
+      if (beatInBar >= 0) {
+        const dy = cy + m * 0.34 * 0.62 + m * 0.24; // fixe (ne saute pas avec la pochette)
+        const gap = m * 0.04;
+        for (let i = 0; i < 4; i++) {
+          const on = i === beatInBar;
+          const r = m * (on ? 0.009 + 0.006 * beatEnv : 0.006);
+          g.fillStyle = on ? col(P[0], 1.5, 0.6 + 0.4 * beatEnv) : 'rgba(255,255,255,0.18)';
+          g.beginPath();
+          g.arc(cx + (i - 1.5) * gap, dy, r, 0, Math.PI * 2);
+          g.fill();
+        }
+      }
     } else {
       // Kaléidoscope : un quartier de la pochette, retourné en miroir 12 fois autour du centre
       g.fillStyle = col(P[1], 0.3);
