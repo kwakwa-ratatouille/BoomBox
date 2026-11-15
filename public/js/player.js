@@ -1626,9 +1626,17 @@ let lastMediaAction = { at: 0 };
     if (!player.paused || !t || player.remoteSender) return;
     P.nowPlayingPaused?.({ title: t.title || '', artist: artistNames(t), duration: player.shownDuration?.() || player.duration() || 0, position: player.time() || 0, artwork: t.thumb || null })?.catch?.(() => {});
   };
+  let alive = false;
   bus.addEventListener('player:state', () => {
     timers.forEach(clearTimeout);
     timers = player.paused && player.track ? [800, 4000, 12000, 30000, 90000, 240000].map((ms) => setTimeout(push, ms)) : [];
+    // En pause : l'appli reste éveillée (son muet côté iOS, 30 min max) pour que « lecture » depuis la voiture,
+    // les écouteurs ou l'écran verrouillé relance bien la musique ; arrêté dès que ça rejoue
+    const want = !!(player.paused && player.track && !player.remoteSender);
+    if (want !== alive) {
+      alive = want;
+      P.keepAlive?.({ on: want })?.catch?.(() => {});
+    }
   });
   P.addListener('mediaAction', (e) => {
     if (Date.now() - lastMediaAction.at < 900) return; // déjà reçu par la page

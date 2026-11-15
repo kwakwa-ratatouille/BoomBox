@@ -21,8 +21,49 @@ public class BoomboxNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setKeepAwake", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAppIcon", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "nowPlayingPaused", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setRemoteVolume", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setRemoteVolume", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "keepAlive", returnType: CAPPluginReturnPromise)
     ]
+
+    // Son en pause (voiture, écouteurs, écran verrouillé) : iOS endort l'appli quelques secondes après, et le bouton
+    // lecture de la voiture ne pouvait plus la relancer. Un son muet tourne en boucle pendant la pause (30 min au
+    // plus) : l'appli reste éveillée et reprend tout de suite. Arrêté dès que la musique repart.
+    private var silent: AVAudioPlayer?
+    private var silentTimer: Timer?
+    private static func silentWav() -> Data {
+        let rate: UInt32 = 8000
+        let samples = rate // 1 s
+        var d = Data()
+        func u32(_ v: UInt32) { var x = v.littleEndian; d.append(Data(bytes: &x, count: 4)) }
+        func u16(_ v: UInt16) { var x = v.littleEndian; d.append(Data(bytes: &x, count: 2)) }
+        d.append("RIFF".data(using: .ascii)!); u32(36 + samples * 2); d.append("WAVE".data(using: .ascii)!)
+        d.append("fmt ".data(using: .ascii)!); u32(16); u16(1); u16(1); u32(rate); u32(rate * 2); u16(2); u16(16)
+        d.append("data".data(using: .ascii)!); u32(samples * 2); d.append(Data(count: Int(samples * 2)))
+        return d
+    }
+    @objc func keepAlive(_ call: CAPPluginCall) {
+        let on = call.getBool("on") ?? false
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return call.resolve() }
+            self.silentTimer?.invalidate()
+            self.silentTimer = nil
+            if on {
+                if self.silent == nil, let pl = try? AVAudioPlayer(data: BoomboxNativePlugin.silentWav()) {
+                    pl.numberOfLoops = -1
+                    pl.volume = 0
+                    self.silent = pl
+                }
+                try? AVAudioSession.sharedInstance().setActive(true)
+                self.silent?.play()
+                self.silentTimer = Timer.scheduledTimer(withTimeInterval: 30 * 60, repeats: false) { [weak self] _ in
+                    self?.silent?.stop()
+                }
+            } else {
+                self.silent?.stop()
+            }
+            call.resolve()
+        }
+    }
 
     // Téléphone qui pilote le PC : les boutons de volume de l'iPhone règlent le volume du PC.
     // iOS ne laisse pas intercepter les boutons : un réglage de volume système invisible est posé dans la page, et le
