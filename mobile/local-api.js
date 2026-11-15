@@ -205,7 +205,9 @@ async function scDownload(id, path) {
   let parts = [];
   // Morceau refusé (lien expiré, accès bloqué) : erreur claire au lieu d'un fichier vide
   const bytes = async (u) => {
-    const r = await fetch(u);
+    // binary : le fetch des modules embarqués (HTTP natif, voir shims/native-fetch.js) lit sinon la réponse en
+    // texte, ce qui abîmait les morceaux de son → « SoundCloud : son vide » sur iPhone
+    const r = await fetch(u, { binary: true });
     if (!r.ok) throw new Error(`SoundCloud a refusé le son (${r.status})`);
     return new Uint8Array(await r.arrayBuffer());
   };
