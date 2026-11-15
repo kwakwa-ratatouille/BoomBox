@@ -259,6 +259,22 @@ const dropped = new Set();
 const checkDrop = (path) => {
   if (dropped.has(path)) throw new Error('abandonné (son passé)');
 };
+// Un morceau du son : d'abord le téléchargement natif de fichier ; refusé (iPhone : « Error downloading file », sans
+// le code HTTP) → même morceau par une requête HTTP native ordinaire. Le code HTTP de YouTube est gardé dans le
+// rapport d'erreur (403 = lien refusé à ce téléphone, 404/410 = lien expiré…)
+async function getPart(url, part, headers) {
+  try {
+    await Filesystem.downloadFile({ url, path: part, directory: Directory.Data, recursive: true, headers });
+    return;
+  } catch (e1) {
+    const r = await fetch(url, { headers, binary: true }).catch((e) => ({ ok: false, status: String(e?.message || e).slice(0, 60) }));
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    if (!bytes.length) throw new Error('HTTP 200 vide');
+    await Filesystem.writeFile({ path: part, data: toB64(bytes), directory: Directory.Data, recursive: true });
+  }
+}
+
 async function fetchChunked(path, url, headers, size) {
   // YouTube refuse désormais un lien téléchargé d'un seul coup (403) : taille inconnue → morceaux l'un après
   // l'autre jusqu'au dernier, plus court (lien du PC ou de SoundCloud : fichier entier, comme avant)
@@ -271,7 +287,7 @@ async function fetchChunked(path, url, headers, size) {
     for (let i; (i = queue.shift()) !== undefined; ) {
       checkDrop(path);
       const [a, b] = parts[i];
-      await Filesystem.downloadFile({ url: `${url}&range=${a}-${b}`, path: `${path}.p${i}`, directory: Directory.Data, recursive: true, headers });
+      await getPart(`${url}&range=${a}-${b}`, `${path}.p${i}`, headers);
     }
   })).catch(async (e) => {
     await Promise.all(parts.map((p, i) => Filesystem.deleteFile({ path: `${path}.p${i}`, directory: Directory.Data }).catch(() => {})));
@@ -295,7 +311,7 @@ async function fetchSequential(path, url, headers) {
   for (;; n++) {
     checkDrop(path);
     const part = `${path}.p${n}`;
-    await Filesystem.downloadFile({ url: `${url}&range=${n * CHUNK}-${(n + 1) * CHUNK - 1}`, path: part, directory: Directory.Data, recursive: true, headers });
+    await getPart(`${url}&range=${n * CHUNK}-${(n + 1) * CHUNK - 1}`, part, headers);
     const { size } = await Filesystem.stat({ path: part, directory: Directory.Data });
     if (size < CHUNK || n > 60) break;
   }
