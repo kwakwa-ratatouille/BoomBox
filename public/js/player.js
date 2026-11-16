@@ -481,6 +481,17 @@ class AudioEngine {
   // Les deux lecteurs : un reste de fondu ou de mix ne doit jamais continuer à jouer après une pause
   pause() { this.want = false; this._endFade(); this.els.forEach((el) => el.pause()); }
   stop() { this._endFade(); this.gen++; this.a.pause(); this.a.removeAttribute('src'); this.a.load(); }
+  // Sécurité : hors transition, un seul lecteur doit jouer. L'autre qui joue encore (fondu interrompu, mix abandonné…)
+  // donnait deux sons superposés au même volume : il est coupé tout de suite. Renvoie true s'il a fallu couper.
+  guard() {
+    const o = this.other;
+    if (this.fade || this.pending || o.paused) return false;
+    o.pause();
+    o.removeAttribute('src');
+    o.load();
+    this._setLevel(o, 1);
+    return true;
+  }
   seek(s) { this._endFade(); this.a.currentTime = s; }
   setVolume(v) { this.base = v; this.els.forEach((_, i) => this._apply(i)); }
   setRate(r) { this.userRate = r; this.a.playbackRate = r; this.a.preservesPitch = this.a.webkitPreservesPitch = true; }
@@ -1347,6 +1358,10 @@ export const player = {
 
   _tick() {
     if (!this.track) return;
+    // Deux sons superposés hors transition : l'intrus est coupé, et le cas est noté (pour trouver d'où il vient)
+    if (this.engine.name === 'audio' && this.engines.audio.guard?.()) {
+      import('./errors.js').then((m) => m.reportError('Deux sons superposés hors transition (coupé)', 'automix', `${this.track.id} · ${this._mixPlan?.style || 'sans mix'}`)).catch(() => {});
+    }
     // Automix : préchargement puis départ du mix, calé sur un temps fort du titre en cours
     const plan = this._mixPlan;
     const ownTransitions = !this._followsJam(); // invité d'une Jam : pas de mix / fondu local, l'hôte enchaîne
