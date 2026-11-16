@@ -161,8 +161,9 @@ export const automix = {
     if (dE <= -2.5) return pick(['echo', 'fade', 'echo']);
     if (tempoMatch && keyS >= 0.85) return calm ? 'melt' : pick(['blend', 'blend', 'melt']);
     if (tempoMatch) return pick(['wave', 'rise', 'blend']);
-    if (Math.abs(a.bpm - b.bpm) > 25) return pick(['echo', 'crossfade', 'wave']);
-    return pick(['wave', 'crossfade', 'rise']);
+    // Tempos qui ne se calent pas : deux rythmes décalés joués ensemble sonnent faux (« train qui déraille »).
+    // On enchaîne donc sans les superposer longtemps : le titre part en écho, ou fondu court
+    return pick(['echo', 'fade', 'crossfade']);
   },
 
   // Plan de transition entre A (en cours) et B (suivant) ; style : 'auto' ou un style imposé.
@@ -175,7 +176,9 @@ export const automix = {
     const bAligned = this.alignedBpm(a, b);
     let rate = a.bpm / bAligned;
     const keyS = this.keyScore(a, b);
-    const tempoMatch = Math.abs(rate - 1) <= 0.1 && a.confidence > 0.05 && b.confidence > 0.05;
+    // Tempo calé seulement s'il est fiable des deux côtés (sous 0,4 : un tempo sur dix, souvent faux) et si l'écart
+    // reste petit : au-delà de 6 %, accélérer ou ralentir un son s'entend (voix et instruments déformés)
+    const tempoMatch = Math.abs(rate - 1) <= 0.06 && a.confidence >= 0.4 && b.confidence >= 0.4;
     const style = wanted !== 'auto' ? wanted : this.chooseStyle(a, b, tempoMatch, keyS);
     // Calage du tempo seulement pour les styles où les deux titres jouent ensemble assez longtemps
     if (!tempoMatch || !['blend', 'melt', 'rise', 'wave'].includes(style)) rate = 1;
@@ -184,7 +187,8 @@ export const automix = {
     // Durée de chaque style (en temps, calés sur les mesures) et moment où le suivant démarre (inAt)
     const harmonic = keyS >= 0.85;
     const L = {
-      blend: [harmonic ? 48 : 32, 0], melt: [24, 0], rise: [16, 0], wave: [16, 0], crossfade: [Math.max(16, Math.round(8 / beat)), 0],
+      // Fondu enchaîné : tempos non calés → court (4 s environ), sinon les deux rythmes se mélangent
+      blend: [harmonic ? 32 : 24, 0], melt: [16, 0], rise: [16, 0], wave: [16, 0], crossfade: [tempoMatch ? 16 : Math.max(4, Math.round(4 / beat)), 0],
       fade: [Math.max(12, Math.round(6 / beat)), 0.45], powerup: [10, 8 / 10], slam: [2, 0], echo: [8, 4 / 8],
     }[style] || [16, 0];
     const mixLen = Math.min(26, Math.max(1, L[0] * beat));
