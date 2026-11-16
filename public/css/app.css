@@ -1862,6 +1862,19 @@ body:has(.pin-ov) .modal-backdrop { z-index: 1000; }
 #app.nav-compact .brand-link, #app.nav-mini .brand-link { display: none !important; }
 .pip-vol { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .pip-vol input { flex: 1; accent-color: var(--accent, #b07cf7); height: 4px; }
+/* Mini-lecteur réduit : le contenu s'adapte à la taille de la fenêtre au lieu de déborder (titre coupé en haut,
+   volume coupé en bas). Pochette à la hauteur de la fenêtre, puis on retire le moins utile à mesure que ça rétrécit */
+.pip-player .cover { width: min(108px, calc(100vh - 24px)); height: min(108px, calc(100vh - 24px)); }
+@media (max-height: 165px) { .pip-vol { display: none; } }
+@media (max-height: 125px) {
+  .pip-player { padding: 8px; gap: 10px; }
+  .pip-player .cover { width: calc(100vh - 16px); height: calc(100vh - 16px); }
+  .pip-info span, .pip-bar { display: none; }
+  .pip-ctrl { margin-top: 4px; }
+}
+@media (max-height: 85px) { .pip-info b { display: none; } .pip-ctrl { margin-top: 0; } }
+@media (max-width: 340px) { .pip-ctrl [data-pip=like], .pip-ctrl [data-pip=add] { display: none; } }
+@media (max-width: 250px) { .pip-player .cover { display: none; } }
 
 /* Écran de lancement plus grand */
 .sp-stage { width: 320px; height: 300px; }
