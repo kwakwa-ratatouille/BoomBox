@@ -8,6 +8,42 @@ import { pixelBackdrop, DISCOVER_PALETTE } from './pixel-bg.js';
 const STYLES = ['Pour toi', 'Rap français', 'Rap US', 'Pop', 'R&B', 'Afro', 'Électro', 'House', 'Rock', 'Indé', 'Drill', 'Reggaeton', 'K-pop', 'Lo-fi', 'Jazz', 'Variété française', 'Années 2000'];
 let last = null; // résultats gardés en mémoire (on peut changer de page et revenir)
 
+// ---------- Sons déjà connus ou déjà proposés (Découverte) ----------
+const tNorm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\(.*?\)|\[.*?\]|feat\.?.*$|ft\..*$/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+const tKey = (t) => `${tNorm(t.title)}|${tNorm(t.artists?.[0]?.name)}`;
+// Likes + tous les sons de toutes les playlists
+function ownedTracks() {
+  const ids = new Set();
+  const keys = new Set();
+  for (const t of [...(state.library.liked || []), ...(state.library.playlists || []).flatMap((p) => p.tracks || [])]) {
+    if (!t?.id) continue;
+    ids.add(t.id);
+    keys.add(tKey(t));
+  }
+  return { ids, keys };
+}
+// Sons déjà proposés : gardés 21 jours (au plus 3000), pour ne pas revoir sans cesse les mêmes
+const SEEN_KEY = 'boombox.discoverSeen';
+const SEEN_DAYS = 21;
+function seenGet() {
+  try {
+    const all = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}');
+    const min = Date.now() - SEEN_DAYS * 86400e3;
+    return Object.fromEntries(Object.entries(all).filter(([, at]) => at > min));
+  } catch {
+    return {};
+  }
+}
+function seenAdd(ids) {
+  const all = seenGet();
+  const now = Date.now();
+  for (const id of ids) all[id] = now;
+  const kept = Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 3000);
+  try {
+    localStorage.setItem(SEEN_KEY, JSON.stringify(Object.fromEntries(kept)));
+  } catch {}
+}
+
 export async function discoverPage(el, _p, ctx) {
   let style = ls.get('boombox.discoverStyle', 'Pour toi');
 
@@ -110,8 +146,14 @@ export async function discoverPage(el, _p, ctx) {
       // Pas encore d'abonnements : on part des artistes les plus écoutés
       s2.push(...s.topArtists.filter((a) => a.artist.id).map((a) => ({ id: a.artist.id, name: a.artist.name })));
     }
+    // Sons à ne pas proposer : déjà dans une playlist ou likés, ou déjà proposés ces 3 dernières semaines
+    const own = ownedTracks();
+    const seen = seenGet();
     try {
-      const r = await api('/api/discover', { method: 'POST', body: { seeds: s2, known: [...known], genre: style === 'Pour toi' ? '' : style } });
+      const r = await api('/api/discover', { method: 'POST', body: { seeds: s2, known: [...known], genre: style === 'Pour toi' ? '' : style, exclude: [...own.ids, ...Object.keys(seen)] } });
+      // Même son sous un autre id (autre mise en ligne) : repéré par titre + artiste
+      r.tracks = (r.tracks || []).filter((t) => !own.ids.has(t.id) && !seen[t.id] && !own.keys.has(tKey(t)));
+      seenAdd(r.tracks.map((t) => t.id));
       last = { style, ...r };
     } catch (e) {
       if (out) out.innerHTML = String(html`<p style="color:var(--danger)">${e.message}</p>`);

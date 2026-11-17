@@ -21,20 +21,24 @@ const shuffle = (a) => {
 const settle = (promises) => Promise.allSettled(promises).then((r) => r.filter((x) => x.status === 'fulfilled').map((x) => x.value));
 
 // seeds : [{ id, name }] artistes de référence ; known : noms d'artistes déjà connus ; genre : style choisi (ou vide)
-export async function discover({ seeds = [], known = [], genre = '' }) {
+// exclude : ids des sons à ne pas proposer (déjà dans une playlist ou liké, ou déjà proposés récemment)
+export async function discover({ seeds = [], known = [], genre = '', exclude = [] }) {
+  const excluded = new Set(exclude);
   const knownSet = new Set([...known, ...seeds.map((s) => s.name)].map(norm));
   const isNew = (t) => t?.artists?.length && !t.artists.some((a) => knownSet.has(norm(a.name)));
   const tracks = [];
   const artists = new Map();
   const addTrack = (t) => {
-    if (isNew(t) && !tracks.some((x) => x.id === t.id || (norm(x.title) === norm(t.title) && norm(x.artists[0]?.name) === norm(t.artists[0]?.name)))) tracks.push(t);
+    if (isNew(t) && !excluded.has(t.id) && !tracks.some((x) => x.id === t.id || (norm(x.title) === norm(t.title) && norm(x.artists[0]?.name) === norm(t.artists[0]?.name)))) tracks.push(t);
   };
 
   if (genre) {
     const query = GENRE_QUERIES[genre] || `${genre} hits`;
     const { items } = await search(query, 'playlist');
     // Les playlists officielles YouTube Music (RDCLAK…) d'abord : plus fiables que celles des utilisateurs
-    const lists = await settle(items.sort((a, b) => /^RDCLAK/.test(b.id) - /^RDCLAK/.test(a.id)).slice(0, 4).map((p) => ytPlaylist(p.id, 60)));
+    // 4 playlists tirées au hasard parmi les 10 premières (avant : toujours les 4 mêmes → toujours les mêmes sons)
+    const ranked = items.sort((a, b) => /^RDCLAK/.test(b.id) - /^RDCLAK/.test(a.id)).slice(0, 10);
+    const lists = await settle(shuffle(ranked).slice(0, 4).map((p) => ytPlaylist(p.id, 100)));
     for (const pl of lists) for (const t of pl.tracks) addTrack(t);
     // Nouveaux artistes : ceux qui reviennent le plus dans ces titres
     const count = new Map();
