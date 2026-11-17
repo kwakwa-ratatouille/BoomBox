@@ -22,15 +22,17 @@ const BBEvents = (() => {
   const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 
   // ───────────────────────── Calendrier ─────────────────────────
+  // Décalés plus tard que les dates officielles : chaque thème dure encore quelques jours après la fête
+  // (avant, Halloween s'arrêtait le 31 octobre au soir)
   const EVENTS = [
-    { id: 'noel', from: [12, 1], to: [12, 26] },
-    { id: 'nouvel-an', from: [12, 27], to: [1, 2] },
-    { id: 'valentin', from: [2, 7], to: [2, 14] },
-    { id: 'paques', easter: [-6, 1] }, // du lundi avant Pâques au lundi de Pâques
-    { id: 'musique', from: [6, 18], to: [6, 21] },
-    { id: 'ete', from: [7, 1], to: [8, 31] },
-    { id: 'rentree', from: [9, 1], to: [9, 15] },
-    { id: 'halloween', from: [10, 20], to: [10, 31] },
+    { id: 'noel', from: [12, 1], to: [12, 27] },
+    { id: 'nouvel-an', from: [12, 28], to: [1, 15] },
+    { id: 'valentin', from: [2, 9], to: [2, 17] },
+    { id: 'paques', easter: [-5, 3] }, // du mardi avant Pâques au jeudi après
+    { id: 'musique', from: [6, 19], to: [6, 24] },
+    { id: 'ete', from: [7, 3], to: [9, 2] },
+    { id: 'rentree', from: [9, 3], to: [9, 18] },
+    { id: 'halloween', from: [10, 22], to: [11, 5] },
   ];
   // Dimanche de Pâques (algorithme de Meeus / Jones / Butcher)
   function easter(y) {
@@ -85,17 +87,17 @@ const BBEvents = (() => {
       backdrop: { style: 'waves', speed: 0.4, overlay: null, opts: {} },
     },
     noel: {
-      name: 'Noël', dates: '1er – 26 décembre', accent: '#ff5a64', accent2: '#47d17f', bg: '#0e1220',
+      name: 'Noël', dates: '1er – 27 décembre', accent: '#ff5a64', accent2: '#47d17f', bg: '#0e1220',
       swatches: [['#0e1220', 'Nuit bleue'], ['#ff5a64', 'Rouge bonnet'], ['#47d17f', 'Sapin'], ['#ffd166', 'Guirlande'], ['#eef3ff', 'Neige']],
       backdrop: { style: 'waves', speed: 0.22, overlay: 'snow', opts: { density: 0.006, speed: [2, 5], colors: ['#eef3ff', '#b9c6e4'], big: 0.2, ground: true } },
     },
     'nouvel-an': {
-      name: 'Nouvel An', dates: '27 décembre – 2 janvier', accent: '#ffcf4d', accent2: '#ff5fa2', bg: '#0d0b1c',
+      name: 'Nouvel An', dates: '28 décembre – 15 janvier', accent: '#ffcf4d', accent2: '#ff5fa2', bg: '#0d0b1c',
       swatches: [['#0d0b1c', 'Minuit'], ['#ffcf4d', 'Or'], ['#ff5fa2', 'Rose fête'], ['#c9d3ff', 'Argent'], ['#fff1b8', 'Champagne']],
       backdrop: { style: 'stars', speed: 0.5, overlay: 'fireworks', opts: { bursts: 3, period: 3.2, spokes: 14, radius: 0.18, colors: ['#ffcf4d', '#ff5fa2', '#c9d3ff', '#fff1b8'] } },
     },
     valentin: {
-      name: 'Saint-Valentin', dates: '7 – 14 février', accent: '#ff6b9a', accent2: '#ff3d6e', bg: '#1a0f17',
+      name: 'Saint-Valentin', dates: '9 – 17 février', accent: '#ff6b9a', accent2: '#ff3d6e', bg: '#1a0f17',
       swatches: [['#1a0f17', 'Bordeaux nuit'], ['#ff6b9a', 'Rose'], ['#ff3d6e', 'Framboise'], ['#ffc2d6', 'Rose pâle'], ['#b07cf7', 'Violet Boombox']],
       backdrop: { style: 'waves', speed: 0.3, overlay: 'hearts', opts: { per: 1 / 14, speed: [2, 4], colors: ['#ff6b9a', '#ff3d6e', '#ffc2d6'], small: 0.5 } },
     },
@@ -105,22 +107,22 @@ const BBEvents = (() => {
       backdrop: { style: 'plasma', speed: 0.25, overlay: 'eggs', opts: { per: 1 / 18, speed: [1, 2.2], colors: ['#9be38c', '#f7a8d8', '#9ec9ff', '#ffd36e'], petals: 0.004, petalColors: ['#ffffff', '#f7a8d8'] } },
     },
     musique: {
-      name: 'Fête de la musique', dates: '18 – 21 juin', accent: '#2ef28b', accent2: '#ffd34d', bg: '#0c1316',
+      name: 'Fête de la musique', dates: '19 – 24 juin', accent: '#2ef28b', accent2: '#ffd34d', bg: '#0c1316',
       swatches: [['#0c1316', 'Fond'], ['#2ef28b', 'Vert scène'], ['#ffd34d', 'Jaune'], ['#ff6b4a', 'Orange ampli'], ['#4dc3ff', 'Bleu néon']],
       backdrop: { style: 'rings', speed: 0.35, overlay: 'notes', opts: { per: 1 / 12, speed: [2, 4], colors: ['#2ef28b', '#ffd34d', '#ff6b4a', '#4dc3ff'], eq: true, bpm: 120 } },
     },
     ete: {
-      name: 'Été / vacances', dates: '1er juillet – 31 août', accent: '#ffb347', accent2: '#3fd0c9', bg: '#0b1418',
+      name: 'Été / vacances', dates: '3 juillet – 2 septembre', accent: '#ffb347', accent2: '#3fd0c9', bg: '#0b1418',
       swatches: [['#0b1418', 'Mer de nuit'], ['#ffb347', 'Abricot'], ['#3fd0c9', 'Lagon'], ['#ffe066', 'Soleil'], ['#ff7a7a', 'Corail']],
       backdrop: { style: 'waves', speed: 0.3, overlay: 'summer', opts: { sun: true, sunColors: ['#ffe066', '#ffb347'], per: 1 / 16, speed: [1.5, 3], colors: ['#3fd0c9', '#bff3ef'] } },
     },
     rentree: {
-      name: 'Rentrée', dates: '1er – 15 septembre', accent: '#ffd34d', accent2: '#5aa9ff', bg: '#10131a',
+      name: 'Rentrée', dates: '3 – 18 septembre', accent: '#ffd34d', accent2: '#5aa9ff', bg: '#10131a',
       swatches: [['#10131a', 'Tableau'], ['#ffd34d', 'Crayon'], ['#5aa9ff', 'Stylo bleu'], ['#ff6b6b', 'Pomme'], ['#e9e4d8', 'Papier']],
       backdrop: { style: 'plasma', speed: 0.15, overlay: 'school', opts: { grid: 6, gridColor: '#e9e4d8', gridAlpha: 0.07, per: 1 / 16, speed: [1.5, 3], colors: ['#ff9f43', '#ffd34d', '#ff6b6b'] } },
     },
     halloween: {
-      name: 'Halloween', dates: '20 – 31 octobre', accent: '#ff8a2a', accent2: '#b07cf7', bg: '#0f0b10',
+      name: 'Halloween', dates: '22 octobre – 5 novembre', accent: '#ff8a2a', accent2: '#b07cf7', bg: '#0f0b10',
       swatches: [['#0f0b10', 'Nuit'], ['#ff8a2a', 'Citrouille'], ['#b07cf7', 'Violet sorcier'], ['#9be564', 'Potion'], ['#d9d4e8', 'Os']],
       backdrop: { style: 'plasma', speed: 0.2, overlay: 'spooky', opts: { moon: true, moonColor: '#e8e2c8', fog: 0.35, fogColor: '#4a3d5e', bats: 4, batColor: '#5a4778', eyeColor: '#ff8a2a' } },
     },

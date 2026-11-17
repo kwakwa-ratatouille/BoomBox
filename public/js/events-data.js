@@ -30,7 +30,7 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ton Noël en musique",
-      "period": "Du 1er au 26 décembre",
+      "period": "Du 1er au 27 décembre",
       "enter": "drop",
       "exit": "rise",
       "fill": "#eef3ff"
@@ -108,7 +108,7 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ta Saint-Valentin",
-      "period": "Du 7 au 14 février",
+      "period": "Du 9 au 17 février",
       "enter": "pop",
       "origin": [
         160,
@@ -181,7 +181,7 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ta Fête de la musique",
-      "period": "Du 18 au 21 juin",
+      "period": "Du 19 au 24 juin",
       "enter": "slide",
       "beat": true,
       "exit": "eq",
@@ -217,7 +217,7 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ton été en musique",
-      "period": "Juillet et août",
+      "period": "Du 3 juillet au 2 septembre",
       "enter": "slideR",
       "exit": "wave",
       "fill": "#3fd0c9"
@@ -252,7 +252,7 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ta rentrée en sons",
-      "period": "Du 1er au 15 septembre",
+      "period": "Du 3 au 18 septembre",
       "enter": "write",
       "exit": "wipe",
       "fill": "#e9e4d8"
@@ -287,7 +287,7 @@ export const EVENT_TEXT = {
     ],
     "card": {
       "title": "Ton Halloween",
-      "period": "Du 20 au 31 octobre",
+      "period": "Du 22 octobre au 5 novembre",
       "enter": "pop",
       "origin": [
         880,
