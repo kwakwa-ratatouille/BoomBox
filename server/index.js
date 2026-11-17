@@ -449,7 +449,15 @@ app.get('/api/import/:job', (req, res) => {
 app.use('/api', (req, res) => res.status(404).json({ error: 'Route inconnue' }));
 app.get(/.*/, (req, res) => res.sendFile(path.join(ROOT, 'public', 'index.html')));
 
-http.createServer(app).listen(PORT, '0.0.0.0', () => {
+const server = http.createServer(app);
+// Boombox déjà lancé (icône près de l'horloge + démarrage avec Windows) : ce 2e serveur s'arrête sans erreur,
+// le premier continue de servir (avant : erreur « EADDRINUSE » et un serveur à moitié démarré)
+server.on('error', (e) => {
+  if (e?.code !== 'EADDRINUSE') throw e;
+  console.log(`  Boombox tourne déjà sur le port ${PORT} : ce lancement s'arrête.`);
+  process.exit(0);
+});
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  ♫ Boombox est lancé`);
   console.log(`  Sur ce PC :        http://localhost:${PORT}`);
   for (const u of lanUrls()) console.log(`  Sur ton téléphone : ${u}  (même Wi-Fi)`);

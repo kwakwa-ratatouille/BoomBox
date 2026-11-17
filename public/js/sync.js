@@ -647,7 +647,8 @@ export const sync = {
   _command({ action, args, argsJson }) {
     if (!args) try { args = argsJson ? JSON.parse(argsJson) : []; } catch { args = []; }
     if (action === '__transfer') {
-      const s = args[0];
+      const s = args?.[0];
+      if (!s?.track) return; // commande incomplète (arrivée abîmée) : ignorée au lieu de planter
       if (this.target) this.control(null);
       // Lecteur remis à neuf (il pouvait être resté arrêté ou à volume nul en pilotant l'autre appareil)
       player.engine?.stop?.();

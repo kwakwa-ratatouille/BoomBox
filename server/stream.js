@@ -149,21 +149,33 @@ export function download(id, { noAlt = false } = {}) {
   }
   return rawDownload(id);
 }
+// Suppression qui ne plante jamais : sous Windows, un fichier encore ouvert (antivirus, lecture) est verrouillé (EBUSY)
+const rmQuiet = (f) => {
+  try {
+    fs.rmSync(f, { force: true });
+  } catch {}
+};
 function rawDownload(id) {
   const file = path.join(AUDIO_DIR, `${id}.m4a`);
   fs.mkdirSync(AUDIO_DIR, { recursive: true });
   const p = new Promise((resolve, reject) => {
     // Téléchargé sous un nom temporaire, renommé seulement une fois complet
     const tmp = file + '.dl';
-    fs.rmSync(tmp, { force: true });
+    rmQuiet(tmp);
     execFile(ytDlpPath, ['--js-runtimes', JS_RUNTIME, '-f', 'bestaudio[ext=m4a]/bestaudio', '-o', tmp, '--no-part', '--no-playlist', '--no-warnings', '--quiet', isScId(id) ? scUrl(id) : `https://www.youtube.com/watch?v=${id}`], { timeout: 150e3, windowsHide: HIDE }, (err) => {
       downloads.delete(id);
       if (err || !fs.existsSync(tmp) || !fs.statSync(tmp).size) {
-        fs.rmSync(tmp, { force: true });
+        rmQuiet(tmp);
         return reject(err || new Error('téléchargement impossible'));
       }
-      fs.renameSync(tmp, file);
-      pruneAudioCache();
+      try {
+        fs.renameSync(tmp, file);
+      } catch (e) {
+        return reject(e); // fichier encore verrouillé par Windows : le son sera retéléchargé à la prochaine écoute
+      }
+      try {
+        pruneAudioCache();
+      } catch {}
       resolve(file);
     });
   });
