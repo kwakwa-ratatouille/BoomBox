@@ -9,7 +9,8 @@ const STYLES = ['Pour toi', 'Rap français', 'Rap US', 'Pop', 'R&B', 'Afro', 'É
 let last = null; // résultats gardés en mémoire (on peut changer de page et revenir)
 
 // ---------- Sons déjà connus ou déjà proposés (Découverte) ----------
-const tNorm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[([][^)\]]*\b(clip|officiel|official|audio|lyrics?|paroles|video|visualizer|hd|4k)\b[^)\]]*[)\]]/g, '') // « (Clip officiel) » etc. : même son ; un feat reste un son à part.replace(/[^a-z0-9]+/g, ' ').trim();
+// « (Clip officiel) », « [Audio] »… : même son ; un feat reste un son à part
+const tNorm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[([][^)\]]*\b(clip|officiel|official|audio|lyrics?|paroles|video|visualizer|hd|4k)\b[^)\]]*[)\]]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const tKey = (t) => `${tNorm(t.title)}|${tNorm(t.artists?.[0]?.name)}`;
 // Likes + tous les sons de toutes les playlists
 function ownedTracks() {
