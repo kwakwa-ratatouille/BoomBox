@@ -1537,7 +1537,7 @@ function handleKey(e, inPip = false) {
 export function showShortcuts() {
   modal({
     title: 'Raccourcis clavier',
-    body: String(html`<div class="keys-help">${SHORTCUTS.map(([keys, what]) => html`<div><span>${what}</span><kbd>${keys}</kbd></div>`)}</div><p class="muted" style="font-size:12px;margin-top:12px">Ils marchent aussi dans le mini-lecteur flottant.</p>`),
+    body: String(html`<div class="keys-help">${SHORTCUTS.map(([keys, what]) => html`<div><span>${what}</span><kbd>${keys}</kbd></div>`)}</div><p class="muted" style="font-size:12px;margin-top:12px">Ils marchent aussi dans le mini-lecteur flottant.</p><p class="muted" style="font-size:12px;margin-top:8px"><b>Partout sur le PC</b>, même quand Boombox n’est pas au premier plan : <kbd>Ctrl + Alt + P</kbd> lecture / pause, <kbd>Ctrl + Alt + → / ←</kbd> suivant / précédent, <kbd>Ctrl + Alt + ↑ / ↓</kbd> volume, <kbd>Ctrl + Alt + L</kbd> liker. Les touches multimédia du clavier marchent aussi.</p>`),
     actions: [{ label: 'OK', primary: true }],
   });
 }

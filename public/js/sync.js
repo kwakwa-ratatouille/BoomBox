@@ -212,6 +212,15 @@ export const sync = {
           this._seenCmd.add(m.cid);
           if (this._seenCmd.size > 200) this._seenCmd = new Set([...this._seenCmd].slice(-100));
           if (Date.now() - (m.at || 0) < 60e3) this._command(m);
+        } else if (m?.type === 'hotkey') {
+          // Raccourci clavier global du PC (Boombox pas au premier plan) : même effet que dans l'appli
+          import('./player.js').then(({ ctl, player }) => {
+            const v = this.view();
+            const a = m.action;
+            if (a === 'volUp' || a === 'volDown') ctl.setVolume(Math.min(1, Math.max(0, (v.volume ?? player.volume ?? 0.8) + (a === 'volUp' ? 0.1 : -0.1))));
+            else if (a === 'like') v.track && import('./state.js').then((s) => s.toggleLike(v.track));
+            else ctl[a]?.();
+          });
         } else if (m?.type === 'state' && m.from && m.state && m.from !== state.device.id) {
           const p = this._pending;
           if (p?.target === m.from && Date.now() < p.until && Object.entries(p.patch).some(([k, v]) => (k === 'position' ? Math.abs(this.position(m.state) - v) > 2.5 : m.state[k] !== v))) return;

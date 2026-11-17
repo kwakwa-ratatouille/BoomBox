@@ -161,6 +161,7 @@ app.post('/api/open-browser', (req, res) => {
 // lieu de plusieurs secondes par Internet (Firebase reste en secours). Chaque appareil écoute son flux ; l'envoi
 // est relayé tel quel aux appareils visés. Texte brut + en-tête CORS : pas de requête préalable du navigateur.
 const rcClients = new Map(); // id d'appareil → réponses ouvertes
+const rcLocal = new Set(); // flux ouverts par une fenêtre Boombox de ce PC
 app.get('/api/rc/stream', (req, res) => {
   const dev = String(req.query.dev || '').slice(0, 80);
   if (!dev) return res.status(400).end();
@@ -169,11 +170,25 @@ app.get('/api/rc/stream', (req, res) => {
   res.write(':ok\n\n');
   if (!rcClients.has(dev)) rcClients.set(dev, new Set());
   rcClients.get(dev).add(res);
+  if (relay.isLocal(req)) rcLocal.add(res); // fenêtre Boombox de ce PC : reçoit les raccourcis globaux
   const ping = setInterval(() => res.write(':p\n\n'), 20e3);
   req.on('close', () => {
     clearInterval(ping);
     rcClients.get(dev)?.delete(res);
+    rcLocal.delete(res);
   });
+});
+// Raccourcis clavier globaux (scripts\tray.ps1 les écoute même quand Boombox n'est pas au premier plan) :
+// transmis aux fenêtres Boombox de ce PC. Réponse : nombre de fenêtres touchées (0 → l'icône gère la lecture en fond)
+const HOTKEYS = new Set(['toggle', 'next', 'prev', 'volUp', 'volDown', 'like']);
+app.post('/api/hotkey', express.text({ type: '*/*', limit: '1kb' }), (req, res) => {
+  if (!relay.isLocal(req)) return res.status(403).end();
+  const action = String(req.body || '').trim();
+  if (!HOTKEYS.has(action)) return res.status(400).end();
+  let n = 0;
+  const msg = `data: ${JSON.stringify({ type: 'hotkey', action })}\n\n`;
+  for (const r of rcLocal) (r.write(msg), n++);
+  res.json({ delivered: n });
 });
 app.post('/api/rc/send', express.text({ type: '*/*', limit: '200kb' }), (req, res) => {
   res.set('access-control-allow-origin', '*');

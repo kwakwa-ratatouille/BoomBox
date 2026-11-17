@@ -139,5 +139,40 @@ function Bg-Tick {
 }
 $bgTimer.Start()
 
+# ---------- Raccourcis clavier globaux ----------
+# Marchent partout dans Windows, même quand Boombox n'est pas au premier plan :
+#   Ctrl+Alt+P lecture/pause · Ctrl+Alt+→ suivant · Ctrl+Alt+← précédent
+#   Ctrl+Alt+↑ / ↓ volume · Ctrl+Alt+L liker le son
+# Envoyés à la fenêtre Boombox par le serveur (/api/hotkey) ; fenêtre fermée et musique en fond : gérés ici.
+try {
+  Add-Type -ReferencedAssemblies System.Windows.Forms -TypeDefinition @"
+using System; using System.Windows.Forms; using System.Runtime.InteropServices;
+public class BBHotkeys : NativeWindow {
+  [DllImport("user32.dll")] static extern bool RegisterHotKey(IntPtr h, int id, uint mod, uint vk);
+  public event Action<int> Pressed;
+  public BBHotkeys() { CreateHandle(new CreateParams()); }
+  public bool Add(int id, uint mod, uint vk) { return RegisterHotKey(Handle, id, mod | 0x4000, vk); }
+  protected override void WndProc(ref Message m) { if (m.Msg == 0x0312 && Pressed != null) Pressed((int)m.WParam); base.WndProc(ref m); }
+}
+"@
+  $hk = New-Object BBHotkeys
+  # id → action ; Ctrl (2) + Alt (1) = 3
+  $hkActions = @{ 1 = 'toggle'; 2 = 'next'; 3 = 'prev'; 4 = 'volUp'; 5 = 'volDown'; 6 = 'like' }
+  $hkKeys = @{ 1 = 0x50; 2 = 0x27; 3 = 0x25; 4 = 0x26; 5 = 0x28; 6 = 0x4C }
+  foreach ($id in $hkKeys.Keys) { [void]$hk.Add($id, 3, $hkKeys[$id]) } # déjà pris par une autre appli : ce raccourci est ignoré
+  $hk.add_Pressed({
+    param($id)
+    $a = $hkActions[$id]
+    try { $r = Invoke-RestMethod -Method Post "http://127.0.0.1:8787/api/hotkey" -Body $a -ContentType 'text/plain' -TimeoutSec 2 } catch { $r = $null }
+    # Aucune fenêtre Boombox ouverte : musique jouée en fond par l'icône
+    if ($r -and $r.delivered -eq 0 -and $script:bgSeq -ge 0) {
+      if ($a -eq 'toggle') { if ($script:bgPlaying) { Bg-Post 'pause' } else { Bg-Post 'resume' } }
+      elseif ($a -eq 'next') { Bg-Post 'next' }
+    }
+  })
+} catch {
+  "$(Get-Date -Format s) raccourcis : $($_.Exception.Message)" | Out-File -Append (Join-Path $env:TEMP 'boombox-tray.log')
+}
+
 [System.Windows.Forms.Application]::Run()
 $mutex.ReleaseMutex()
