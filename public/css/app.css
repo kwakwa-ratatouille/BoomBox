@@ -2672,3 +2672,6 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .amb-bottom { display: flex; align-items: center; gap: 12px; background: rgba(0, 0, 0, .45); backdrop-filter: blur(8px); border-radius: 16px; padding: 10px 14px; color: #fff; max-width: 640px; width: 100%; margin: 0 auto; }
 .amb-level { flex: 0 0 40%; }
 .amb-now { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; opacity: .85; }
+/* Lien « Historique » dans l'en-tête de la file d'attente : discret, icône + texte alignés */
+.q-hist { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; text-decoration: none; padding: 4px 6px; border-radius: 4px; }
+@media (hover: hover) { .q-hist:hover { color: var(--text, #fff); background: rgba(255,255,255,.06); } }

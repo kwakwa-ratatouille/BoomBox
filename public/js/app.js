@@ -817,7 +817,8 @@ function renderPanel() {
     const up = v.upcoming || [];
     const uq = v.remote ? [] : player.userQueue;
     const ctxUp = up.slice(uq.length);
-    rp.innerHTML = String(html`<div class="rp-head"><h3>File d'attente</h3>${closeBtn}</div><div class="rp-body">
+    // Historique d'écoute à portée de main, à côté de ce qui va suivre (comme « Récemment écoutés » chez Spotify)
+    rp.innerHTML = String(html`<div class="rp-head"><h3>File d'attente</h3><div class="rp-tabs"><a class="more muted q-hist" href="#/history" title="Sons écoutés récemment">${icon('clock', 16)} Historique</a>${closeBtn}</div></div><div class="rp-body">
       ${t ? html`<div class="q-label">En cours de lecture</div><div class="q-item current">${cover(t, '', 96)}<div class="t-text"><span class="t-title">${t.title}</span><span class="t-artists muted">${artistLinks(t)}</span></div>${mixTag(t.id)}</div>${mixPlanInfo()}` : ''}
       ${uq.length ? html`<div class="row-flex" style="justify-content:space-between"><div class="q-label">Prochains titres de la file</div><button class="more muted" id="q-clear">Effacer</button></div>
         ${uq.map((u, i) => html`<div class="q-item" data-qjump="${i}">${cover(u, '', 96)}<div class="t-text"><span class="t-title">${u.title}</span><span class="t-artists muted">${artistLinks(u)}</span></div>${mixTag(u.id)}<button class="q-x icon-btn" data-qrm="${u.qid}">${icon('close')}</button>${sync.target ? '' : html`<button class="q-grip icon-btn" aria-label="Déplacer" title="Maintenir et glisser pour déplacer">${icon('drag', 20)}</button>`}</div>`)}` : ''}
