@@ -1472,6 +1472,13 @@ function renderPip(force = false) {
 function pipAddMenu(d, t) {
   const m = d.querySelector('.pip-menu');
   if (!m.classList.contains('hidden')) return m.classList.add('hidden');
+  // Clic à côté de la liste (ou Échap) : elle se ferme. Posé une fois par fenêtre (le contenu est redessiné souvent)
+  if (!d._closeMenu) {
+    d._closeMenu = true;
+    const close = () => d.querySelector('.pip-menu')?.classList.add('hidden');
+    d.addEventListener('pointerdown', (e) => !e.target.closest('.pip-menu, [data-pip=add]') && close());
+    d.addEventListener('keydown', (e) => e.key === 'Escape' && close());
+  }
   const inPl = (p) => p.tracks.some((x) => x.id === t.id);
   m.innerHTML = state.library.playlists.length
     ? state.library.playlists.map((p) => String(html`<button data-pl="${p.id}" class="${inPl(p) ? 'in' : ''}">${inPl(p) ? '✓ ' : ''}${p.name}</button>`)).join('')
