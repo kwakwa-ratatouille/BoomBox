@@ -1543,6 +1543,8 @@ export async function fetchReleases(onPart) {
       if (!d) continue;
       ok++;
       data.releases.push(...(d.releases || []));
+      // Abonnement à un homonyme inconnu : remplacé par le vrai artiste du même nom
+      if (d.moved && Object.keys(d.moved).length) import('./state.js').then((m) => m.moveFollows(d.moved)).catch(() => {});
       Object.assign(data.current, d.current || {});
       Object.assign(data.thumbs, d.thumbs || {});
       data.newCount = data.releases.filter((r) => r.isNew).length;

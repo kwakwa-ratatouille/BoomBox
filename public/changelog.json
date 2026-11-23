@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1123.1125",
+    "title": "Plus de faux artistes dans les nouveautés",
+    "items": [
+      "Si tu suis par erreur une chaîne presque inconnue qui porte le même nom qu’un vrai artiste (par exemple des sons IA publiés sous le nom de Favé), Boombox passe ton abonnement sur le vrai artiste et ses fausses sorties disparaissent."
+    ],
+    "date": "2026-11-23"
+  },
+  {
     "version": "2026.1113.1044",
     "title": "Pulsation : la pochette au centre",
     "items": [

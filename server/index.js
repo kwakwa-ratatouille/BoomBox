@@ -289,10 +289,36 @@ app.post('/api/releases', wrap(async (req, res) => {
   const out = [];
   const current = {};
   const thumbs = {};
+  const moved = {}; // abonnement à un homonyme presque inconnu → le vrai artiste du même nom
+  // « 1,18 M auditeurs/mois », « 850 k abonnés » → nombre
+  const audience = (s) => {
+    const m = String(s || '').replace(/\s/g, '').match(/([\d.,]+)(md|m|k)?/i);
+    if (!m) return 0;
+    return parseFloat(m[1].replace(',', '.')) * ({ k: 1e3, m: 1e6, md: 1e9 }[String(m[2] || '').toLowerCase()] || 1);
+  };
+  // Même nom à l'identique, accents compris (« Favé » et « FAVE » sont deux artistes différents)
+  const nameKey = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const realArtist = async (f, name) => {
+    const { items = [] } = await yt.search(name, 'artist').catch(() => ({}));
+    const same = items.filter((x) => x.type === 'artist' && nameKey(x.name) === nameKey(name));
+    const mine = audience(same.find((x) => x.id === f.id)?.subscribers);
+    const best = same.sort((x, y) => audience(y.subscribers) - audience(x.subscribers))[0];
+    // Seulement s'il y a un écart énorme : deux vrais artistes du même nom gardent chacun leurs abonnés
+    return best && best.id !== f.id && audience(best.subscribers) >= 50e3 && mine * 50 < audience(best.subscribers) ? best : null;
+  };
   await Promise.all(
     follows.map(async (f) => {
       try {
-        const a = await yt.artist(String(f.id), { light: true });
+        let a = await yt.artist(String(f.id), { light: true });
+        // Chaîne sans auditeurs ni titres populaires (ex. un homonyme qui publie des sons IA) : on vérifie le vrai
+        if (!a.listeners && !a.topTracks?.length) {
+          const real = await realArtist(f, a.name || f.name);
+          if (real) {
+            moved[f.id] = { id: real.id, name: real.name, thumb: real.thumb || null };
+            f = { ...f, id: real.id, known: null };
+            a = await yt.artist(real.id, { light: true });
+          }
+        }
         const releases = [];
         for (const s of a.sections) {
           if (!/album|single|\bep\b/i.test(s.title)) continue;
@@ -340,7 +366,7 @@ app.post('/api/releases', wrap(async (req, res) => {
   }));
   const when = (r) => (r.date ? Date.parse(r.date) : (Number(r.year) || 0) ? Date.UTC(Number(r.year), 0, 1) : 0);
   out.sort((x, y) => (y.isNew - x.isNew) || when(y) - when(x));
-  res.json({ releases: out, newCount: out.filter((r) => r.isNew).length, current, thumbs });
+  res.json({ moved,  releases: out, newCount: out.filter((r) => r.isNew).length, current, thumbs });
 }));
 
 // Clés API Spotify (gratuites, developer.spotify.com) : permettent d'importer les dates d'ajout et les grandes playlists.

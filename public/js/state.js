@@ -783,6 +783,17 @@ export async function listeningYears() {
 // Fin (en ms) d'une période « AAAA-MM » ou « AAAA-MM-JJ »
 const bucketEnd = (k) => (k.length === 7 ? new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)), 1).getTime() : Date.parse(k) + 86400e3);
 
+// Abonnements à remplacer ({ ancien id: nouvel artiste }) : le nouveau est suivi, l'ancien retiré
+export async function moveFollows(map) {
+  const ops = [];
+  for (const [oldId, a] of Object.entries(map)) {
+    if (!a?.id || !isFollowing(oldId)) continue;
+    if (!isFollowing(a.id)) ops.push((b) => b.set(pref('follows', a.id), { id: a.id, name: a.name || '', thumb: a.thumb || null, followedAt: Date.now(), known: null }));
+    ops.push((b) => b.delete(pref('follows', oldId)));
+  }
+  if (ops.length) await batched(ops);
+}
+
 export async function followMany(artists) {
   const fresh = artists.filter((a) => a?.id && !isFollowing(a.id));
   const now = Date.now();
