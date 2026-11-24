@@ -2728,3 +2728,18 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .disc::before { content: '✦'; position: absolute; top: 0; right: 0; transform: translate(30%, -30%); width: 15px; height: 15px; display: grid; place-items: center; font-size: 10px; line-height: 1; color: #fff; background: var(--accent); border-radius: 50%; box-shadow: 0 0 6px var(--accent); pointer-events: none; }
 .ctrl.disc::after { display: none; }
 .disc-tag { background: var(--accent) !important; color: #fff !important; margin-right: 6px; }
+
+/* Mini-lecteur : paroles */
+.pip-lyr, .pip-lyrbar { display: none; }
+.pip-body[data-mode=both], .pip-body[data-mode=lyrics] { display: flex; flex-direction: column; }
+.pip-body[data-mode=both] .pip-player { height: 184px; flex: none; }
+.pip-body[data-mode=lyrics] .pip-player { display: none; }
+.pip-body[data-mode=lyrics] .pip-lyrbar { display: flex; align-items: center; gap: 6px; padding: 6px 10px 0; flex: none; }
+.pip-lyrbar b { flex: 1; min-width: 0; font-size: 12px; color: var(--muted, #aaa); }
+.pip-lyrbar .ctrl { width: 26px; height: 26px; }
+.pip-body[data-mode=both] .pip-lyr, .pip-body[data-mode=lyrics] .pip-lyr { display: flex; flex-direction: column; justify-content: center; flex: 1; min-height: 0; padding: 6px 14px 10px; text-align: center; overflow: hidden; background: linear-gradient(180deg, var(--panel), var(--elev)); }
+.pip-lyr p { margin: 2px 0; line-height: 1.25; transition: all .2s; }
+.pip-lyr .prev, .pip-lyr .next2 { font-size: 12px; opacity: .35; }
+.pip-lyr .next { font-size: 13px; opacity: .6; }
+.pip-lyr .cur { font-size: 18px; font-weight: 700; color: #fff; }
+.pip-lyr.plain { justify-content: flex-start; overflow-y: auto; font-size: 14px; }

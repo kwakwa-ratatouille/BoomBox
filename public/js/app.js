@@ -9,7 +9,7 @@ import { firebaseConfig } from './firebase-config.js';
 import { player, ctl, TRANSITION_NAMES } from './player.js';
 import { sync } from './sync.js';
 import { lists, card, cover, playlistCover, likedCover, setupDelegation, refreshTrackMarks, trackList } from './components.js';
-import { mountLyrics, openKaraoke, closeKaraoke } from './lyrics.js';
+import { mountLyrics, openKaraoke, closeKaraoke, getLyrics } from './lyrics.js';
 import { openPlaylistPicker } from './components.js';
 import { pinPad, offerPinOnCreate } from './pin.js';
 import { webUpdateBoot, webUpdateConfirm, webUpdateReady, checkWebUpdate, applyWebUpdate } from './updater.js';
@@ -1454,7 +1454,7 @@ let pipWin = null;
 async function togglePip() {
   if (pipWin) return pipWin.close();
   if (!('documentPictureInPicture' in window)) return toast('Mini-lecteur disponible dans Chrome ou Edge');
-  pipWin = await documentPictureInPicture.requestWindow({ width: 380, height: 184 });
+  pipWin = await documentPictureInPicture.requestWindow(PIP_SIZE[pipMode]);
   for (const ss of document.styleSheets) {
     try {
       const st = pipWin.document.createElement('style');
@@ -1478,6 +1478,42 @@ async function togglePip() {
   renderPip(true);
 }
 let pipTrackId = null;
+// Mini-lecteur : lecteur seul, lecteur + paroles, ou paroles seules (bouton micro, appuis successifs)
+let pipMode = ls.get('boombox.pipMode', 'player');
+const PIP_SIZE = { player: { width: 380, height: 184 }, both: { width: 380, height: 330 }, lyrics: { width: 380, height: 200 } };
+let pipLyr = null;
+function cyclePipMode() {
+  pipMode = { player: 'both', both: 'lyrics', lyrics: 'player' }[pipMode] || 'player';
+  ls.set('boombox.pipMode', pipMode);
+  toast({ player: 'Mini-lecteur sans paroles', both: 'Mini-lecteur avec paroles', lyrics: 'Paroles seules' }[pipMode]);
+  try { pipWin.resizeTo(PIP_SIZE[pipMode].width, PIP_SIZE[pipMode].height + (pipWin.outerHeight - pipWin.innerHeight)); } catch {}
+  renderPip(true);
+}
+// Ligne en cours au centre, la précédente et les suivantes autour
+function renderPipLyrics(d, t, pos) {
+  const box = d.querySelector('.pip-lyr');
+  if (!box) return;
+  if (!pipLyr || pipLyr.id !== t?.id) {
+    pipLyr = { id: t?.id, data: undefined, idx: -2 };
+    box.innerHTML = '<span class="muted">Chargement des paroles…</span>';
+    getLyrics(t).then((l) => { if (pipLyr?.id === t?.id) { pipLyr.data = l || null; pipLyr.idx = -2; renderPip(); } });
+    return;
+  }
+  const l = pipLyr.data;
+  if (l === undefined) return;
+  if (!l) { if (pipLyr.idx !== -3) { pipLyr.idx = -3; box.innerHTML = '<span class="muted">Pas de paroles pour ce son</span>'; } return; }
+  if (!l.synced) {
+    if (pipLyr.idx !== -4) { pipLyr.idx = -4; box.classList.add('plain'); box.innerHTML = l.lines.map((x) => String(html`<p>${x.text}</p>`)).join(''); }
+    return;
+  }
+  box.classList.remove('plain');
+  let i = -1;
+  while (i + 1 < l.lines.length && l.lines[i + 1].t <= pos + 0.3) i++;
+  if (i === pipLyr.idx) return;
+  pipLyr.idx = i;
+  const at = (k) => (k >= 0 && k < l.lines.length ? l.lines[k].text : '');
+  box.innerHTML = String(html`<p class="prev">${at(i - 1)}</p><p class="cur">${i < 0 ? '♪' : at(i)}</p><p class="next">${at(i + 1)}</p><p class="next2">${at(i + 2)}</p>`);
+}
 function renderPip(force = false) {
   if (!pipWin) return;
   const d = pipWin.document;
@@ -1485,14 +1521,18 @@ function renderPip(force = false) {
   const t = v.track;
   if (force || t?.id !== pipTrackId) {
     pipTrackId = t?.id;
+    d.body.dataset.mode = pipMode;
+    pipLyr = null;
     d.body.innerHTML = String(html`<div class="pip-player">
       ${t ? cover(t, '', 160) : ''}
       <div class="pip-info"><b class="ellipsis">${t?.title || 'Rien en cours'}</b><span class="ellipsis muted">${t ? (t.artists || []).map((a) => a.name).join(', ') : ''}</span>
         <div class="pip-ctrl"><button class="ctrl" data-pip="shuffle" title="Aléatoire">${icon('shuffle')}</button><button class="ctrl" data-pip="prev">${icon('prev')}</button><button class="play-btn" data-pip="toggle">${icon('play')}</button><button class="ctrl" data-pip="next">${icon('next')}</button>
-        <button class="like-btn" data-pip="like" title="Liker">${icon('heart')}</button><button class="ctrl" data-pip="add" title="Ajouter à une playlist">${icon('plus')}</button></div>
+        <button class="like-btn" data-pip="like" title="Liker">${icon('heart')}</button><button class="ctrl" data-pip="add" title="Ajouter à une playlist">${icon('plus')}</button><button class="ctrl" data-pip="lyr" title="Paroles dans le mini-lecteur">${icon('lyrics')}</button></div>
         <div class="pip-menu hidden"></div>
         <div class="pip-bar"><div></div></div>
-        <div class="pip-vol"><button class="icon-btn" data-pip-mute title="Couper le son">${icon(player.muted || !player.volume ? 'volumeMute' : 'volume', 16)}</button><input type="range" min="0" max="1" step="0.01" value="${player.muted ? 0 : player.volume}" aria-label="Volume"></div></div></div>`);
+        <div class="pip-vol"><button class="icon-btn" data-pip-mute title="Couper le son">${icon(player.muted || !player.volume ? 'volumeMute' : 'volume', 16)}</button><input type="range" min="0" max="1" step="0.01" value="${player.muted ? 0 : player.volume}" aria-label="Volume"></div></div></div>
+      <div class="pip-lyrbar"><b class="ellipsis">${t?.title || ''}</b><button class="ctrl" data-pip="toggle">${icon('play')}</button><button class="ctrl on" data-pip="lyr" title="Afficher le lecteur">${icon('lyrics')}</button></div>
+      <div class="pip-lyr"></div>`);
     // Volume (même réglage que la barre du lecteur)
     d.querySelector('.pip-vol input').oninput = (e) => ctl.setVolume(Number(e.target.value));
     d.querySelector('[data-pip-mute]').onclick = () => ctl.toggleMute();
@@ -1501,12 +1541,14 @@ function renderPip(force = false) {
       if (a === 'like') return t && toggleLike(t);
       if (a === 'shuffle') return ctl.toggleShuffle();
       if (a === 'add') return t && pipAddMenu(d, t);
+      if (a === 'lyr') return cyclePipMode();
       ctl[a]();
     }));
   }
   d.querySelector('[data-pip=shuffle]')?.classList.toggle('on', !!v.shuffle);
-  const play = d.querySelector('[data-pip=toggle]');
-  if (play) play.innerHTML = String(icon(v.paused !== false ? 'play' : 'pause'));
+  d.querySelectorAll('[data-pip=toggle]').forEach((b) => (b.innerHTML = String(icon(v.paused !== false ? 'play' : 'pause'))));
+  d.querySelector('.pip-ctrl [data-pip=lyr]')?.classList.toggle('on', pipMode !== 'player');
+  if (pipMode !== 'player' && t) renderPipLyrics(d, t, v.position || 0);
   const like = d.querySelector('[data-pip=like]');
   if (like && t) {
     like.classList.toggle('on', isLiked(t.id));

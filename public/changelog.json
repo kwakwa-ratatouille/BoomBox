@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1124.1111",
+    "title": "Paroles dans le mini-lecteur",
+    "items": [
+      "Mini-lecteur flottant (PC) : le bouton micro affiche les paroles sous le lecteur, puis les paroles seules, puis revient au lecteur. Le choix est retenu."
+    ],
+    "date": "2026-11-24"
+  },
+  {
     "version": "2026.1124.1108",
     "title": "Aléatoire découverte plus visible",
     "items": [
