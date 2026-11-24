@@ -3,7 +3,8 @@
     "version": "2026.1124.1108",
     "title": "Aléatoire découverte plus visible",
     "items": [
-      "Le bouton aléatoire passe dans une pastille colorée avec une étincelle quand l’aléatoire découverte est actif."
+      "Le bouton aléatoire passe dans une pastille colorée avec une étincelle quand l’aléatoire découverte est actif.",
+      "Les sons ajoutés par l’aléatoire découverte portent une étiquette ✦ DÉCOUVERTE (lecteur, file d’attente)."
     ],
     "date": "2026-11-24"
   },

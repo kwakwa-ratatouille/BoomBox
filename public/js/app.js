@@ -722,7 +722,7 @@ function updatePlayerTrack() {
     pb.cover.innerHTML = t ? String(cover(t, '', 120)) : '';
     pb.title.textContent = t?.title || '';
     pb.title.href = t?.album?.id ? `#/album/${t.album.id}` : '#/lyrics';
-    pb.artist.innerHTML = t ? String(artistLinks(t)) : '';
+    pb.artist.innerHTML = t ? (t.discovery ? '<span class="tag disc-tag" title="Ajouté par l’aléatoire découverte">✦ DÉCOUVERTE</span>' : '') + String(artistLinks(t)) : '';
     if (t?.thumb) dominantColor(t.thumb).then((c) => c && document.documentElement.style.setProperty('--mini', c));
   }
   const liked = !!(t && isLiked(t.id));
@@ -842,7 +842,7 @@ function renderPanel() {
       <button class="icon-btn ${showVideo ? 'on' : ''}" id="np-video" title="${showVideo ? 'Afficher la pochette' : 'Afficher le clip'}">${icon('video')}</button>${closeBtn}</div></div>
       <div class="rp-body">${t ? html`
         <div class="np-art ${showVideo ? 'video' : ''}" id="np-art">${showVideo ? '' : html`<img src="${t.thumb}" alt="" referrerpolicy="no-referrer">`}</div>
-        <div class="np-title"><div style="flex:1;min-width:0"><h2 class="ellipsis">${t.title}</h2><div class="muted ellipsis">${artistLinks(t)}</div></div>
+        <div class="np-title"><div style="flex:1;min-width:0"><h2 class="ellipsis">${t.title}</h2><div class="muted ellipsis">${t.discovery ? html`<span class="tag disc-tag">✦ DÉCOUVERTE</span>` : ''}${artistLinks(t)}</div></div>
           <button class="like-btn ${isLiked(t.id) ? 'on' : ''}" id="np-like">${icon(isLiked(t.id) ? 'heartFill' : 'heart')}</button></div>
         <div class="np-card"><div class="row-flex" style="justify-content:space-between"><h4 style="margin:0">Paroles</h4><button class="icon-btn" data-karaoke title="Paroles en plein écran (F)">${icon('fullscreen', 18)}</button></div><div id="np-lyrics" class="np-lyrics"></div></div>
         <div class="np-card"><div class="row-flex" style="justify-content:space-between"><h4 style="margin:0">Suivant dans la file</h4><button class="more muted" data-panel-go="queue">Ouvrir la file</button></div>
@@ -868,11 +868,11 @@ function renderPanel() {
     const ctxUp = up.slice(uq.length);
     // Historique d'écoute à portée de main, à côté de ce qui va suivre (comme « Récemment écoutés » chez Spotify)
     rp.innerHTML = String(html`<div class="rp-head"><h3>File d'attente</h3><div class="rp-tabs"><a class="more muted q-hist" href="#/history" title="Sons écoutés récemment">${icon('clock', 16)} Historique</a>${closeBtn}</div></div><div class="rp-body">
-      ${t ? html`<div class="q-label">En cours de lecture</div><div class="q-item current">${cover(t, '', 96)}<div class="t-text"><span class="t-title">${t.title}</span><span class="t-artists muted">${artistLinks(t)}</span></div>${mixTag(t.id)}</div>${mixPlanInfo()}` : ''}
+      ${t ? html`<div class="q-label">En cours de lecture</div><div class="q-item current">${cover(t, '', 96)}<div class="t-text"><span class="t-title">${t.title}</span><span class="t-artists muted">${t.discovery ? html`<span class="tag disc-tag">✦ DÉCOUVERTE</span>` : ''}${artistLinks(t)}</span></div>${mixTag(t.id)}</div>${mixPlanInfo()}` : ''}
       ${uq.length ? html`<div class="row-flex" style="justify-content:space-between"><div class="q-label">Prochains titres de la file</div><button class="more muted" id="q-clear">Effacer</button></div>
         ${uq.map((u, i) => html`<div class="q-item" data-qjump="${i}">${cover(u, '', 96)}<div class="t-text"><span class="t-title">${u.title}</span><span class="t-artists muted">${artistLinks(u)}</span></div>${mixTag(u.id)}<button class="q-x icon-btn" data-qrm="${u.qid}">${icon('close')}</button>${sync.target ? '' : html`<button class="q-grip icon-btn" aria-label="Déplacer" title="Maintenir et glisser pour déplacer">${icon('drag', 20)}</button>`}</div>`)}` : ''}
       ${ctxUp.length ? html`<div class="q-label">Ensuite${v.context?.name ? ` : ${v.context.name}` : ''}</div>
-        ${ctxUp.map((u, i) => html`<div class="q-item" data-qjump="${i + uq.length}">${cover(u, '', 96)}<div class="t-text"><span class="t-title">${u.title}</span><span class="t-artists muted">${u.autoplay ? html`<span class="tag">AUTO</span>` : ''}${artistLinks(u)}</span></div>${mixTag(u.id)}${sync.target ? '' : html`<button class="q-grip icon-btn" aria-label="Déplacer" title="Maintenir et glisser pour déplacer">${icon('drag', 20)}</button>`}</div>`)}` : ''}
+        ${ctxUp.map((u, i) => html`<div class="q-item" data-qjump="${i + uq.length}">${cover(u, '', 96)}<div class="t-text"><span class="t-title">${u.title}</span><span class="t-artists muted">${u.autoplay ? html`<span class="tag">AUTO</span>` : ''}${u.discovery ? html`<span class="tag disc-tag">✦ DÉCOUVERTE</span>` : ''}${artistLinks(u)}</span></div>${mixTag(u.id)}${sync.target ? '' : html`<button class="q-grip icon-btn" aria-label="Déplacer" title="Maintenir et glisser pour déplacer">${icon('drag', 20)}</button>`}</div>`)}` : ''}
       ${!t && !up.length ? html`<p class="muted">La file d'attente est vide.</p>` : ''}
       ${sync.jam ? html`<a class="outline-btn" href="#/jam" style="display:inline-block;margin-top:16px">File de la party (${sync.jam.queue.length})</a>` : ''}
     </div>`);
@@ -1094,7 +1094,7 @@ function renderFullPlayer() {
   fp.innerHTML = String(html`
     <div class="fp-head"><button class="icon-btn" id="fp-close">${icon('chevronDown')}</button><div><small>${v.remote ? `Lecture sur ${v.deviceName}` : 'En lecture depuis'}</small><b class="ellipsis">${v.context?.name || 'Boombox'}</b></div><button class="icon-btn" id="fp-more">${icon('more')}</button></div>
     <div class="fp-art"><img src="${t.thumb}" alt="" referrerpolicy="no-referrer"></div>
-    <div class="fp-meta"><div style="flex:1;min-width:0"><h2 class="ellipsis ${t.title.length > 34 ? 'long' : ''}">${t.title}</h2><div class="muted ellipsis">${artistLinks(t)}</div></div>
+    <div class="fp-meta"><div style="flex:1;min-width:0"><h2 class="ellipsis ${t.title.length > 34 ? 'long' : ''}">${t.title}</h2><div class="muted ellipsis">${t.discovery ? html`<span class="tag disc-tag">✦ DÉCOUVERTE</span>` : ''}${artistLinks(t)}</div></div>
       <button class="like-btn fp-addpl" id="fp-addpl" title="Ajouter à une playlist" aria-label="Ajouter à une playlist">${icon('addCircle')}</button><button class="like-btn ${isLiked(t.id) ? 'on' : ''}" id="fp-like">${icon(isLiked(t.id) ? 'heartFill' : 'heart')}</button></div>
     <div class="slider" id="fp-seek"></div>
     <div class="progress" style="justify-content:space-between"><span id="fp-cur" style="text-align:left">0:00</span><span id="fp-dur" style="text-align:right">0:00</span></div>
