@@ -327,6 +327,7 @@ export async function friendsPage(el, params) {
       contextMenu(r.left, r.top - 200, [
         player.track && { label: `Le son en cours : ${player.track.title}`, icon: 'music', action: () => send({ tracks: [player.track] }) },
         { label: 'Chercher un son…', icon: 'search', action: () => searchAndSend(send) },
+        canTakePhoto() && { label: 'Prendre une photo', icon: 'plus', action: () => takePhoto().then((img) => img && send({ image: img })) },
         { label: 'Image ou GIF de ma galerie', icon: 'plus', action: () => pickImage().then((img) => img && send({ image: img })) },
         { label: 'Chercher un GIF', icon: 'search', action: () => gifPicker(send) },
         { label: 'Sticker', icon: 'heart', action: () => stickerPicker(send) },
@@ -457,6 +458,85 @@ function pickImage(max = 900) {
     inp.click();
   });
 }
+// ---------- Photo prise sur le moment ----------
+// Téléphone : l'appareil photo s'ouvre directement. PC : la webcam s'affiche, on appuie pour prendre la photo.
+// iPhone : il faut l'autorisation « appareil photo » inscrite dans l'appli (NSCameraUsageDescription), ajoutée à la
+// compilation n° 261 (GitHub Actions) : sans elle iOS fait planter l'appli. Le bouton n'apparaît que sur une appli qui l'a.
+const IOS_CAMERA_BUILD = 261;
+const platform = () => window.Capacitor?.getPlatform?.() || 'web';
+const touchDevice = () => matchMedia('(pointer: coarse)').matches;
+let iosBuild = 0;
+window.Capacitor?.Plugins?.App?.getInfo?.().then((i) => (iosBuild = Number(i.build) || 0)).catch(() => {});
+function canTakePhoto() {
+  if (platform() === 'ios') return !!IOS_CAMERA_BUILD && iosBuild >= IOS_CAMERA_BUILD;
+  if (platform() === 'android' || touchDevice()) return true;
+  return !!navigator.mediaDevices?.getUserMedia;
+}
+function shrink(src, max = 900) {
+  const w = src.videoWidth || src.width, h = src.videoHeight || src.height;
+  const r = Math.min(1, max / Math.max(w, h));
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(w * r);
+  cv.height = Math.round(h * r);
+  cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+  return cv.toDataURL('image/jpeg', 0.8);
+}
+function takePhoto() {
+  // Téléphone (appli ou navigateur) : appareil photo du téléphone, caméra arrière par défaut
+  if (platform() !== 'web' || touchDevice()) {
+    return new Promise((resolve) => {
+      const inp = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*' });
+      inp.setAttribute('capture', 'environment');
+      inp.onchange = () => {
+        const file = inp.files[0];
+        if (!file) return resolve(null);
+        const img = new Image();
+        img.onload = () => (resolve(shrink(img)), URL.revokeObjectURL(img.src));
+        img.onerror = () => (toast('Photo illisible'), resolve(null));
+        img.src = URL.createObjectURL(file);
+      };
+      inp.click();
+    });
+  }
+  // PC : webcam
+  return new Promise(async (resolve) => {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    } catch (e) {
+      toast(e?.name === 'NotAllowedError' ? 'Accès à la webcam refusé (autorise-le dans la barre d’adresse)' : 'Aucune webcam trouvée');
+      return resolve(null);
+    }
+    const box = document.createElement('div');
+    box.className = 'cam-box';
+    box.innerHTML = `<div class="cam-card"><video autoplay playsinline muted></video><img hidden alt="">
+      <div class="cam-actions"><button class="btn ghost" data-a="cancel">Annuler</button><button class="btn ghost" data-a="retake" hidden>Reprendre</button><button class="btn primary" data-a="shot">Prendre la photo</button><button class="btn primary" data-a="send" hidden>Envoyer</button></div></div>`;
+    document.body.appendChild(box);
+    const video = box.querySelector('video'), prev = box.querySelector('img');
+    video.srcObject = stream;
+    let shot = null;
+    const btn = (a) => box.querySelector(`[data-a=${a}]`);
+    const done = (v) => { stream.getTracks().forEach((t) => t.stop()); box.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+    const onKey = (e) => e.key === 'Escape' && done(null);
+    document.addEventListener('keydown', onKey);
+    box.onclick = (e) => e.target === box && done(null);
+    btn('cancel').onclick = () => done(null);
+    btn('shot').onclick = () => {
+      if (!video.videoWidth) return;
+      shot = shrink(video);
+      prev.src = shot;
+      prev.hidden = false; video.hidden = true;
+      btn('shot').hidden = true; btn('send').hidden = false; btn('retake').hidden = false;
+    };
+    btn('retake').onclick = () => {
+      shot = null;
+      prev.hidden = true; video.hidden = false;
+      btn('shot').hidden = false; btn('send').hidden = true; btn('retake').hidden = true;
+    };
+    btn('send').onclick = () => done(shot);
+  });
+}
+
 // Lien de page Giphy → lien direct de l'image
 function gifUrl(u) {
   const g = u.match(/giphy\.com\/gifs\/(?:.*-)?([A-Za-z0-9]+)$/);

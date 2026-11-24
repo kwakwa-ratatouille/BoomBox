@@ -2755,3 +2755,10 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .list-tools .lt-search { background: var(--hover-2); }
 .list-tools .lt-search input { width: 240px; padding: 6px 10px 6px 0; opacity: 1; }
 @media (max-width: 700px) { .list-tools .lt-search input { width: 150px; } }
+
+/* Photo prise depuis la webcam (PC) dans une conversation */
+.cam-box { position: fixed; inset: 0; z-index: 400; background: rgba(0, 0, 0, 0.75); display: grid; place-items: center; padding: 16px; }
+.cam-card { background: var(--panel, #181818); border-radius: 14px; padding: 14px; width: min(720px, 100%); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6); }
+.cam-card video, .cam-card img { width: 100%; border-radius: 10px; background: #000; display: block; transform: none; }
+.cam-card video { transform: scaleX(-1); } /* aperçu en miroir, comme un selfie (la photo envoyée, elle, est à l'endroit) */
+.cam-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
