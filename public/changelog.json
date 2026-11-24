@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1124.1103",
+    "title": "Aléatoire découverte",
+    "items": [
+      "Bouton aléatoire : un deuxième appui active l’aléatoire découverte (petite étoile). Des sons du même style que la playlist, qu’elle ne contient pas, se glissent environ tous les 3 sons. Un troisième appui coupe l’aléatoire."
+    ],
+    "date": "2026-11-24"
+  },
+  {
     "version": "2026.1123.1125",
     "title": "Plus de faux artistes dans les nouveautés",
     "items": [

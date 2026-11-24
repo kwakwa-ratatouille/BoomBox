@@ -611,7 +611,7 @@ export const player = {
     this.engine = this._preferredEngine();
     const saved = ls.get(`boombox.player.${state.profile.id}`);
     if (saved) {
-      Object.assign(this, { list: saved.list || [], order: saved.order || [], pos: saved.pos ?? -1, userQueue: saved.userQueue || [], context: saved.context, shuffle: !!saved.shuffle, repeat: saved.repeat || 'off', volume: saved.volume ?? 0.8, muted: !!saved.muted, rate: saved.rate || 1 });
+      Object.assign(this, { list: saved.list || [], order: saved.order || [], pos: saved.pos ?? -1, userQueue: saved.userQueue || [], context: saved.context, shuffle: !!saved.shuffle, discover: !!saved.shuffle && !!saved.discover, repeat: saved.repeat || 'off', volume: saved.volume ?? 0.8, muted: !!saved.muted, rate: saved.rate || 1 });
       this.track = saved.track || null;
       this._restoreAt = saved.position || 0;
       this._played = new Set(this.order.slice(0, this.pos + 1).map((i) => this.list[i]?.id));
@@ -694,6 +694,7 @@ export const player = {
     } else this.pos = index;
     this._load(this.list[this.order[this.pos]]);
     emit('player:queue');
+    if (this.discover) this._injectDiscover();
   },
 
   playTrack(track, context) {
@@ -793,6 +794,9 @@ export const player = {
   // Sert au préchargement, à l'automix, au fondu et à l'égalisation du volume.
   async _prefetchPhone() {
     const media = (await localApi()).media;
+    // iPhone : le prochain son déjà téléchargé est mis en mémoire pour démarrer et s'avancer sans attente
+    const nx = this.upcoming(1)[0];
+    if (nx?.id && !nx.local && media.isDownloaded?.(playId(nx.id))) media.warmAudio?.(playId(nx.id));
     if (!media.net?.connected) return;
     for (const t of this.upcoming(5)) {
       if (!t?.id || t.local) continue;
@@ -827,6 +831,7 @@ export const player = {
       if (!keep.has(playId(prev.id))) localApi().then((a) => a.media.dropDownload?.(playId(prev.id))).catch(() => {});
     }
     this.track = track;
+    this._refillDiscover();
     this._applySongRate(track, !!(crossfade || mix));
     if (!crossfade && !mix) this._presetNorm(track.id);
     this._played.add(track.id);
@@ -1018,19 +1023,81 @@ export const player = {
     Object.values(this.engines).forEach((e) => e.setVolume(v));
   },
 
+  // Trois états, comme Spotify : désactivé → aléatoire → aléatoire découverte (des sons proches de ceux de la liste,
+  // qu'elle ne contient pas, glissés environ tous les 3 sons) → désactivé
   toggleShuffle() {
+    if (this.shuffle && !this.discover) {
+      this.discover = true;
+      toast('Aléatoire découverte : des sons dans le même style que cette liste s’y glissent');
+      this._injectDiscover();
+      emit('player:state');
+      this._persist();
+      return;
+    }
+    if (this.discover) {
+      this.discover = false;
+      // Les sons de découverte pas encore écoutés sortent de la suite
+      this.order = this.order.filter((i, k) => k <= this.pos || !this.list[i]?.discovery);
+    }
     this.shuffle = !this.shuffle;
     const current = this.order[this.pos];
     if (this.shuffle) {
       // La suite mélangée ne reprend ni le titre en cours ni ceux déjà écoutés
       this.order = [...this.order.slice(0, this.pos + 1), ...this._shuffledRest(current ?? -1)];
     } else if (current != null) {
-      this.order = this.list.map((_, i) => i);
-      this.pos = current;
+      this.order = this.list.map((_, i) => i).filter((i) => i === current || !this.list[i]?.discovery);
+      this.pos = this.order.indexOf(current);
     }
     emit('player:state');
     emit('player:queue');
     this._persist();
+  },
+
+  // Sons de découverte : recommandations tirées de quelques sons de la liste au hasard (donc du même style)
+  async _injectDiscover() {
+    if (!this.discover || !this.list.length || this._discovering) return;
+    const base = this.list.filter((t) => t && !t.discovery && !t.autoplay);
+    if (!base.length) return;
+    this._discovering = true;
+    const token = this.list;
+    try {
+      const seeds = shuffleArr(base.slice()).slice(0, 4);
+      const known = new Set(this.list.map((t) => t?.id));
+      const found = [];
+      for (const r of await Promise.all(seeds.map((t) => api(`/api/radio/${t.id}`).catch(() => [])))) {
+        // Quelques sons par graine, pour mélanger les styles de la liste
+        for (const t of (r || []).filter((x) => x?.id && !known.has(x.id) && !isBanned(x.id)).slice(0, 6)) {
+          known.add(t.id);
+          found.push(t);
+        }
+      }
+      if (token !== this.list || !this.discover || !found.length) return;
+      const ahead = this.order.slice(this.pos + 1);
+      const want = Math.min(found.length, Math.max(2, Math.ceil(ahead.filter((i) => !this.list[i]?.discovery).length / 3)), 25);
+      const picks = shuffleArr(found).slice(0, want);
+      const start = this.list.length;
+      this.list.push(...picks.map((t) => ({ ...t, discovery: true })));
+      // Un son de découverte après environ 3 sons de la liste
+      const out = [];
+      let n = 0;
+      let k = 0;
+      for (const i of ahead) {
+        out.push(i);
+        if (!this.list[i]?.discovery && ++n % 3 === 0 && k < picks.length) out.push(start + k++);
+      }
+      while (k < picks.length && out.length < 3) out.push(start + k++);
+      this.order = [...this.order.slice(0, this.pos + 1), ...out];
+      emit('player:queue');
+      this._persist();
+    } finally {
+      this._discovering = false;
+    }
+  },
+  // Plus beaucoup de sons de découverte devant : on en ajoute
+  _refillDiscover() {
+    if (!this.discover) return;
+    const ahead = this.order.slice(this.pos + 1, this.pos + 13);
+    if (ahead.length > 3 && ahead.filter((i) => this.list[i]?.discovery).length < 2) this._injectDiscover();
   },
 
   cycleRepeat() {
@@ -1215,7 +1282,7 @@ export const player = {
       position: Math.min(this.time(), shown || Infinity),
       duration: shown,
       paused: this.paused,
-      shuffle: this.shuffle,
+      shuffle: this.shuffle, discover: !!this.discover,
       repeat: this.repeat,
       volume: this.volume,
       muted: this.muted,
@@ -1446,7 +1513,7 @@ export const player = {
       pos: this.pos,
       userQueue: this.userQueue,
       context: this.context,
-      shuffle: this.shuffle,
+      shuffle: this.shuffle, discover: !!this.discover,
       repeat: this.repeat,
       volume: this.volume,
       muted: this.muted,

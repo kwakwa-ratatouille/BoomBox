@@ -504,7 +504,32 @@ export async function localAudioSrc(id, { stream = false, low = false } = {}) {
   }
   await downloadAudio(id);
   const { uri } = await Filesystem.getUri({ path: `audio/${id}.m4a`, directory: Directory.Data });
-  return Capacitor.convertFileSrc(uri);
+  const fileSrc = Capacitor.convertFileSrc(uri);
+  if (!Capacitor.isNativePlatform()) return fileSrc;
+  // iPhone et Android : lu depuis le fichier, chaque déplacement dans le son relançait une lecture du fichier (grosse pause).
+  // Un son déjà mis en mémoire (préparé pendant l'écoute du précédent) est lu depuis la mémoire : avance instantanée.
+  // Sinon on lit le fichier tout de suite (pas d'attente au lancement) et la mise en mémoire se fait à côté.
+  if (blobSrc.has(id)) return blobSrc.get(id);
+  warmAudio(id, fileSrc);
+  return fileSrc;
+}
+const blobSrc = new Map();
+const warming = new Map();
+// Met un son téléchargé en mémoire à l'avance (iPhone). On garde les 4 derniers pour ne pas remplir la mémoire.
+export function warmAudio(id, fileSrc) {
+  if (!Capacitor.isNativePlatform() || !audioIndex[id] || blobSrc.has(id) || warming.has(id)) return warming.get(id) || Promise.resolve();
+  const p = (async () => {
+    if (!fileSrc) fileSrc = Capacitor.convertFileSrc((await Filesystem.getUri({ path: `audio/${id}.m4a`, directory: Directory.Data })).uri);
+    const b = await (await globalThis.fetch(fileSrc)).blob();
+    blobSrc.set(id, URL.createObjectURL(new Blob([b], { type: 'audio/mp4' })));
+    while (blobSrc.size > 4) {
+      const [old, url] = blobSrc.entries().next().value;
+      blobSrc.delete(old);
+      setTimeout(() => URL.revokeObjectURL(url), 60000); // laisse finir un fondu éventuel
+    }
+  })().catch(() => {}).finally(() => warming.delete(id));
+  warming.set(id, p);
+  return p;
 }
 
 // « Retélécharger ce son » (son abîmé ou mauvaise version) : le fichier est supprimé, et l'autre version utilisée
@@ -692,4 +717,4 @@ export async function audioFolder() {
   return decodeURIComponent(String(uri).replace(/^file:\/\//, ''));
 }
 
-export const media = { dropDownload, relayHref, audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
+export const media = { dropDownload, relayHref, audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, warmAudio, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };

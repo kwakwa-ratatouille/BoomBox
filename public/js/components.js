@@ -52,7 +52,7 @@ export const likedCover = (cls = '') => html`<div class="cover liked ${cls}"><im
 // ---------- Liste de titres ----------
 // playlistId : permet « Retirer de cette playlist » ; reorder : autorise le glisser-déposer pour réordonner.
 // plays : affiche le nombre de lectures (pages d'artiste) à la place de l'album
-export function trackList(tracks, { context, album = true, added = false, playlistId = null, reorder = false, coverArt = true, numbered = true, plays = false } = {}) {
+export function trackList(tracks, { context, album = true, added = false, playlistId = null, reorder = false, coverArt = true, numbered = true, plays = false, virtual = true } = {}) {
   if (plays) album = true;
   // « Ne plus proposer » : le son disparaît partout, sauf dans tes playlists et tes likes où il reste visible (grisé)
   const banned = new Set(setting('banned', []));
@@ -65,6 +65,21 @@ export function trackList(tracks, { context, album = true, added = false, playli
   // arrive en descendant, et les paquets loin au-dessus ou en dessous sont vidés (leur hauteur est gardée, rien ne
   // saute) puis redessinés quand on y revient. Les grosses playlists restent fluides jusqu'en bas.
   const long = tracks.length > CHUNK + 40;
+  // Liste virtuelle (comme Spotify) : seuls les sons visibles à l'écran (+ une petite marge) existent dans la page,
+  // quelle que soit la taille de la playlist. Au-dessus et en dessous : des lignes fantômes à la bonne hauteur.
+  if (long && virtual) {
+    virtLists.set(listId, { tracks, o, rs: 0, re: VFIRST });
+    watchVirtual();
+    return html`<div class="tracks ${cls}" data-list-wrap="${listId}">
+      <div class="track-head">
+        <span class="t-num">#</span><span>Titre</span>
+        ${album ? html`<span>${plays ? 'Lectures' : 'Album'}</span>` : ''}
+        ${added ? html`<span class="h-date">Date d’ajout</span>` : ''}
+        <span class="r">${icon('clock', 16)}</span>
+      </div>
+      ${raw(`<div class="tl-virt" data-virt="${listId}" data-n="${tracks.length}"><div class="tl-chunk tl-sp" data-empty="1" style="height:0"></div><div class="tl-win">${virtRows(listId, 0, VFIRST)}</div><div class="tl-chunk tl-sp" data-empty="1" style="height:calc(var(--row-h, 56px) * ${tracks.length - VFIRST})"></div></div>`)}
+    </div>`;
+  }
   if (long) {
     chunkLists.set(listId, { tracks, o, next: CHUNK });
     watchChunks();
@@ -81,7 +96,76 @@ export function trackList(tracks, { context, album = true, added = false, playli
   </div>`;
 }
 
-const CHUNK = 100;
+// ---------- Liste virtuelle ----------
+const VFIRST = 40; // sons dessinés à l'ouverture (avant de connaître la hauteur exacte d'une ligne)
+const VBUF = 12; // marge de sons dessinés au-dessus et en dessous de l'écran
+const virtLists = new Map();
+const virtRows = (listId, from, to) => {
+  const p = virtLists.get(listId);
+  return p.tracks.slice(from, to).map((t, i) => String(trackRow(t, from + i, listId, p.o))).join('');
+};
+let virtWatched = false;
+function watchVirtual() {
+  if (virtWatched) return;
+  virtWatched = true;
+  let raf = 0;
+  let lastY = new WeakMap();
+  let settle = 0;
+  const run = () => {
+    raf = 0;
+    const H = innerHeight;
+    for (const v of document.querySelectorAll('.tl-virt')) {
+      const p = virtLists.get(v.dataset.virt);
+      if (!p) continue;
+      const win = v.children[1];
+      const n = p.tracks.length;
+      // Hauteur réelle d'une ligne, mesurée une fois sur les sons affichés
+      if (!p.rowH) {
+        const rows = win.children;
+        if (rows.length < 2) continue;
+        p.rowH = (rows[rows.length - 1].getBoundingClientRect().bottom - rows[0].getBoundingClientRect().top) / rows.length;
+        if (!(p.rowH > 20)) { p.rowH = 0; continue; }
+        v.style.setProperty('--row-h', `${p.rowH}px`);
+      }
+      const top = v.getBoundingClientRect().top;
+      // Défilement très rapide (barre tirée, gros coup de molette) : on ne dessine rien pendant le mouvement,
+      // les lignes fantômes s'affichent ; les sons arrivent dès que ça ralentit
+      const prev = lastY.get(v);
+      lastY.set(v, top);
+      if (prev != null && Math.abs(top - prev) > H * 1.5) {
+        clearTimeout(settle);
+        settle = setTimeout(schedule, 90);
+        continue;
+      }
+      const vs = Math.max(0, Math.floor(-top / p.rowH));
+      const ve = Math.min(n, Math.ceil((H - top) / p.rowH));
+      if (ve <= 0 || vs >= n) continue; // liste hors de l'écran
+      if (vs >= p.rs && ve <= p.re) continue; // déjà dessinés : rien à faire
+      const rs = Math.max(0, vs - VBUF);
+      const re = Math.min(n, ve + VBUF);
+      v.children[0].style.height = `${rs * p.rowH}px`;
+      v.children[2].style.height = `${(n - re) * p.rowH}px`;
+      win.innerHTML = virtRows(v.dataset.virt, rs, re);
+      p.rs = rs;
+      p.re = re;
+      refreshTrackMarks(true);
+      if (sel.idx.size && sel.list === v.dataset.virt) selPaint();
+      v.dispatchEvent(new CustomEvent('tracks:more', { bubbles: true }));
+    }
+  };
+  const schedule = () => {
+    if (raf) return;
+    raf = requestAnimationFrame(run);
+    setTimeout(() => raf && (cancelAnimationFrame(raf), run()), 150); // filet si l'image suivante tarde
+  };
+  document.addEventListener('scroll', schedule, { capture: true, passive: true });
+  addEventListener('resize', schedule);
+  new MutationObserver(schedule).observe(document.getElementById('view') || document.body, { childList: true });
+  setTimeout(schedule, 50);
+  setTimeout(schedule, 400);
+}
+
+const CHUNK = 30; // petits paquets : chaque ajout pendant le défilement coûte peu
 const chunkLists = new Map();
 let chunksWatched = false;
 const chunkRows = (listId, from) => {
@@ -93,40 +177,67 @@ const chunkHtml = (listId, from) => `<div class="tl-chunk" data-list="${listId}"
 function updateChunks() {
   const H = Math.max(innerHeight, 700);
   let changed = new Set();
+  // Toute la liste est posée d'un coup (emplacements vides à leur hauteur) : la barre de défilement a sa taille
+  // définitive dès l'ouverture, elle ne saute plus quand la suite arrivait en descendant
   for (const el of document.querySelectorAll('.tl-more')) {
     const p = chunkLists.get(el.dataset.more);
     if (!p || p.next >= p.tracks.length) { el.remove(); continue; }
-    if (el.getBoundingClientRect().top > H * 3) continue;
-    el.insertAdjacentHTML('beforebegin', chunkHtml(el.dataset.more, p.next));
-    p.next += CHUNK;
-    if (p.next >= p.tracks.length) el.remove();
-    changed.add(el.closest('[data-list-wrap]'));
+    const w = el.closest('[data-list-wrap]');
+    if (w) { fillList(w); changed.add(w); }
   }
-  for (const ch of document.querySelectorAll('.tl-chunk')) {
-    if (!chunkLists.has(ch.dataset.list)) continue;
-    const r = ch.getBoundingClientRect();
-    const far = r.bottom < -H * 4 || r.top > H * 5;
-    if (far && !ch.dataset.empty) {
-      ch.style.height = `${r.height}px`;
-      ch.dataset.empty = '1';
-      ch.innerHTML = '';
-    } else if (!far && ch.dataset.empty) {
+  // 1) On mesure tout d'abord (lecture), 2) puis on modifie (écriture) : mélanger les deux forçait le navigateur à
+  // recalculer la page à chaque paquet. Les paquets proches (2 écrans au-dessus, 4 en dessous) sont dessinés ;
+  // un paquet dessiné le reste : le vider puis le redessiner en revenant dessus faisait saccader.
+  const chunks = [...document.querySelectorAll('.tl-chunk[data-empty]')].filter((ch) => chunkLists.has(ch.dataset.list));
+  const rects = chunks.map((ch) => ch.getBoundingClientRect());
+  chunks.forEach((ch, i) => {
+    const r = rects[i];
+    const near = r.bottom > -H * 2 && r.top < H * 4;
+    if (near) {
       ch.innerHTML = chunkRows(ch.dataset.list, Number(ch.dataset.from));
       ch.style.height = '';
       delete ch.dataset.empty;
       changed.add(ch.closest('[data-list-wrap]'));
     }
-  }
+  });
+  if (chunks.length) idleFill();
   if (!changed.size) return;
   refreshTrackMarks(true);
   for (const w of changed) w?.dispatchEvent(new CustomEvent('tracks:more', { bubbles: true }));
 }
+// Temps morts : on dessine un paquet de plus (le plus proche de l'écran), sans gêner le défilement en cours
+let idleQueued = false;
+function idleFill() {
+  if (idleQueued) return;
+  idleQueued = true;
+  const run = (dl) => {
+    idleQueued = false;
+    const empty = [...document.querySelectorAll('.tl-chunk[data-empty]')].filter((ch) => chunkLists.has(ch.dataset.list));
+    if (!empty.length) return;
+    const mid = innerHeight / 2;
+    const best = empty.map((ch) => { const r = ch.getBoundingClientRect(); return { ch, d: Math.min(Math.abs(r.top - mid), Math.abs(r.bottom - mid)) }; }).sort((a, b) => a.d - b.d)[0].ch;
+    if (dl && dl.timeRemaining && dl.timeRemaining() < 8) return idleFill();
+    best.innerHTML = chunkRows(best.dataset.list, Number(best.dataset.from));
+    best.style.height = '';
+    delete best.dataset.empty;
+    refreshTrackMarks(true);
+    best.closest('[data-list-wrap]')?.dispatchEvent(new CustomEvent('tracks:more', { bubbles: true }));
+    if (empty.length > 1) idleFill();
+  };
+  if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 2000 });
+  else setTimeout(run, 120);
+}
 function watchChunks() {
   if (chunksWatched) return;
   chunksWatched = true;
+  // Suivi image par image du défilement (au lieu d'une vérification toutes les 80 ms, qui laissait des trous)
   let timer = 0;
   const tick = () => ((timer = 0), updateChunks());
-  const soon = () => timer || (timer = setTimeout(tick, 80));
+  const soon = () => {
+    if (timer) return;
+    timer = requestAnimationFrame(tick);
+    setTimeout(() => timer && (cancelAnimationFrame(timer), tick()), 150); // filet si l'image suivante tarde
+  };
   document.addEventListener('scroll', soon, { capture: true, passive: true });
   // Nouvelle page affichée : on vérifie aussi tout de suite
   new MutationObserver(soon).observe(document.getElementById('view') || document.body, { childList: true, subtree: false });
@@ -153,8 +264,12 @@ function fillList(wrap) {
   const more = wrap.querySelector('.tl-more');
   const p = more && chunkLists.get(more.dataset.more);
   if (!p) return;
+  // Hauteur réelle d'une ligne (mesurée sur les sons déjà affichés) : les emplacements vides ont la bonne taille
+  const rows = wrap.querySelectorAll('.tl-chunk:not([data-empty]) .track');
+  const rowH = rows.length > 1 ? (rows[rows.length - 1].getBoundingClientRect().bottom - rows[0].getBoundingClientRect().top) / rows.length : 56;
+  if (rowH) wrap.style.setProperty('--row-h', `${rowH}px`);
   let html = '';
-  for (; p.next < p.tracks.length; p.next += CHUNK) html += `<div class="tl-chunk" data-list="${more.dataset.more}" data-from="${p.next}" data-empty="1" style="height:${Math.min(CHUNK, p.tracks.length - p.next) * 56}px"></div>`;
+  for (; p.next < p.tracks.length; p.next += CHUNK) html += `<div class="tl-chunk" data-list="${more.dataset.more}" data-from="${p.next}" data-empty="1" style="height:${(Math.min(CHUNK, p.tracks.length - p.next) * (rowH || 56)).toFixed(1)}px"></div>`;
   more.insertAdjacentHTML('beforebegin', html);
   more.remove();
 }
@@ -209,13 +324,16 @@ function updateRail() {
 function place(k, wrap) {
   const thumb = rail.firstElementChild;
   thumb.style.transform = `translateY(${k * (rail.clientHeight - thumb.offsetHeight)}px)`;
-  const total = chunkLists.get(wrap.dataset.listWrap)?.tracks.length || wrap.querySelectorAll('.track').length;
+  const vp = virtLists.get(wrap.dataset.listWrap);
+  const total = chunkLists.get(wrap.dataset.listWrap)?.tracks.length || vp?.tracks.length || wrap.querySelectorAll('.track').length;
   // Numéro du son au milieu de l'écran (d'après le paquet qui s'y trouve, même pas encore dessiné)
   const sc = scroller(wrap);
   const mid = sc.getBoundingClientRect().top + sc.clientHeight / 2;
   let at = Math.round(k * total);
-  const ch = [...wrap.querySelectorAll('.tl-chunk')].find((c) => { const r = c.getBoundingClientRect(); return r.top <= mid && r.bottom >= mid; });
-  if (ch) {
+  const vEl = vp && wrap.querySelector('.tl-virt');
+  const ch = !vEl && [...wrap.querySelectorAll('.tl-chunk[data-from]')].find((c) => { const r = c.getBoundingClientRect(); return r.top <= mid && r.bottom >= mid; });
+  if (vEl && vp.rowH) at = Math.floor((mid - vEl.getBoundingClientRect().top) / vp.rowH) + 1;
+  else if (ch) {
     const r = ch.getBoundingClientRect();
     const count = Math.min(CHUNK, total - Number(ch.dataset.from));
     at = Number(ch.dataset.from) + Math.floor(((mid - r.top) / r.height) * count) + 1;

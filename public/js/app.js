@@ -220,6 +220,8 @@ async function route() {
   }
   if (!match) match = { fn: V.home, name: 'home' };
 
+  navStamp();
+  const restoreTo = history.state?.sc || 0;
   current.hooks?.cleanup?.();
   const token = ++routeToken;
   const view = $('#view');
@@ -241,12 +243,54 @@ async function route() {
   try {
     const hooks = await match.fn(view, params, { alive: () => token === routeToken });
     if (token === routeToken) current.hooks = hooks || null;
+    if (token === routeToken && restoreTo) restoreScroll(view, restoreTo, token);
   } catch (e) {
     console.error(e);
     if (token === routeToken) view.innerHTML = String(html`<div class="page"><div class="empty"><h2>Erreur</h2><p>${e.message}</p></div></div>`);
   }
 }
 window.addEventListener('hashchange', route);
+
+// ---------- Historique propre à l'appli (boutons ‹ ›) ----------
+// Chaque page reçoit un numéro (history.state.i). « ‹ » ne recule que s'il reste une page de l'appli avant :
+// avant, il pouvait sortir de l'appli (page précédente du navigateur) et la recharger.
+let navI = 0, navMax = 0, navReady = false;
+const navBase = (() => {
+  const s = Number(sessionStorage.getItem('boombox.navBase'));
+  if (Number.isFinite(s) && sessionStorage.getItem('boombox.navBase') != null) return s;
+  const b = history.state?.i ?? 0;
+  sessionStorage.setItem('boombox.navBase', b);
+  return b;
+})();
+function navStamp() {
+  const st = history.state || {};
+  if (st.i == null) { navI = navReady ? navI + 1 : navBase; navMax = navI; history.replaceState({ ...st, i: navI }, ''); }
+  else { navI = st.i; navMax = Math.max(navMax, navI); }
+  navReady = true;
+  sessionStorage.setItem('boombox.navMax', navMax);
+  $('#nav-back')?.classList.toggle('disabled', navI <= navBase);
+  $('#nav-fwd')?.classList.toggle('disabled', navI >= navMax);
+}
+navMax = Number(sessionStorage.getItem('boombox.navMax')) || 0;
+$('#nav-back')?.addEventListener('click', () => navI > navBase && history.back());
+$('#nav-fwd')?.addEventListener('click', () => navI < navMax && history.forward());
+
+// Position de défilement de chaque page, retrouvée au retour arrière / avant
+let scT;
+$('#view').addEventListener('scroll', () => {
+  clearTimeout(scT);
+  scT = setTimeout(() => history.state?.i != null && history.replaceState({ ...history.state, sc: $('#view').scrollTop }, ''), 120);
+}, { passive: true });
+function restoreScroll(view, y, token) {
+  const t0 = Date.now();
+  // La page (pochettes, longue liste) peut finir de s'afficher après coup : on réessaie jusqu'à 2 s
+  const step = () => {
+    if (token !== routeToken) return;
+    view.scrollTop = y;
+    if (Math.abs(view.scrollTop - y) > 2 && Date.now() - t0 < 2000) requestAnimationFrame(step);
+  };
+  step();
+}
 
 // Barre du haut opaque quand on fait défiler
 $('#view').addEventListener('scroll', (e) => $('#topbar').classList.toggle('solid', e.target.scrollTop > 60), { passive: true });
@@ -728,6 +772,11 @@ function updatePlayerState() {
   setIcon(pb.play, v.paused !== false ? 'play' : 'pause');
   showBuffering(!!v.buffering && !v.paused);
   pb.shuffle.classList.toggle('on', !!v.shuffle);
+  // Aléatoire découverte : petite étoile sur tous les boutons aléatoire
+  document.querySelectorAll('#pb-shuffle, #fp-shuffle, [data-shuffle], [data-pip=shuffle], [data-c=shuffle]').forEach((b) => {
+    b.classList.toggle('disc', !!v.discover);
+    b.title = v.discover ? 'Aléatoire découverte (appuie pour désactiver)' : v.shuffle ? 'Aléatoire (appuie pour la découverte)' : 'Aléatoire';
+  });
   pb.repeat.classList.toggle('on', v.repeat && v.repeat !== 'off');
   pb.repeat.innerHTML = String(icon(v.repeat === 'one' ? 'repeat1' : 'repeat'));
   pb.repeat.title = { off: 'Répéter : désactivé', all: 'Répéter : tout', one: 'Répéter : ce titre' }[v.repeat || 'off'];

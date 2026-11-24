@@ -114,6 +114,7 @@ svg.ic:not([width]) { width: 24px; height: 24px; }
 .round-btn { width: 32px; height: 32px; border-radius: 50%; background: rgba(0, 0, 0, 0.7); display: grid; place-items: center; color: var(--text); }
 @media (hover: hover) { .round-btn:hover { background: rgba(0, 0, 0, 0.9); } }
 .round-btn .ic { width: 22px; height: 22px; }
+.round-btn.disabled { opacity: 0.35; cursor: default; }
 .search-box { position: relative; flex: 0 1 420px; display: flex; align-items: center; background: var(--elev-2); border-radius: 999px; height: 46px; padding: 0 16px; gap: 10px; border: 2px solid transparent; transition: border-color 0.15s, background 0.15s; }
 @media (hover: hover) { .search-box:hover { background: #333; border-color: #444; } }
 .search-box:focus-within { border-color: #fff; }
@@ -1071,6 +1072,13 @@ img.ai-badge { object-fit: cover; padding: 0; }
 .kara-ctrl .ctrl .ic { width: 34px; height: 34px; }
 .kara-ctrl .play-btn { width: 64px; height: 64px; background: #fff; }
 .kara-ctrl .play-btn .ic { width: 30px; height: 30px; }
+/* PC : paroles plus compactes et dégradé réduit pour voir beaucoup plus de lignes à la fois */
+@media (min-width: 769px) {
+  .kara-lyrics { padding: 0 max(48px, calc((100vw - 1200px) / 2)); mask-image: linear-gradient(transparent, #000 5%, #000 92%, transparent); }
+  .kara-lyrics .lyrics { font-size: clamp(22px, 2.3vw, 36px); line-height: 1.35; padding: 20vh 0 40vh; }
+  .kara-lyrics .lyrics p { margin-bottom: 0.35em; }
+  .kara-lyrics .lyrics p.now { transform: scale(1.03); }
+}
 .kara-foot .kara-bar { height: 6px; border-radius: 3px; }
 @media (max-width: 768px) { .kara-head, .kara-foot { padding-left: 16px; padding-right: 16px; } .kara-lyrics { padding: 0 16px; } }
 
@@ -2675,3 +2683,45 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 /* Lien « Historique » dans l'en-tête de la file d'attente : discret, icône + texte alignés */
 .q-hist { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; text-decoration: none; padding: 4px 6px; border-radius: 4px; }
 @media (hover: hover) { .q-hist:hover { color: var(--text, #fff); background: rgba(255,255,255,.06); } }
+
+/* Longues playlists : les sons pas encore affichés montrent des lignes « fantômes » (comme Spotify) à leur place */
+.tl-chunk[data-empty] {
+  --sk: rgba(255, 255, 255, 0.07);
+  --h: var(--row-h, 56px);
+  background-image:
+    linear-gradient(transparent calc(50% - 20px), var(--sk) calc(50% - 20px), var(--sk) calc(50% + 20px), transparent calc(50% + 20px)),
+    linear-gradient(transparent calc(50% - 12px), var(--sk) calc(50% - 12px), var(--sk) calc(50% - 4px), transparent calc(50% - 4px)),
+    linear-gradient(transparent calc(50% + 4px), var(--sk) calc(50% + 4px), var(--sk) calc(50% + 11px), transparent calc(50% + 11px)),
+    linear-gradient(transparent calc(50% - 4px), var(--sk) calc(50% - 4px), var(--sk) calc(50% + 4px), transparent calc(50% + 4px)),
+    linear-gradient(transparent calc(50% - 4px), var(--sk) calc(50% - 4px), var(--sk) calc(50% + 4px), transparent calc(50% + 4px));
+  background-size: 40px var(--h), 160px var(--h), 110px var(--h), 120px var(--h), 44px var(--h);
+  background-position: 48px 0, 100px 0, 100px 0, 58% 0, calc(100% - 24px) 0;
+  background-repeat: repeat-y;
+  animation: skPulse 1.4s ease-in-out infinite;
+}
+@keyframes skPulse { 50% { opacity: 0.55; } }
+@media (max-width: 768px) {
+  .tl-chunk[data-empty] { background-size: 44px var(--h), 55% var(--h), 38% var(--h), 0 0, 0 0; background-position: 12px 0, 68px 0, 68px 0, 0 0, 0 0; }
+}
+
+/* PC (souris) : la barre du haut ne recouvre plus la barre de défilement de la page (on peut l'attraper en haut),
+   et la barre « à glisser » prévue pour le doigt est masquée : la vraie barre, toujours visible, suffit */
+@media (pointer: fine) {
+  #topbar { right: 12px; }
+  .list-rail { display: none !important; }
+}
+/* PC : curseur de la barre de défilement toujours assez grand pour l'attraper, même sur une playlist de 3 000 sons */
+@media (pointer: fine) {
+  #view::-webkit-scrollbar { width: 14px; }
+  #view::-webkit-scrollbar-thumb { min-height: 64px; background-color: rgba(255, 255, 255, 0.35); }
+  #topbar { right: 14px; }
+}
+/* Longues listes : chaque paquet de sons est isolé (le navigateur ne recalcule que lui, pas toute la page) */
+.tl-chunk { contain: layout style; }
+/* Paquets déjà dessinés mais hors écran : le navigateur ne calcule ni leur mise en page ni leur affichage
+   (il garde leur taille en mémoire) → défilement fluide même avec des milliers de sons dans la page */
+.tl-chunk:not([data-empty]) { content-visibility: auto; contain-intrinsic-size: auto calc(var(--row-h, 56px) * 30); }
+
+/* Aléatoire découverte : étoile sur le bouton aléatoire */
+.disc { position: relative; }
+.disc::before { content: '✦'; position: absolute; top: -3px; right: -5px; font-size: 10px; line-height: 1; color: var(--accent); text-shadow: 0 0 6px var(--accent); pointer-events: none; }

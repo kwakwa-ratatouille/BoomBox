@@ -851,7 +851,7 @@ export async function playlist(el, { id }, ctx) {
     // chaque son, seulement dans ces playlists spéciales)
     const ordered = () => (p.topYear && p.playCounts ? [...p.tracks].sort((a, b) => (p.playCounts[b.id] || 0) - (p.playCounts[a.id] || 0)) : p.tracks);
     wireListActions(el, () => el._shown || ordered(), pctx);
-    if (p.tracks.length) wireTools(el, `pl.${p.id}`, ordered, (tr, custom) => ((el._shown = tr), trackList(tr, { context: pctx, added: true, playlistId: p.id, reorder: custom, counts: p.playCounts })), (list, tr) => p.mixed && drawTransitions(list, tr, p));
+    if (p.tracks.length) wireTools(el, `pl.${p.id}`, ordered, (tr, custom) => ((el._shown = tr), trackList(tr, { context: pctx, added: true, playlistId: p.id, reorder: custom, counts: p.playCounts, virtual: !p.mixed })), (list, tr) => p.mixed && drawTransitions(list, tr, p));
     el.addEventListener('tracks:more', () => p.mixed && drawTransitions(el.querySelector('#list'), el._shown || p.tracks, p));
     el.querySelector('#pl-name').onclick = () => editPlaylist(p);
     el.querySelector('#pl-cover').onclick = () => editPlaylist(p);
