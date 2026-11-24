@@ -2743,3 +2743,4 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .pip-lyr .next { font-size: 13px; opacity: .6; }
 .pip-lyr .cur { font-size: 18px; font-weight: 700; color: #fff; }
 .pip-lyr.plain { justify-content: flex-start; overflow-y: auto; font-size: 14px; }
+.disc-star { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 6px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 10px; vertical-align: 1px; box-shadow: 0 0 6px var(--accent); }

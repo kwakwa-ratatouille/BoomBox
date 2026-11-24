@@ -720,9 +720,9 @@ function updatePlayerTrack() {
   if (t?.id !== lastTrackId) {
     lastTrackId = t?.id;
     pb.cover.innerHTML = t ? String(cover(t, '', 120)) : '';
-    pb.title.textContent = t?.title || '';
+    pb.title.innerHTML = t ? String(html`${t.discovery ? html`<span class="disc-star" title="Ajouté par l’aléatoire découverte">✦</span>` : ''}${t.title}`) : '';
     pb.title.href = t?.album?.id ? `#/album/${t.album.id}` : '#/lyrics';
-    pb.artist.innerHTML = t ? (t.discovery ? '<span class="tag disc-tag" title="Ajouté par l’aléatoire découverte">✦ DÉCOUVERTE</span>' : '') + String(artistLinks(t)) : '';
+    pb.artist.innerHTML = t ? String(artistLinks(t)) : '';
     if (t?.thumb) dominantColor(t.thumb).then((c) => c && document.documentElement.style.setProperty('--mini', c));
   }
   const liked = !!(t && isLiked(t.id));
