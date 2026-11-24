@@ -1008,7 +1008,31 @@ export const player = {
   seek(sec) {
     this._actAt = Date.now();
     this._restoreAt = 0; // la position de reprise (après rechargement) ne compte plus
-    this.engine.seek(Math.max(0, sec));
+    sec = Math.max(0, sec);
+    // Téléphone : son téléchargé encore lu depuis le fichier (sa copie en mémoire n'est pas finie) → chaque avance relisait
+    // le fichier (grosse pause). On attend la copie en mémoire (2 s au plus) et on y bascule, au bon endroit.
+    if (isNative && this.engine.name === 'audio' && this.track && !/^blob:/.test(this.engine.a.src || '') && !this.track.local) {
+      const t = this.track;
+      const go = async () => {
+        const media = (await localApi()).media;
+        const id = playId(t.id);
+        if (!media.isDownloaded?.(id) || !media.memSrc) return false;
+        await Promise.race([media.warmAudio(id), new Promise((r) => setTimeout(r, 2000))]);
+        if (this.track !== t || g !== this._seekGen || !media.memSrc(id)) return false;
+        sec = this.engine.time() || sec; // dernier endroit demandé
+        this.buffering = true;
+        emit('player:state');
+        this.engine.load(t.id, sec, !this._wantPause);
+        return true;
+      };
+      this._seekGen = (this._seekGen || 0) + 1;
+      const g = this._seekGen;
+      this.engine.seek(sec); // affichage et son tout de suite si la partie est déjà lue
+      emit('player:time');
+      go().catch(() => {});
+      return;
+    }
+    this.engine.seek(sec);
     emit('player:time');
   },
 

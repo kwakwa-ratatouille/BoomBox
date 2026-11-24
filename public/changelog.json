@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1124.1232",
+    "title": "Avance fluide dans les sons téléchargés",
+    "items": [
+      "Téléphone : avancer dans un son téléchargé tout juste lancé ne relit plus tout le fichier : le son passe sur sa copie en mémoire, au bon endroit."
+    ],
+    "date": "2026-11-24"
+  },
+  {
     "version": "2026.1124.1212",
     "title": "Lecture plus fiable",
     "items": [

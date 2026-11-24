@@ -514,6 +514,8 @@ export async function localAudioSrc(id, { stream = false, low = false } = {}) {
   return fileSrc;
 }
 const blobSrc = new Map();
+// Copie en mémoire d’un son téléchargé, si elle est prête (sinon null)
+export const memSrc = (id) => blobSrc.get(id) || null;
 const warming = new Map();
 // Met un son téléchargé en mémoire à l'avance (iPhone). On garde les 4 derniers pour ne pas remplir la mémoire.
 export function warmAudio(id, fileSrc) {
@@ -717,4 +719,4 @@ export async function audioFolder() {
   return decodeURIComponent(String(uri).replace(/^file:\/\//, ''));
 }
 
-export const media = { dropDownload, relayHref, audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, warmAudio, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
+export const media = { dropDownload, relayHref, audioFolder, redownload, rememberMeta, failTrail, localAudioSrc, warmAudio, memSrc, audioBuffer, imageBlobUrl, downloadAudio, deleteAudio, deleteAll, unkeep, isDownloaded, storageUsed, pruneCache, audioIndex, net, setRelay, getRelay, diagnose };
