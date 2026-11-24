@@ -831,7 +831,9 @@ export const player = {
       const keep = new Set(this.upcoming(5).map((t) => playId(t.id)));
       if (!keep.has(playId(prev.id))) localApi().then((a) => a.media.dropDownload?.(playId(prev.id))).catch(() => {});
     }
-    if (track?.discovery && this._ctxPlaylist()?.tracks?.some((x) => x.id === track.id)) track.discovery = false;
+    // Étoile « découverte » : en aléatoire découverte sur une playlist, tout son qui n’en fait pas partie (et l’inverse)
+    const ctxPl = this._ctxPlaylist();
+    if (track && ctxPl && !track.autoplay && !track.qid && (this.discover || track.discovery)) track.discovery = !ctxPl.tracks.some((x) => x.id === track.id);
     this.track = track;
     this._refillDiscover();
     this._applySongRate(track, !!(crossfade || mix));
