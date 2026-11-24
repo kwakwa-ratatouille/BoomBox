@@ -1,5 +1,16 @@
 [
   {
+    "version": "2026.1124.1124",
+    "title": "Retouches",
+    "items": [
+      "Icône aléatoire rééquilibrée (croisement au centre).",
+      "Étoile découverte bien alignée avec le titre.",
+      "Un son déjà dans la playlist n’est plus marqué « découverte ».",
+      "Recherche dans la playlist toujours dépliée."
+    ],
+    "date": "2026-11-24"
+  },
+  {
     "version": "2026.1124.1120",
     "title": "Icônes pixel retouchées",
     "items": [

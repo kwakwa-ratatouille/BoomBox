@@ -684,7 +684,8 @@ export const player = {
         emit('player:queue');
       }).catch(() => {});
     }
-    this.list = tracks.slice();
+    // Un son déjà dans la liste n’est jamais « découverte » (copie venue d’une ancienne file d’attente)
+    this.list = tracks.map((t) => (t?.discovery ? { ...t, discovery: false } : t));
     this.context = context;
     this._played = new Set(); // nouvelle écoute de la playlist : tout redevient jouable
     this.order = this.list.map((_, i) => i);
@@ -830,6 +831,7 @@ export const player = {
       const keep = new Set(this.upcoming(5).map((t) => playId(t.id)));
       if (!keep.has(playId(prev.id))) localApi().then((a) => a.media.dropDownload?.(playId(prev.id))).catch(() => {});
     }
+    if (track?.discovery && this._ctxPlaylist()?.tracks?.some((x) => x.id === track.id)) track.discovery = false;
     this.track = track;
     this._refillDiscover();
     this._applySongRate(track, !!(crossfade || mix));
@@ -1062,7 +1064,8 @@ export const player = {
     const token = this.list;
     try {
       const seeds = shuffleArr(base.slice()).slice(0, 5);
-      const known = new Set(this.list.map((t) => t?.id));
+      // Rien de ce qui est déjà dans la liste ni dans la playlist d’origine (la liste jouée peut n’en être qu’une partie)
+      const known = new Set([...this.list, ...(this._ctxPlaylist()?.tracks || [])].map((t) => t?.id));
       const found = [];
       for (const r of await Promise.all(seeds.map((t) => api(`/api/radio/${t.id}`).catch(() => [])))) {
         // Quelques sons par graine, pour mélanger les styles de la liste

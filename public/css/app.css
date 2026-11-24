@@ -2750,3 +2750,8 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .da-pixel .ctrl.disc, .da-pixel .act-btn.disc { border-radius: 0; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 75%, transparent); }
 .da-pixel .disc-star { font-size: 0; border-radius: 0; width: 13px; height: 13px; box-shadow: 2px 2px 0 rgba(0,0,0,.45); background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%23fff' d='M3 0h1v2h-1zM2 2h3v1h-3zM0 3h7v1h-7zM2 4h3v1h-3zM3 5h1v2h-1z'/%3E%3C/svg%3E") center / 7px 7px no-repeat; image-rendering: pixelated; }
 .da-pixel .disc-tag { border-radius: 0; }
+.disc-star, .da-pixel .disc-star { vertical-align: middle; position: relative; top: -2px; }
+/* Recherche dans la playlist : toujours dépliée, bien visible */
+.list-tools .lt-search { background: var(--hover-2); }
+.list-tools .lt-search input { width: 240px; padding: 6px 10px 6px 0; opacity: 1; }
+@media (max-width: 700px) { .list-tools .lt-search input { width: 150px; } }
