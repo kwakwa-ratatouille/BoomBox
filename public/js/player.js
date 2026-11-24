@@ -1061,29 +1061,29 @@ export const player = {
     this._discovering = true;
     const token = this.list;
     try {
-      const seeds = shuffleArr(base.slice()).slice(0, 4);
+      const seeds = shuffleArr(base.slice()).slice(0, 5);
       const known = new Set(this.list.map((t) => t?.id));
       const found = [];
       for (const r of await Promise.all(seeds.map((t) => api(`/api/radio/${t.id}`).catch(() => [])))) {
         // Quelques sons par graine, pour mélanger les styles de la liste
-        for (const t of (r || []).filter((x) => x?.id && !known.has(x.id) && !isBanned(x.id)).slice(0, 6)) {
+        for (const t of (r || []).filter((x) => x?.id && !known.has(x.id) && !isBanned(x.id)).slice(0, 10)) {
           known.add(t.id);
           found.push(t);
         }
       }
       if (token !== this.list || !this.discover || !found.length) return;
       const ahead = this.order.slice(this.pos + 1);
-      const want = Math.min(found.length, Math.max(2, Math.ceil(ahead.filter((i) => !this.list[i]?.discovery).length / 3)), 25);
+      const want = Math.min(found.length, Math.max(2, Math.ceil(ahead.filter((i) => !this.list[i]?.discovery).length / 2)), 40);
       const picks = shuffleArr(found).slice(0, want);
       const start = this.list.length;
       this.list.push(...picks.map((t) => ({ ...t, discovery: true })));
-      // Un son de découverte après environ 3 sons de la liste
+      // Un son de découverte tous les 2 sons de la liste (Spotify : environ 1 sur 3)
       const out = [];
       let n = 0;
       let k = 0;
       for (const i of ahead) {
         out.push(i);
-        if (!this.list[i]?.discovery && ++n % 3 === 0 && k < picks.length) out.push(start + k++);
+        if (!this.list[i]?.discovery && ++n % 2 === 0 && k < picks.length) out.push(start + k++);
       }
       while (k < picks.length && out.length < 3) out.push(start + k++);
       this.order = [...this.order.slice(0, this.pos + 1), ...out];
@@ -1097,7 +1097,7 @@ export const player = {
   _refillDiscover() {
     if (!this.discover) return;
     const ahead = this.order.slice(this.pos + 1, this.pos + 13);
-    if (ahead.length > 3 && ahead.filter((i) => this.list[i]?.discovery).length < 2) this._injectDiscover();
+    if (ahead.length > 3 && ahead.filter((i) => this.list[i]?.discovery).length < 3) this._injectDiscover();
   },
 
   cycleRepeat() {

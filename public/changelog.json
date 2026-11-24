@@ -3,7 +3,8 @@
     "version": "2026.1124.1111",
     "title": "Paroles dans le mini-lecteur",
     "items": [
-      "Mini-lecteur flottant (PC) : le bouton micro affiche les paroles sous le lecteur, puis les paroles seules, puis revient au lecteur. Le choix est retenu."
+      "Mini-lecteur flottant (PC) : le bouton micro affiche les paroles sous le lecteur, puis les paroles seules, puis revient au lecteur. Le choix est retenu.",
+      "Aléatoire découverte : un nouveau son tous les 2 sons de la playlist (avant : tous les 3)."
     ],
     "date": "2026-11-24"
   },
