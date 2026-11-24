@@ -2722,6 +2722,8 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
    (il garde leur taille en mémoire) → défilement fluide même avec des milliers de sons dans la page */
 .tl-chunk:not([data-empty]) { content-visibility: auto; contain-intrinsic-size: auto calc(var(--row-h, 56px) * 30); }
 
-/* Aléatoire découverte : étoile sur le bouton aléatoire */
+/* Aléatoire découverte : le bouton aléatoire reste reconnaissable, dans une pastille colorée, avec une étincelle collée aux flèches */
 .disc { position: relative; }
-.disc::before { content: '✦'; position: absolute; top: -3px; right: -5px; font-size: 10px; line-height: 1; color: var(--accent); text-shadow: 0 0 6px var(--accent); pointer-events: none; }
+.ctrl.disc, .act-btn.disc { color: #fff; background: color-mix(in srgb, var(--accent) 30%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 50%; }
+.disc::before { content: '✦'; position: absolute; top: 0; right: 0; transform: translate(30%, -30%); width: 15px; height: 15px; display: grid; place-items: center; font-size: 10px; line-height: 1; color: #fff; background: var(--accent); border-radius: 50%; box-shadow: 0 0 6px var(--accent); pointer-events: none; }
+.ctrl.disc::after { display: none; }
