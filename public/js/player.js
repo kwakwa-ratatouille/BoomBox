@@ -565,6 +565,7 @@ export const player = {
         }
         this.paused = false;
         this.buffering = false;
+        this._loadAt = 0; // le son a démarré : la détection « lecture automatique bloquée » ne le concerne plus
         emit('player:state');
       },
       onPaused: (why = 'iOS a mis le son en pause') => {
@@ -847,6 +848,7 @@ export const player = {
     this._retryTried = null;
     this.buffering = true;
     this._loadAt = Date.now();
+    this._actAt = Date.now(); // voir sysPause
     this._restoreAt = 0;
     if (this.engine.name === 'audio' && this._preferredEngine().name !== 'audio') {
       this.engine.stop(); // sinon le son en cours continuait sous le lecteur YouTube
@@ -938,6 +940,7 @@ export const player = {
 
   // crossfade : durée du fondu enchaîné (passage automatique en fin de titre)
   async next(auto = false, crossfade = 0, mix = null) {
+    this._actAt = Date.now();
     const opts = { crossfade, mix };
     // Invité qui écoute la Jam : en fin de titre on attend le suivant choisi par l'hôte (pas notre propre playlist)
     if (auto && this._followsJam()) return;
@@ -990,6 +993,7 @@ export const player = {
 
   // Précédent / suivant lancent toujours la lecture (comme Spotify), même depuis la pause
   prev() {
+    this._actAt = Date.now();
     if (this.time() > 3 || this.pos <= 0) {
       if (this._logged) this._newListen(); // son déjà compté, réécouté depuis le début : nouvelle écoute
       this.seek(0);
@@ -1002,6 +1006,7 @@ export const player = {
   },
 
   seek(sec) {
+    this._actAt = Date.now();
     this._restoreAt = 0; // la position de reprise (après rechargement) ne compte plus
     this.engine.seek(Math.max(0, sec));
     emit('player:time');
@@ -1461,8 +1466,11 @@ export const player = {
         this.next(true, xf);
       }
     }
-    // Le navigateur a bloqué la lecture automatique (pas encore d'interaction) : on repasse en pause
-    if (!this.paused && this.buffering && this._loadAt && Date.now() - this._loadAt > (isNative ? 30000 : 7000) && this.engine.time() < 0.5) {
+    // Le navigateur a bloqué la lecture automatique (pas encore d'interaction) : on repasse en pause.
+    // Seulement au démarrage d'un son jamais lancé, et pour l'audio direct seulement si le lecteur est vraiment arrêté :
+    // avant, revenir au début du son (précédent) ou un chargement lent après un saut affichait « pause » tout seul
+    // alors que le son était juste en train de charger.
+    if (!this.paused && this.buffering && this._loadAt && (this.engine.name !== 'audio' || this.engine.a?.paused) && Date.now() - this._loadAt > (isNative ? 30000 : 7000) && this.engine.time() < 0.5) {
       this._loadAt = 0;
       this.paused = true;
       this.buffering = false;
@@ -1623,7 +1631,17 @@ for (const a of ACTIONS) {
 // Pause venue du système du téléphone (écran verrouillé, notification, écouteurs, interruption iOS). Quand le
 // téléphone pilote le PC, ces commandes concernent le lecteur du téléphone (à l'arrêt), pas le PC : iOS en envoie
 // tout seul (interruption, autre appli qui joue) et le PC se mettait en pause sans raison.
-const sysPause = (why) => (player.remoteSender ? undefined : ctl.pause(why));
+// Pause envoyée par le système (notification Android, écran verrouillé / écouteurs iPhone). Juste après un changement de
+// son ou un saut fait dans l'appli, le système envoie parfois une « pause » que personne n'a demandée (l'élément audio
+// se recharge) : le son se bloquait puis se mettait en pause tout seul. Appli à l'écran et action toute récente → ignorée.
+const sysPause = (why) => {
+  if (player.remoteSender) return;
+  if (document.visibilityState === 'visible' && Date.now() - (player._actAt || 0) < 2500) {
+    import('./errors.js').then((m) => m.reportError(`Pause système ignorée (juste après un saut / changement de son) : ${why}`, 'pause')).catch(() => {});
+    return;
+  }
+  ctl.pause(why);
+};
 
 // Android Auto : listes proposées dans la voiture (Titres likés d'abord, puis les playlists, 300 sons max chacune)
 const autoLists = () => [

@@ -1,5 +1,14 @@
 [
   {
+    "version": "2026.1124.1212",
+    "title": "Lecture plus fiable",
+    "items": [
+      "Revenir au début d’un son ou avancer dedans ne met plus la lecture en pause toute seule (une sécurité prenait le chargement pour un blocage).",
+      "Téléphone : une « pause » envoyée par la notification ou l’écran verrouillé juste après un changement de son ou un saut fait dans l’appli est ignorée."
+    ],
+    "date": "2026-11-24"
+  },
+  {
     "version": "2026.1124.1132",
     "title": "Étoile découverte fiable",
     "items": [
