@@ -3,7 +3,9 @@
     "version": "2026.1125.1015",
     "title": "Plus de sons qui défilent tout seuls",
     "items": [
-      "Un son qui s’arrête bien avant sa fin (fichier ou flux coupé) n’enchaîne plus sur le suivant en boucle : nouvel essai avec un fichier neuf, puis arrêt avec un message si ça continue."
+      "Un son qui s’arrête bien avant sa fin (fichier ou flux coupé) n’enchaîne plus sur le suivant en boucle : nouvel essai avec un fichier neuf, puis arrêt avec un message si ça continue.",
+      "« En direct » : quand les sons défilent vite, l’activité n’est envoyée qu’une fois toutes les 20 s (beaucoup moins de requêtes Firebase).",
+      "Hors connexion : arrêt après 12 sons non téléchargés d’affilée (avant : 40)."
     ],
     "date": "2026-11-25"
   },

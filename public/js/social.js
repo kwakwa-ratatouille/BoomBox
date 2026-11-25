@@ -138,6 +138,14 @@ export const social = {
     const playing = !player.paused;
     const last = this._lastPub;
     if (!force && last.id === t.id && last.playing === playing) return;
+    // Changements de son en rafale (sons passés vite, ou lecture qui saute de son en son) : au plus une écriture toutes les
+    // 20 s, le dernier son part à la fin du délai. Avant, chaque son écrivait (des milliers d'écritures Firebase par heure).
+    const soon = 20e3 - (Date.now() - (last.at || 0));
+    if (!force && last.id !== t.id && soon > 0) {
+      clearTimeout(this._pubTimer);
+      this._pubTimer = setTimeout(() => this.publishActivity(), soon + 50);
+      return;
+    }
     // Lecture / pause en rafale sur le même son : on n'écrit pas plus d'une fois toutes les 10 s,
     // mais le dernier état part quand même à la fin du délai (sinon une pause resterait « en écoute »)
     const wait = 45e3 - (Date.now() - last.at); // lecture / pause sur le même son : au plus une écriture toutes les 45 s

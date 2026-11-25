@@ -1438,7 +1438,7 @@ export const player = {
     // Hors connexion, son pas téléchargé : on le dit clairement et on passe au suivant (sans compter un échec)
     if (isNative && /non téléchargé|Hors ligne/i.test(String(code))) {
       this._offlineSkips = (this._offlineSkips || 0) + 1;
-      if (this._offlineSkips > Math.min(40, this.list.length || 1)) {
+      if (this._offlineSkips > Math.min(12, this.list.length || 1)) {
         this._offlineSkips = 0;
         this.pause();
         return toast('Hors connexion : aucun son téléchargé dans cette liste. Reconnecte-toi pour les télécharger.', { timeout: 8000 });
