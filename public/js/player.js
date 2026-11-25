@@ -1342,6 +1342,14 @@ export const player = {
     if (this._endedKey === key && Date.now() - (this._endedAt || 0) < 2500) return;
     this._endedKey = key;
     this._endedAt = Date.now();
+    // Son « fini » bien avant sa vraie durée (fichier ou flux coupé) : avant, la lecture sautait de son en son toutes les
+    // quelques secondes. On le traite comme une erreur : nouvel essai (fichier abîmé supprimé et retéléchargé), puis
+    // arrêt après plusieurs échecs d'affilée.
+    const real = this.duration() || 0; // durée annoncée par le fichier lui-même
+    const at = this.time();
+    if (real > 30 && at < real - 15 && !this._xfading && this.engine?.name === 'audio') {
+      return void this._onError(`lecteur : son coupé avant la fin (${Math.round(at)} s sur ${Math.round(real)} s)`);
+    }
     if (this.sleep?.endOfTrack) {
       this.sleep = null;
       this.pause();

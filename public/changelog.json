@@ -1,5 +1,13 @@
 [
   {
+    "version": "2026.1125.1015",
+    "title": "Plus de sons qui défilent tout seuls",
+    "items": [
+      "Un son qui s’arrête bien avant sa fin (fichier ou flux coupé) n’enchaîne plus sur le suivant en boucle : nouvel essai avec un fichier neuf, puis arrêt avec un message si ça continue."
+    ],
+    "date": "2026-11-25"
+  },
+  {
     "version": "2026.1125.0932",
     "title": "Défilement des grandes playlists",
     "items": [
