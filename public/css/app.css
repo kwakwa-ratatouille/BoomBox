@@ -2762,3 +2762,6 @@ img[src*="logo-symbol"], img[src*="app-icon"] { image-rendering: pixelated; }
 .cam-card video, .cam-card img { width: 100%; border-radius: 10px; background: #000; display: block; transform: none; }
 .cam-card video { transform: scaleX(-1); } /* aperçu en miroir, comme un selfie (la photo envoyée, elle, est à l'endroit) */
 .cam-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+/* Liste virtuelle : le navigateur « ancrait » le défilement sur les lignes redessinées et sautait plus bas (descente trop rapide) */
+.tl-virt, .tl-virt * { overflow-anchor: none; }
+#view:has(.tl-virt) { overflow-anchor: none; }
